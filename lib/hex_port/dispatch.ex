@@ -45,6 +45,7 @@ defmodule HexPort.Dispatch do
 
   # -- Test handler resolution --
 
+  # credo:disable-for-next-line Credo.Check.Refactor.CyclomaticComplexity
   defp resolve_test_handler(contract) do
     case GenServer.whereis(@ownership_server) do
       nil ->
