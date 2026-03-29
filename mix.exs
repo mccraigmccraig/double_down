@@ -1,7 +1,7 @@
 defmodule HexPort.MixProject do
   use Mix.Project
 
-  @version "0.1.0"
+  @version File.read!("VERSION") |> String.trim()
 
   def project do
     [
@@ -14,9 +14,10 @@ defmodule HexPort.MixProject do
       description: description(),
       package: package(),
       source_url: "https://github.com/mccraigmccraig/hex_port",
+      homepage_url: "https://github.com/mccraigmccraig/hex_port",
       docs: [
-        main: "HexPort",
-        extras: []
+        main: "readme",
+        extras: ["README.md"]
       ]
     ]
   end
@@ -53,7 +54,7 @@ defmodule HexPort.MixProject do
   defp package do
     [
       name: "hex_port",
-      files: ~w(lib .formatter.exs mix.exs README.md LICENSE),
+      files: ~w(lib .formatter.exs mix.exs README.md LICENSE VERSION),
       licenses: ["MIT"],
       links: %{
         "GitHub" => "https://github.com/mccraigmccraig/hex_port"
