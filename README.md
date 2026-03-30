@@ -20,7 +20,9 @@ during a test.
 HexPort gives you a single macro — `defport` — that generates typed
 contracts, behaviours, and dispatch facades. In production, dispatch
 reads from application config. In tests, dispatch uses process-scoped
-handlers via [NimbleOwnership](https://hex.pm/packages/nimble_ownership),
+handlers via [NimbleOwnership](https://hex.pm/packages/nimble_ownership)
+(the same ownership library that [Mox](https://hex.pm/packages/mox) uses
+to track mock ownership — a battle-tested, low-risk dependency),
 giving you full async test isolation with zero global state.
 
 | Feature | Description |
