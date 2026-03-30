@@ -58,7 +58,7 @@ if Code.ensure_loaded?(Ecto) do
         user = Repo.Port.get!(User, user_id)
     """
 
-    use HexPort, otp_app: :hex_port
+    use HexPort.Contract
 
     # -----------------------------------------------------------------
     # Write Operations

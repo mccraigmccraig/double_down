@@ -1,5 +1,5 @@
 defmodule HexPort.Test.Greeter do
-  use HexPort, otp_app: :hex_port
+  use HexPort.Contract
 
   defport greet(name :: String.t()) :: String.t()
 
@@ -18,7 +18,7 @@ defmodule HexPort.Test.Greeter.Impl do
 end
 
 defmodule HexPort.Test.Counter do
-  use HexPort, otp_app: :hex_port
+  use HexPort.Contract
 
   defport increment(amount :: integer()) :: integer()
   defport get_count() :: integer()
@@ -27,7 +27,7 @@ end
 # -- Contract for bang variant testing --
 
 defmodule HexPort.Test.BangVariants do
-  use HexPort, otp_app: :hex_port
+  use HexPort.Contract
 
   # Auto-detected bang (return type has {:ok, T})
   defport auto_bang(id :: String.t()) ::
@@ -56,7 +56,7 @@ end
 # -- Contract for zero-arg testing --
 
 defmodule HexPort.Test.ZeroArg do
-  use HexPort, otp_app: :hex_port
+  use HexPort.Contract
 
   defport health_check() :: :ok
   defport get_version() :: {:ok, String.t()} | {:error, term()}
@@ -65,7 +65,7 @@ end
 # -- Contract for @doc propagation testing --
 
 defmodule HexPort.Test.Documented do
-  use HexPort, otp_app: :hex_port
+  use HexPort.Contract
 
   @doc "Fetches a user by their ID."
   defport get_user(id :: String.t()) :: {:ok, map()} | {:error, term()}
@@ -76,7 +76,7 @@ end
 # -- Contract with multi-param for key helper testing --
 
 defmodule HexPort.Test.MultiParam do
-  use HexPort, otp_app: :hex_port
+  use HexPort.Contract
 
   defport find(tenant :: String.t(), type :: atom(), id :: String.t()) ::
             {:ok, map()} | {:error, term()}

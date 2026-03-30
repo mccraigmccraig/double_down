@@ -130,7 +130,8 @@ defmodule HexPort.Dispatch do
     No implementation configured for #{inspect(contract)}.
 
     Either:
-      1. Set `otp_app` in `use HexPort, otp_app: :my_app` and configure:
+      1. Create a Port module with `use HexPort.Port, contract: #{inspect(contract)}, otp_app: :my_app`
+         and configure:
            config :my_app, #{inspect(contract)}, impl: MyImpl
 
       2. In tests, use `HexPort.Testing.set_handler/2` to set a test handler.

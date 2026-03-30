@@ -383,7 +383,7 @@ defmodule HexPort.ContractTest do
       assert_raise CompileError, ~r/must be typed/, fn ->
         Code.compile_string("""
         defmodule HexPort.Test.BadUntyped do
-          use HexPort, otp_app: :hex_port
+          use HexPort.Contract
           defport bad_op(name) :: String.t()
         end
         """)
@@ -394,7 +394,7 @@ defmodule HexPort.ContractTest do
       assert_raise CompileError, ~r/does not support default arguments/, fn ->
         Code.compile_string("""
         defmodule HexPort.Test.BadDefaults do
-          use HexPort, otp_app: :hex_port
+          use HexPort.Contract
           defport bad_op(name :: String.t() \\\\ "default") :: String.t()
         end
         """)
@@ -405,7 +405,7 @@ defmodule HexPort.ContractTest do
       assert_raise CompileError, ~r/has no defport declarations/, fn ->
         Code.compile_string("""
         defmodule HexPort.Test.BadEmpty do
-          use HexPort, otp_app: :hex_port
+          use HexPort.Contract
         end
         """)
       end
@@ -415,7 +415,7 @@ defmodule HexPort.ContractTest do
       assert_raise CompileError, ~r/invalid defport syntax/, fn ->
         Code.compile_string("""
         defmodule HexPort.Test.BadNoReturn do
-          use HexPort, otp_app: :hex_port
+          use HexPort.Contract
           defport bad_op(name :: String.t())
         end
         """)

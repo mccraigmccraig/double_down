@@ -6,10 +6,10 @@ defmodule HexPort do
   dispatch logging, and stateful test handlers. Define boundaries with
   `defport`, swap implementations for testing without a database.
 
-  ## Usage
+  ## Defining a Contract
 
       defmodule MyApp.Todos do
-        use HexPort, otp_app: :my_app
+        use HexPort.Contract
 
         defport get_todo(tenant_id :: String.t(), id :: String.t()) ::
           {:ok, Todo.t()} | {:error, term()}
@@ -20,7 +20,16 @@ defmodule HexPort do
   This generates:
 
     * `MyApp.Todos.Behaviour` — standard `@behaviour` with `@callback`s
-    * `MyApp.Todos.Port` — facade functions dispatching via `HexPort.Dispatch`
+    * `MyApp.Todos.__port_operations__/0` — operation metadata
+
+  ## Generating a Dispatch Facade
+
+      defmodule MyApp.Todos.Port do
+        use HexPort.Port, contract: MyApp.Todos, otp_app: :my_app
+      end
+
+  This generates facade functions, bang variants, and key helpers
+  that dispatch via `HexPort.Dispatch`.
 
   ## Configuration
 
@@ -45,16 +54,4 @@ defmodule HexPort do
         assert {:ok, %Todo{}} = MyApp.Todos.Port.get_todo("t1", "todo-1")
       end
   """
-
-  @doc false
-  defmacro __using__(opts) do
-    otp_app = Keyword.get(opts, :otp_app)
-
-    quote do
-      import HexPort.Contract, only: [defport: 1, defport: 2]
-      Module.register_attribute(__MODULE__, :port_operations, accumulate: true)
-      Module.put_attribute(__MODULE__, :hex_port_otp_app, unquote(otp_app))
-      @before_compile HexPort.Contract
-    end
-  end
 end
