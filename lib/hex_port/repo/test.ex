@@ -96,6 +96,11 @@ if Code.ensure_loaded?(Ecto) do
     def transact(fun, _opts) when is_function(fun, 0), do: fun.()
     def transact(fun, _opts) when is_function(fun, 1), do: fun.(nil)
 
+    def transact(%Ecto.Multi{} = multi, opts) do
+      repo_facade = Keyword.get(opts, :repo_facade, __MODULE__)
+      HexPort.Repo.MultiStepper.run(multi, repo_facade)
+    end
+
     # -----------------------------------------------------------------
     # Helpers
     # -----------------------------------------------------------------

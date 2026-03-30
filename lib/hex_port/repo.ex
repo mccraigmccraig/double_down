@@ -142,28 +142,50 @@ if Code.ensure_loaded?(Ecto) do
     # -----------------------------------------------------------------
 
     @doc """
-    Run a function inside a database transaction.
+    Run a function or `Ecto.Multi` inside a database transaction.
 
-    Mirrors `Ecto.Repo.transact/2`. The function may be 0-arity or 1-arity:
+    Mirrors `Ecto.Repo.transact/2`. Accepts either a function or an
+    `Ecto.Multi` struct as the first argument.
+
+    ## Use with function
+
+    The function may be 0-arity or 1-arity:
 
     - **0-arity:** `fn -> {:ok, result} | {:error, reason} end`
     - **1-arity:** `fn repo -> {:ok, result} | {:error, reason} end` — where
-      `repo` is the underlying Ecto Repo module (in the Ecto adapter) or a
-      placeholder in test/in-memory adapters.
+      `repo` is the underlying Ecto Repo module (in the Ecto adapter) or the
+      Port facade module in test/in-memory adapters.
 
     The function **must** return `{:ok, result}` or `{:error, reason}`.
     On `{:ok, result}`, the transaction is committed and `{:ok, result}` is returned.
     On `{:error, reason}`, the transaction is rolled back and `{:error, reason}` is returned.
 
-    ## Example
+    ## Use with Ecto.Multi
 
+    When given an `Ecto.Multi`, all operations are executed in order.
+    On success, returns `{:ok, changes}` where `changes` is a map of
+    operation names to their results. On failure, returns
+    `{:error, failed_operation, failed_value, changes_so_far}`.
+
+    ## Examples
+
+        # With a function
         Repo.Port.transact(fn ->
           {:ok, user} = Repo.Port.insert(user_changeset)
           {:ok, profile} = Repo.Port.insert(profile_changeset(user))
           {:ok, {user, profile}}
         end)
+
+        # With Ecto.Multi
+        Ecto.Multi.new()
+        |> Ecto.Multi.insert(:user, user_changeset)
+        |> Ecto.Multi.insert(:profile, fn %{user: user} ->
+          profile_changeset(user)
+        end)
+        |> Repo.Port.transact()
     """
-    defport transact(fun :: (-> {:ok, term()} | {:error, term()}), opts :: keyword()) ::
-              {:ok, term()} | {:error, term()}
+    defport transact(fun_or_multi :: term(), opts :: keyword()) ::
+              {:ok, term()} | {:error, term()},
+            bang: false
   end
 end

@@ -146,6 +146,12 @@ defmodule HexPort.RepoTest do
 
     def transact(fun, _opts) when is_function(fun, 0), do: fun.()
     def transact(fun, _opts) when is_function(fun, 1), do: fun.(__MODULE__)
+
+    def transact(%Ecto.Multi{} = multi, _opts) do
+      # Simulate what a real Ecto Repo does: step through the Multi
+      # using this module as the repo for :run callbacks
+      HexPort.Repo.MultiStepper.run(multi, __MODULE__)
+    end
   end
 
   defmodule TestRepoPort do
@@ -246,6 +252,26 @@ defmodule HexPort.RepoTest do
       result = Repo.Port.transact(fn repo -> {:ok, repo} end, [])
       assert {:ok, MockRepo} = result
     end
+
+    test "transact with Ecto.Multi delegates to mock Repo" do
+      multi =
+        Ecto.Multi.new()
+        |> Ecto.Multi.insert(:user, User.changeset(%{name: "Alice"}))
+
+      assert {:ok, %{user: %User{name: "Alice"}}} = Repo.Port.transact(multi, [])
+    end
+
+    test "transact with Ecto.Multi and :run receives the Ecto Repo (MockRepo)" do
+      multi =
+        Ecto.Multi.new()
+        |> Ecto.Multi.run(:check, fn repo, _changes ->
+          {:ok, repo}
+        end)
+
+      # In the Ecto adapter, :run callbacks receive the underlying Ecto Repo module,
+      # not the Port facade. This mirrors real Ecto.Repo.transact/2 behaviour.
+      assert {:ok, %{check: MockRepo}} = Repo.Port.transact(multi, [])
+    end
   end
 
   # -------------------------------------------------------------------
@@ -300,6 +326,95 @@ defmodule HexPort.RepoTest do
 
     test "transact propagates error tuples" do
       assert {:error, :rollback} = Repo.Port.transact(fn -> {:error, :rollback} end, [])
+    end
+
+    test "transact with Ecto.Multi executes insert operations" do
+      multi =
+        Ecto.Multi.new()
+        |> Ecto.Multi.insert(:user, User.changeset(%{name: "Alice"}))
+        |> Ecto.Multi.insert(:post, Post.changeset(%{title: "Hello"}))
+
+      assert {:ok, %{user: %User{name: "Alice"}, post: %Post{title: "Hello"}}} =
+               Repo.Port.transact(multi, [])
+    end
+
+    test "transact with Ecto.Multi rejects invalid changesets" do
+      invalid = %Ecto.Changeset{valid?: false, action: :insert, errors: [name: {"required", []}]}
+
+      multi =
+        Ecto.Multi.new()
+        |> Ecto.Multi.insert(:user, invalid)
+
+      assert {:error, :user, %Ecto.Changeset{valid?: false}, %{}} =
+               Repo.Port.transact(multi, [])
+    end
+
+    test "transact with Ecto.Multi handles :run operations" do
+      multi =
+        Ecto.Multi.new()
+        |> Ecto.Multi.run(:value, fn _repo, _changes -> {:ok, 42} end)
+
+      assert {:ok, %{value: 42}} = Repo.Port.transact(multi, [])
+    end
+
+    test "transact with Ecto.Multi :run receives repo facade" do
+      multi =
+        Ecto.Multi.new()
+        |> Ecto.Multi.run(:repo_check, fn repo, _changes -> {:ok, repo} end)
+
+      assert {:ok, %{repo_check: Repo.Port}} = Repo.Port.transact(multi, [])
+    end
+
+    test "transact with Ecto.Multi :run failure returns 4-tuple error" do
+      multi =
+        Ecto.Multi.new()
+        |> Ecto.Multi.insert(:user, User.changeset(%{name: "Alice"}))
+        |> Ecto.Multi.run(:fail, fn _repo, _changes -> {:error, :boom} end)
+
+      assert {:error, :fail, :boom, %{user: %User{name: "Alice"}}} =
+               Repo.Port.transact(multi, [])
+    end
+
+    test "transact with Ecto.Multi :put adds static values" do
+      multi =
+        Ecto.Multi.new()
+        |> Ecto.Multi.put(:greeting, "hello")
+
+      assert {:ok, %{greeting: "hello"}} = Repo.Port.transact(multi, [])
+    end
+
+    test "transact with Ecto.Multi :merge composes sub-Multis" do
+      multi =
+        Ecto.Multi.new()
+        |> Ecto.Multi.insert(:user, User.changeset(%{name: "Alice"}))
+        |> Ecto.Multi.merge(fn %{user: user} ->
+          Ecto.Multi.new()
+          |> Ecto.Multi.insert(:post, Post.changeset(%{title: "by #{user.name}"}))
+        end)
+
+      assert {:ok, %{user: %User{name: "Alice"}, post: %Post{title: "by Alice"}}} =
+               Repo.Port.transact(multi, [])
+    end
+
+    test "transact with Ecto.Multi :error causes immediate failure" do
+      multi =
+        Ecto.Multi.new()
+        |> Ecto.Multi.error(:fail, :forced_error)
+        |> Ecto.Multi.insert(:user, User.changeset(%{name: "Alice"}))
+
+      assert {:error, :fail, :forced_error, %{}} = Repo.Port.transact(multi, [])
+    end
+
+    test "transact with Ecto.Multi passes changes to dependent :run operations" do
+      multi =
+        Ecto.Multi.new()
+        |> Ecto.Multi.insert(:user, User.changeset(%{name: "Alice"}))
+        |> Ecto.Multi.run(:greeting, fn _repo, %{user: user} ->
+          {:ok, "Hello, #{user.name}!"}
+        end)
+
+      assert {:ok, %{user: %User{name: "Alice"}, greeting: "Hello, Alice!"}} =
+               Repo.Port.transact(multi, [])
     end
 
     test "with logging enabled, all dispatches are recorded" do
@@ -596,6 +711,91 @@ defmodule HexPort.RepoTest do
 
       assert {:ok, {%User{name: "Alice"} = user, %User{name: "Alice"} = found}} = result
       assert user == found
+    end
+
+    test "transact with Ecto.Multi executes insert operations" do
+      multi =
+        Ecto.Multi.new()
+        |> Ecto.Multi.insert(:user, User.changeset(%{name: "Alice"}))
+        |> Ecto.Multi.insert(:post, Post.changeset(%{title: "Hello"}))
+
+      assert {:ok, %{user: %User{name: "Alice"}, post: %Post{title: "Hello"}}} =
+               Repo.Port.transact(multi, [])
+    end
+
+    test "transact with Ecto.Multi gives read-after-write via :run" do
+      multi =
+        Ecto.Multi.new()
+        |> Ecto.Multi.insert(:user, User.changeset(%{name: "Alice"}))
+        |> Ecto.Multi.run(:found, fn repo, %{user: user} ->
+          {:ok, repo.get(User, user.id)}
+        end)
+
+      assert {:ok, %{user: %User{name: "Alice"} = user, found: %User{name: "Alice"} = found}} =
+               Repo.Port.transact(multi, [])
+
+      assert user == found
+    end
+
+    test "transact with Ecto.Multi rejects invalid changesets" do
+      invalid = %Ecto.Changeset{valid?: false, action: :insert, errors: [name: {"required", []}]}
+
+      multi =
+        Ecto.Multi.new()
+        |> Ecto.Multi.insert(:user, invalid)
+
+      assert {:error, :user, %Ecto.Changeset{valid?: false}, %{}} =
+               Repo.Port.transact(multi, [])
+    end
+
+    test "transact with Ecto.Multi :run failure returns 4-tuple error" do
+      multi =
+        Ecto.Multi.new()
+        |> Ecto.Multi.insert(:user, User.changeset(%{name: "Alice"}))
+        |> Ecto.Multi.run(:fail, fn _repo, _changes -> {:error, :boom} end)
+
+      assert {:error, :fail, :boom, %{user: %User{name: "Alice"}}} =
+               Repo.Port.transact(multi, [])
+    end
+
+    test "transact with Ecto.Multi :run receives Repo.Port as facade" do
+      multi =
+        Ecto.Multi.new()
+        |> Ecto.Multi.run(:repo_check, fn repo, _changes -> {:ok, repo} end)
+
+      assert {:ok, %{repo_check: Repo.Port}} = Repo.Port.transact(multi, [])
+    end
+
+    test "transact with Ecto.Multi :merge composes sub-Multis" do
+      multi =
+        Ecto.Multi.new()
+        |> Ecto.Multi.insert(:user, User.changeset(%{name: "Alice"}))
+        |> Ecto.Multi.merge(fn %{user: user} ->
+          Ecto.Multi.new()
+          |> Ecto.Multi.insert(:post, Post.changeset(%{title: "by #{user.name}"}))
+        end)
+
+      assert {:ok, %{user: %User{name: "Alice"}, post: %Post{title: "by Alice"}}} =
+               Repo.Port.transact(multi, [])
+    end
+
+    test "transact with Ecto.Multi :put adds static values" do
+      multi =
+        Ecto.Multi.new()
+        |> Ecto.Multi.put(:greeting, "hello")
+
+      assert {:ok, %{greeting: "hello"}} = Repo.Port.transact(multi, [])
+    end
+
+    test "transact with Ecto.Multi persists insert to InMemory store" do
+      multi =
+        Ecto.Multi.new()
+        |> Ecto.Multi.insert(:user, User.changeset(%{name: "Alice"}))
+
+      {:ok, %{user: user}} = Repo.Port.transact(multi, [])
+
+      # Verify the record is accessible outside the Multi
+      assert user == Repo.Port.get(User, user.id)
     end
   end
 

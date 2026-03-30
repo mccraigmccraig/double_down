@@ -152,6 +152,24 @@ defmodule HexPort.Port do
 
     # param_types and return_type are AST tuples from __port_operations__/0.
     # We splice them directly — unquote treats 3-tuples as AST.
+    #
+    # For the :transact operation, we inject :repo_facade into opts so that
+    # adapters can pass the Port facade module to Ecto.Multi :run callbacks.
+    dispatch_args =
+      if name == :transact do
+        # param_vars is [fun_or_multi_var, opts_var] — inject repo_facade into opts
+        [first_var | [opts_var | _]] = param_vars
+
+        quote do
+          [
+            unquote(first_var),
+            Keyword.put(unquote(opts_var), :repo_facade, __MODULE__)
+          ]
+        end
+      else
+        param_vars
+      end
+
     quote do
       unquote(doc_ast)
       @spec unquote(name)(unquote_splicing(param_types)) :: unquote(return_type)
@@ -160,7 +178,7 @@ defmodule HexPort.Port do
           unquote(otp_app),
           unquote(contract),
           unquote(name),
-          unquote(param_vars)
+          unquote(dispatch_args)
         )
       end
     end
