@@ -129,11 +129,14 @@ if Code.ensure_loaded?(Ecto) do
       {:error, value}
     end
 
-    # Inspect (debug logging)
+    # Inspect (debug logging) — mirrors Ecto.Multi.inspect/2 behaviour
+    # credo:disable-for-next-line Credo.Check.Warning.IoInspect
     defp apply_operation(_name, {:inspect, opts}, changes, _repo_facade) do
       if opts[:only] do
+        # credo:disable-for-next-line Credo.Check.Warning.IoInspect
         changes |> Map.take(List.wrap(opts[:only])) |> IO.inspect(opts)
       else
+        # credo:disable-for-next-line Credo.Check.Warning.IoInspect
         IO.inspect(changes, opts)
       end
 
