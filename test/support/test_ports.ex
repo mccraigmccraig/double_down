@@ -8,10 +8,8 @@ end
 
 # Port facade for HexPort.Repo (library-provided contract).
 # In a real app this would be defined by the consuming application.
-if Code.ensure_loaded?(HexPort.Repo) do
-  defmodule HexPort.Repo.Port do
-    use HexPort.Port, contract: HexPort.Repo, otp_app: :hex_port
-  end
+defmodule HexPort.Repo.Port do
+  use HexPort.Port, contract: HexPort.Repo, otp_app: :hex_port
 end
 
 defmodule HexPort.Test.Counter.Port do
