@@ -67,7 +67,7 @@ defmodule HexPort.RepoTest do
       assert :aggregate in callback_names
     end
 
-    test "generates Port facade module" do
+    test "Port facade (defined via use HexPort.Port) has all operations" do
       {:module, _} = Code.ensure_loaded(Repo.Port)
 
       assert function_exported?(Repo.Port, :insert, 1)
@@ -77,7 +77,7 @@ defmodule HexPort.RepoTest do
       assert function_exported?(Repo.Port, :all, 1)
     end
 
-    test "generates bang variants for write operations" do
+    test "Port facade has bang variants for write operations" do
       {:module, _} = Code.ensure_loaded(Repo.Port)
 
       # Auto-generated bangs from {:ok, T} return types
