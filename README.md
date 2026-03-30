@@ -27,11 +27,27 @@ giving you full async test isolation with zero global state.
 |---------|-------------|
 | Typed contracts | `defport` declarations with full typespecs |
 | Behaviour generation | Standard `@behaviour` + `@callback` — Mox-compatible |
-| Dispatch facades | Generated `Port` module with delegation + bang variants |
+| Separate dispatch facades | `HexPort.Port` generates dispatch with configurable `otp_app` |
 | Async-safe test doubles | Process-scoped handlers via NimbleOwnership |
 | Stateful test handlers | In-memory state with read-after-write consistency |
 | Dispatch logging | Record every call that crosses a port boundary |
 | Built-in Repo contract | 14-operation Ecto Repo port with test + in-memory impls |
+
+## Two entry points
+
+HexPort has two macros for two separate concerns:
+
+- **`use HexPort.Contract`** — defines the contract (pure interface definition).
+  Generates `X.Behaviour` (callbacks) and `X.__port_operations__/0` (introspection).
+  No `otp_app`, no dispatch facade.
+
+- **`use HexPort.Port, contract: X, otp_app: :my_app`** — generates the dispatch
+  facade. Reads `X.__port_operations__/0` at compile time and creates facade
+  functions, bang variants, and key helpers. The consuming application controls
+  which `otp_app` to use.
+
+This separation means library-provided contracts (like `HexPort.Repo`) don't
+hardcode an `otp_app` — the consuming application decides how dispatch works.
 
 ## Quick example
 
@@ -39,7 +55,7 @@ giving you full async test isolation with zero global state.
 
 ```elixir
 defmodule MyApp.Todos do
-  use HexPort, otp_app: :my_app
+  use HexPort.Contract
 
   defport get_todo(tenant_id :: String.t(), id :: String.t()) ::
     {:ok, Todo.t()} | {:error, term()}
@@ -53,7 +69,19 @@ end
 This generates:
 
 - `MyApp.Todos.Behaviour` — standard `@behaviour` with `@callback`s
-- `MyApp.Todos.Port` — facade functions dispatching via `HexPort.Dispatch`
+- `MyApp.Todos.__port_operations__/0` — introspection for the contract
+
+### Generate a dispatch facade
+
+```elixir
+# In a separate file (contract must compile first)
+defmodule MyApp.Todos.Port do
+  use HexPort.Port, contract: MyApp.Todos, otp_app: :my_app
+end
+```
+
+This generates facade functions (`get_todo/2`, `list_todos/1`, `create_todo!/1`)
+that dispatch via `HexPort.Dispatch`.
 
 ### Implement the behaviour
 
@@ -175,8 +203,10 @@ HexPort includes a ready-made 14-operation Ecto Repo contract covering
 `get_by`, `get_by!`, `one`, `one!`, `all`, `exists?`, and `aggregate`.
 
 ```elixir
-defmodule MyApp.Repo do
-  use HexPort.Repo, otp_app: :my_app
+# HexPort.Repo defines the contract (no otp_app)
+# Your app creates its own Port module:
+defmodule MyApp.Repo.Port do
+  use HexPort.Port, contract: HexPort.Repo, otp_app: :my_app
 end
 ```
 
