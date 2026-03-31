@@ -382,7 +382,8 @@ defmodule HexPort.ContractTest do
       assert HexPort.Test.DoubleUse in mod_names
 
       # Operations are correct (not duplicated)
-      ops = HexPort.Test.DoubleUse.__port_operations__()
+      mod = HexPort.Test.DoubleUse
+      ops = apply(mod, :__port_operations__, [])
       assert length(ops) == 2
       op_names = Enum.map(ops, & &1.name)
       assert :hello in op_names
@@ -408,18 +409,20 @@ defmodule HexPort.ContractTest do
       mod_names = Enum.map(modules, fn {mod, _} -> mod end)
       assert HexPort.Test.Combined in mod_names
 
+      mod = HexPort.Test.Combined
+
       # Has both callbacks and facade functions
-      callbacks = HexPort.Test.Combined.behaviour_info(:callbacks)
+      callbacks = apply(mod, :behaviour_info, [:callbacks])
       assert {:greet, 1} in callbacks
       assert {:ping, 0} in callbacks
 
       # Has __port_operations__
-      ops = HexPort.Test.Combined.__port_operations__()
+      ops = apply(mod, :__port_operations__, [])
       assert length(ops) == 2
 
       # Facade functions exist
-      assert function_exported?(HexPort.Test.Combined, :greet, 1)
-      assert function_exported?(HexPort.Test.Combined, :ping, 0)
+      assert function_exported?(mod, :greet, 1)
+      assert function_exported?(mod, :ping, 0)
     end
 
     test "omitting contract: defaults to __MODULE__ and implies use HexPort.Contract" do
@@ -432,18 +435,20 @@ defmodule HexPort.ContractTest do
       end
       """)
 
+      mod = HexPort.Test.CombinedImplicit
+
       # Has callbacks (Contract was implicitly used)
-      callbacks = HexPort.Test.CombinedImplicit.behaviour_info(:callbacks)
+      callbacks = apply(mod, :behaviour_info, [:callbacks])
       assert {:greet, 1} in callbacks
       assert {:ping, 0} in callbacks
 
       # Has __port_operations__
-      ops = HexPort.Test.CombinedImplicit.__port_operations__()
+      ops = apply(mod, :__port_operations__, [])
       assert length(ops) == 2
 
       # Facade functions exist
-      assert function_exported?(HexPort.Test.CombinedImplicit, :greet, 1)
-      assert function_exported?(HexPort.Test.CombinedImplicit, :ping, 0)
+      assert function_exported?(mod, :greet, 1)
+      assert function_exported?(mod, :ping, 0)
     end
 
     test "facade dispatches correctly via test handler" do
@@ -455,11 +460,13 @@ defmodule HexPort.ContractTest do
       end
       """)
 
-      HexPort.Testing.set_fn_handler(HexPort.Test.CombinedDispatch, fn
+      mod = HexPort.Test.CombinedDispatch
+
+      HexPort.Testing.set_fn_handler(mod, fn
         :greet, ["Alice"] -> "Hello, Alice!"
       end)
 
-      assert "Hello, Alice!" = HexPort.Test.CombinedDispatch.greet("Alice")
+      assert "Hello, Alice!" = apply(mod, :greet, ["Alice"])
     end
   end
 
