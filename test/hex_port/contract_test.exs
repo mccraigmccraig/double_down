@@ -390,6 +390,56 @@ defmodule HexPort.ContractTest do
     end
   end
 
+  # ── Combined contract + facade ────────────────────────────
+
+  describe "combined contract and facade on same module" do
+    test "compiles and works correctly" do
+      modules =
+        Code.compile_string("""
+        defmodule HexPort.Test.Combined do
+          use HexPort.Contract
+          use HexPort.Facade, contract: HexPort.Test.Combined, otp_app: :hex_port_test
+
+          defport greet(name :: String.t()) :: String.t()
+          defport ping() :: :pong
+        end
+        """)
+
+      mod_names = Enum.map(modules, fn {mod, _} -> mod end)
+      assert HexPort.Test.Combined in mod_names
+
+      # Has both callbacks and facade functions
+      callbacks = HexPort.Test.Combined.behaviour_info(:callbacks)
+      assert {:greet, 1} in callbacks
+      assert {:ping, 0} in callbacks
+
+      # Has __port_operations__
+      ops = HexPort.Test.Combined.__port_operations__()
+      assert length(ops) == 2
+
+      # Facade functions exist
+      assert function_exported?(HexPort.Test.Combined, :greet, 1)
+      assert function_exported?(HexPort.Test.Combined, :ping, 0)
+    end
+
+    test "facade dispatches correctly via test handler" do
+      Code.compile_string("""
+      defmodule HexPort.Test.CombinedDispatch do
+        use HexPort.Contract
+        use HexPort.Facade, contract: HexPort.Test.CombinedDispatch, otp_app: :hex_port_test
+
+        defport greet(name :: String.t()) :: String.t()
+      end
+      """)
+
+      HexPort.Testing.set_fn_handler(HexPort.Test.CombinedDispatch, fn
+        :greet, ["Alice"] -> "Hello, Alice!"
+      end)
+
+      assert "Hello, Alice!" = HexPort.Test.CombinedDispatch.greet("Alice")
+    end
+  end
+
   # ── Compile errors ────────────────────────────────────────
 
   describe "compile errors" do

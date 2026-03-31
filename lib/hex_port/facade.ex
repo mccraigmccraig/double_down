@@ -51,16 +51,26 @@ defmodule HexPort.Facade do
 
   @doc false
   defmacro __using__(opts) do
-    contract = Keyword.fetch!(opts, :contract)
+    contract = Keyword.fetch!(opts, :contract) |> Macro.expand(__CALLER__)
     otp_app = Keyword.fetch!(opts, :otp_app)
 
-    # Reference contract module in a way the compiler can track as a dependency.
-    # This ensures the contract is compiled before this Port module.
-    quote do
-      require unquote(contract)
-      @hex_port_contract unquote(contract)
-      @hex_port_otp_app unquote(otp_app)
-      @before_compile {HexPort.Facade, :__before_compile__}
+    # Check at macro expansion time whether the contract references
+    # the calling module. If so, skip `require` (can't require self).
+    self_ref? = contract == __CALLER__.module
+
+    if self_ref? do
+      quote do
+        @hex_port_contract unquote(contract)
+        @hex_port_otp_app unquote(otp_app)
+        @before_compile {HexPort.Facade, :__before_compile__}
+      end
+    else
+      quote do
+        require unquote(contract)
+        @hex_port_contract unquote(contract)
+        @hex_port_otp_app unquote(otp_app)
+        @before_compile {HexPort.Facade, :__before_compile__}
+      end
     end
   end
 
@@ -69,26 +79,7 @@ defmodule HexPort.Facade do
     contract = Module.get_attribute(env.module, :hex_port_contract)
     otp_app = Module.get_attribute(env.module, :hex_port_otp_app)
 
-    # The contract must already be compiled and provide __port_operations__/0
-    unless Code.ensure_loaded?(contract) do
-      raise CompileError,
-        description:
-          "Contract module #{inspect(contract)} is not loaded. " <>
-            "Ensure it is compiled before #{inspect(env.module)}.",
-        file: env.file,
-        line: 0
-    end
-
-    unless function_exported?(contract, :__port_operations__, 0) do
-      raise CompileError,
-        description:
-          "#{inspect(contract)} does not define __port_operations__/0. " <>
-            "Did you `use HexPort.Contract` and add `defport` declarations?",
-        file: env.file,
-        line: 0
-    end
-
-    operations = contract.__port_operations__()
+    operations = fetch_operations!(contract, env)
 
     facades = Enum.map(operations, &generate_facade(&1, contract, otp_app))
 
@@ -254,5 +245,77 @@ defmodule HexPort.Facade do
         HexPort.Dispatch.key(unquote(contract), unquote(name), unquote(param_vars))
       end
     end
+  end
+
+  # -------------------------------------------------------------------
+  # Operations fetching — supports both separate and same-module contracts
+  # -------------------------------------------------------------------
+
+  defp fetch_operations!(contract, env) do
+    if contract == env.module do
+      # Same-module: contract is being compiled in the same module.
+      # Code.ensure_loaded? and function_exported? won't work, but
+      # Module.defines? checks functions defined earlier in this
+      # compilation (by a prior @before_compile hook).
+      unless Module.defines?(env.module, {:__port_operations__, 0}) do
+        raise CompileError,
+          description:
+            "#{inspect(contract)} does not define __port_operations__/0. " <>
+              "Ensure `use HexPort.Contract` appears before `use HexPort.Facade` " <>
+              "and add `defport` declarations.",
+          file: env.file,
+          line: 0
+      end
+
+      # We validate via Module.defines? (the output), but must read
+      # the raw attribute for data since the function can't be called
+      # on a module that's still being compiled.
+      Module.get_attribute(env.module, :port_operations)
+      |> Enum.reverse()
+      |> Enum.map(&operation_to_introspection/1)
+    else
+      # Separate module: contract is already compiled.
+      unless Code.ensure_loaded?(contract) do
+        raise CompileError,
+          description:
+            "Contract module #{inspect(contract)} is not loaded. " <>
+              "Ensure it is compiled before #{inspect(env.module)}.",
+          file: env.file,
+          line: 0
+      end
+
+      unless function_exported?(contract, :__port_operations__, 0) do
+        raise CompileError,
+          description:
+            "#{inspect(contract)} does not define __port_operations__/0. " <>
+              "Did you `use HexPort.Contract` and add `defport` declarations?",
+          file: env.file,
+          line: 0
+      end
+
+      contract.__port_operations__()
+    end
+  end
+
+  # Convert the raw @port_operations attribute format to the public
+  # __port_operations__/0 format (matching what generate_introspection
+  # in HexPort.Contract produces).
+  defp operation_to_introspection(%{
+         name: name,
+         param_names: param_names,
+         param_types: param_types,
+         return_type: return_type,
+         bang_mode: bang_mode,
+         user_doc: user_doc
+       }) do
+    %{
+      name: name,
+      params: param_names,
+      param_types: param_types,
+      return_type: return_type,
+      bang_mode: bang_mode,
+      user_doc: user_doc,
+      arity: length(param_names)
+    }
   end
 end
