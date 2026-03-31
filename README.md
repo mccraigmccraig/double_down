@@ -444,6 +444,35 @@ Ecto's sandbox.
 2. **Application config** — `Application.get_env(otp_app, contract)[:impl]`
 3. **Raise** — clear error message if nothing is configured
 
+## Why `defport` instead of plain `@callback`?
+
+HexPort could in principle generate a facade from any Elixir behaviour —
+`behaviour_info(:callbacks)` gives `{name, arity}` pairs, and
+`Code.Typespec.fetch_callbacks/1` can extract full typespec details
+including parameter types and return types.
+
+However, there are practical limitations:
+
+- **Parameter names may not be available.** A `@callback` declaration
+  like `@callback get(term(), term()) :: term()` has no parameter names.
+  Even when names are given (`@callback get(id :: String.t(), ...)`),
+  they're embedded in the typespec AST rather than exposed as structured
+  metadata.
+
+- **`Code.Typespec.fetch_callbacks/1` has limitations.** It only works
+  on compiled modules with beam files on disk, not on modules being
+  compiled or compiled in-memory via `Code.compile_string`. This makes
+  it unsuitable for same-module contract + facade usage.
+
+- **No place for additional metadata.** `defport` supports options like
+  `bang: true | false | unwrap_fn` that control bang variant generation
+  and adapt to different return conventions. Plain `@callback` has no
+  mechanism for this — you'd need a separate DSL anyway.
+
+`defport` captures all the metadata at macro expansion time in a
+structured, accessible form (`__port_operations__/0`), avoiding these
+limitations.
+
 ## Installation
 
 Add `hex_port` to your dependencies in `mix.exs`:
