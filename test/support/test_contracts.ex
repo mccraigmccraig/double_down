@@ -8,7 +8,7 @@ defmodule HexPort.Test.Greeter do
 end
 
 defmodule HexPort.Test.Greeter.Impl do
-  @behaviour HexPort.Test.Greeter.Behaviour
+  @behaviour HexPort.Test.Greeter
 
   @impl true
   def greet(name), do: "Hello, #{name}!"

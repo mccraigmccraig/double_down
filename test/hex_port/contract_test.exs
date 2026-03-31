@@ -1,24 +1,19 @@
 defmodule HexPort.ContractTest do
   use ExUnit.Case, async: true
 
-  # ── Behaviour generation ──────────────────────────────────
+  # ── Callback generation ──────────────────────────────────
 
-  describe "Behaviour generation" do
-    test "generates a .Behaviour sub-module" do
-      assert {:module, HexPort.Test.Greeter.Behaviour} =
-               Code.ensure_loaded(HexPort.Test.Greeter.Behaviour)
-    end
-
-    test "Behaviour declares @callbacks for each defport" do
-      {:ok, callbacks} = Code.Typespec.fetch_callbacks(HexPort.Test.Greeter.Behaviour)
+  describe "callback generation" do
+    test "contract module declares @callbacks for each defport" do
+      {:ok, callbacks} = Code.Typespec.fetch_callbacks(HexPort.Test.Greeter)
       callback_names = Enum.map(callbacks, fn {name_arity, _} -> name_arity end)
 
       assert {:greet, 1} in callback_names
       assert {:fetch_greeting, 1} in callback_names
     end
 
-    test "Behaviour callbacks have correct arity" do
-      {:ok, callbacks} = Code.Typespec.fetch_callbacks(HexPort.Test.Greeter.Behaviour)
+    test "callbacks have correct arity" do
+      {:ok, callbacks} = Code.Typespec.fetch_callbacks(HexPort.Test.Greeter)
       callback_map = Map.new(callbacks, fn {name_arity, specs} -> {name_arity, specs} end)
 
       assert Map.has_key?(callback_map, {:greet, 1})
@@ -26,7 +21,7 @@ defmodule HexPort.ContractTest do
     end
 
     test "zero-arg operations produce arity-0 callbacks" do
-      {:ok, callbacks} = Code.Typespec.fetch_callbacks(HexPort.Test.ZeroArg.Behaviour)
+      {:ok, callbacks} = Code.Typespec.fetch_callbacks(HexPort.Test.ZeroArg)
       callback_names = Enum.map(callbacks, fn {name_arity, _} -> name_arity end)
 
       assert {:health_check, 0} in callback_names
@@ -34,26 +29,17 @@ defmodule HexPort.ContractTest do
     end
 
     test "multi-param operations produce correct arity callbacks" do
-      {:ok, callbacks} = Code.Typespec.fetch_callbacks(HexPort.Test.MultiParam.Behaviour)
+      {:ok, callbacks} = Code.Typespec.fetch_callbacks(HexPort.Test.MultiParam)
       callback_names = Enum.map(callbacks, fn {name_arity, _} -> name_arity end)
 
       assert {:find, 3} in callback_names
     end
 
-    test "Behaviour can be implemented (Greeter.Impl satisfies it)" do
-      # The test contract Greeter.Impl uses @behaviour Greeter.Behaviour
+    test "contract can be implemented (Greeter.Impl satisfies @behaviour)" do
+      # The test contract Greeter.Impl uses @behaviour HexPort.Test.Greeter
       # and compiles without warnings — this is sufficient proof
       assert HexPort.Test.Greeter.Impl.greet("world") == "Hello, world!"
       assert HexPort.Test.Greeter.Impl.fetch_greeting("world") == {:ok, "Hello, world!"}
-    end
-
-    test "Behaviour module has @moduledoc" do
-      {:docs_v1, _anno, _lang, _format, module_doc, _meta, _docs} =
-        Code.fetch_docs(HexPort.Test.Greeter.Behaviour)
-
-      assert %{"en" => doc} = module_doc
-      assert doc =~ "Behaviour for"
-      assert doc =~ "HexPort.Test.Greeter"
     end
   end
 
@@ -391,10 +377,9 @@ defmodule HexPort.ContractTest do
         end
         """)
 
-      # Should produce the contract module and its Behaviour submodule
+      # Should produce just the contract module (no Behaviour submodule)
       mod_names = Enum.map(modules, fn {mod, _} -> mod end)
       assert HexPort.Test.DoubleUse in mod_names
-      assert HexPort.Test.DoubleUse.Behaviour in mod_names
 
       # Operations are correct (not duplicated)
       ops = HexPort.Test.DoubleUse.__port_operations__()

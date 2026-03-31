@@ -13,7 +13,7 @@
 if Code.ensure_loaded?(Ecto) do
   defmodule HexPort.Repo.Ecto do
     @moduledoc """
-    Macro for generating a `HexPort.Repo.Behaviour` implementation that
+    Macro for generating a `HexPort.Repo` behaviour implementation that
     delegates to a specific Ecto Repo module.
 
     Each operation in the `HexPort.Repo` contract is implemented by calling
@@ -26,7 +26,7 @@ if Code.ensure_loaded?(Ecto) do
           use HexPort.Repo.Ecto, repo: MyApp.Repo
         end
 
-    This generates a module satisfying `HexPort.Repo.Behaviour` with
+    This generates a module satisfying `@behaviour HexPort.Repo` with
     functions like:
 
         def insert(changeset), do: MyApp.Repo.insert(changeset)
@@ -61,7 +61,7 @@ if Code.ensure_loaded?(Ecto) do
         end)
 
       quote do
-        @behaviour HexPort.Repo.Behaviour
+        @behaviour HexPort.Repo
 
         unquote_splicing(delegations)
       end

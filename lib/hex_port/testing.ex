@@ -32,7 +32,7 @@ defmodule HexPort.Testing do
   @doc """
   Register a module as the handler for a contract.
 
-  The module must implement `contract.Behaviour`.
+  The module must implement the contract's `@behaviour`.
   """
   @spec set_handler(module(), module()) :: :ok
   def set_handler(contract, impl) do

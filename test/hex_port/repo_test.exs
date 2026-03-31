@@ -47,8 +47,8 @@ defmodule HexPort.RepoTest do
 
   describe "HexPort.Repo contract" do
     test "generates Behaviour module with all callbacks" do
-      {:module, _} = Code.ensure_loaded(Repo.Behaviour)
-      {:ok, callbacks} = Code.Typespec.fetch_callbacks(Repo.Behaviour)
+      {:module, _} = Code.ensure_loaded(Repo)
+      {:ok, callbacks} = Code.Typespec.fetch_callbacks(Repo)
       callback_names = Enum.map(callbacks, fn {name_arity, _} -> elem(name_arity, 0) end)
 
       assert :insert in callback_names

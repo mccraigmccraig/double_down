@@ -40,8 +40,9 @@ giving you full async test isolation with zero global state.
 HexPort has two macros for two separate concerns:
 
 - **`use HexPort.Contract`** — defines the contract (pure interface definition).
-  Generates `X.Behaviour` (callbacks) and `X.__port_operations__/0` (introspection).
-  No `otp_app`, no dispatch facade.
+  Generates `@callback` declarations on the contract module and
+  `X.__port_operations__/0` (introspection). The contract module *is*
+  the behaviour. No `otp_app`, no dispatch facade.
 
 - **`use HexPort.Port, contract: X, otp_app: :my_app`** — generates the dispatch
   facade. Reads `X.__port_operations__/0` at compile time and creates facade
@@ -68,10 +69,8 @@ defmodule MyApp.Todos do
 end
 ```
 
-This generates:
-
-- `MyApp.Todos.Behaviour` — standard `@behaviour` with `@callback`s
-- `MyApp.Todos.__port_operations__/0` — introspection for the contract
+This generates `@callback` declarations on `MyApp.Todos` (making it a
+behaviour) and `MyApp.Todos.__port_operations__/0` for introspection.
 
 ### Generate a dispatch facade
 
@@ -89,7 +88,7 @@ that dispatch via `HexPort.Dispatch`.
 
 ```elixir
 defmodule MyApp.Todos.Ecto do
-  @behaviour MyApp.Todos.Behaviour
+  @behaviour MyApp.Todos
 
   @impl true
   def get_todo(tenant_id, id) do

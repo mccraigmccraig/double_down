@@ -5,8 +5,9 @@ defmodule HexPort.Contract do
   `use HexPort.Contract` imports the `defport` macro and registers a
   `@before_compile` hook that generates:
 
-    * `X.Behaviour` — plain `@callback`s for each port operation
-    * `__port_operations__/0` on `X` — introspection metadata
+    * `@callback` declarations on the contract module itself — the
+      contract module *is* the behaviour
+    * `__port_operations__/0` — introspection metadata
 
   Contracts are purely static interface definitions. They do **not**
   generate a dispatch facade (`.Port` module) — that is the concern of
@@ -24,10 +25,17 @@ defmodule HexPort.Contract do
         defport list_todos(tenant_id :: String.t()) :: [Todo.t()]
       end
 
-  This generates:
+  This generates `@callback` declarations on `MyApp.Todos` and
+  `MyApp.Todos.__port_operations__/0`.
 
-    * `MyApp.Todos.Behaviour` — standard `@behaviour` with `@callback`s
-    * `MyApp.Todos.__port_operations__/0` — operation metadata
+  Implementations use `@behaviour MyApp.Todos` directly:
+
+      defmodule MyApp.Todos.Ecto do
+        @behaviour MyApp.Todos
+        # ...
+      end
+
+  Compatible with `Mox.defmock(Mock, for: MyApp.Todos)`.
 
   To generate a dispatch facade, use `HexPort.Port` in a separate module:
 
@@ -128,7 +136,7 @@ defmodule HexPort.Contract do
     end
   end
 
-  # -- Before compile: generate Behaviour + introspection only --
+  # -- Before compile: generate @callbacks + introspection --
 
   @doc false
   defmacro __before_compile__(env) do
@@ -142,25 +150,11 @@ defmodule HexPort.Contract do
         line: 0
     end
 
-    behaviour_module = Module.concat(env.module, Behaviour)
-
     callbacks = Enum.map(operations, &generate_callback/1)
     introspection = generate_introspection(operations)
 
     quote do
-      defmodule unquote(behaviour_module) do
-        @moduledoc """
-        Behaviour for `#{inspect(unquote(env.module))}`.
-
-        Defines plain Elixir callbacks for each port operation.
-        Implement this behaviour to provide a concrete adapter.
-
-        Compatible with `Mox.defmock/2`.
-        """
-
-        unquote_splicing(callbacks)
-      end
-
+      unquote_splicing(callbacks)
       unquote(introspection)
     end
   end
