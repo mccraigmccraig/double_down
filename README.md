@@ -33,7 +33,7 @@ giving you full async test isolation with zero global state.
 | Async-safe test doubles | Process-scoped handlers via NimbleOwnership |
 | Stateful test handlers | In-memory state with PK read-after-write and fallback dispatch |
 | Dispatch logging | Record every call that crosses a port boundary |
-| Built-in Repo contract | 15-operation Ecto Repo port with test + in-memory impls |
+| Built-in Repo contract | 15-operation `HexPort.Repo.Contract` with test + in-memory impls |
 
 ## Two entry points
 
@@ -49,7 +49,7 @@ HexPort has two macros for two separate concerns:
   functions, bang variants, and key helpers. The consuming application controls
   which `otp_app` to use.
 
-This separation means library-provided contracts (like `HexPort.Repo`) don't
+This separation means library-provided contracts (like `HexPort.Repo.Contract`) don't
 hardcode an `otp_app` — the consuming application creates a facade module
 that binds the contract to its own config.
 
@@ -210,10 +210,10 @@ HexPort includes a ready-made 15-operation Ecto Repo contract covering
 `transact`.
 
 ```elixir
-# HexPort.Repo defines the contract (no otp_app)
-# Your app creates its own facade module:
+# HexPort.Repo.Contract defines the contract
+# Your app creates a facade module:
 defmodule MyApp.Repo do
-  use HexPort.Facade, contract: HexPort.Repo, otp_app: :my_app
+  use HexPort.Facade, contract: HexPort.Repo.Contract, otp_app: :my_app
 end
 ```
 
@@ -237,11 +237,11 @@ through an optional fallback function, or raise a clear error — the same
 
 ```elixir
 # Writes only — reads will raise:
-HexPort.Testing.set_fn_handler(HexPort.Repo, HexPort.Repo.Test.new())
+HexPort.Testing.set_fn_handler(HexPort.Repo.Contract, HexPort.Repo.Test.new())
 
 # With fallback for reads:
 HexPort.Testing.set_fn_handler(
-  HexPort.Repo,
+  HexPort.Repo.Contract,
   HexPort.Repo.Test.new(
     fallback_fn: fn
       :get, [User, 1] -> %User{id: 1, name: "Alice"}
@@ -286,7 +286,7 @@ If your test only needs writes and PK-based lookups, no fallback is needed:
 ```elixir
 setup do
   HexPort.Testing.set_stateful_handler(
-    HexPort.Repo,
+    HexPort.Repo.Contract,
     &HexPort.Repo.InMemory.dispatch/3,
     HexPort.Repo.InMemory.new()
   )
@@ -323,7 +323,7 @@ setup do
   )
 
   HexPort.Testing.set_stateful_handler(
-    HexPort.Repo,
+    HexPort.Repo.Contract,
     &HexPort.Repo.InMemory.dispatch/3,
     state
   )

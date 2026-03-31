@@ -1,5 +1,14 @@
-# Compile-time macro for generating a Behaviour implementation of HexPort.Repo
-# that delegates to a specific Ecto Repo module.
+# Compile-time macro for generating a HexPort.Repo.Contract behaviour
+# implementation that delegates to a specific Ecto Repo module.
+#
+# ## Usage
+#
+#     defmodule MyApp.Repo.Ecto do
+#       use HexPort.Repo.Ecto, repo: MyApp.Repo
+#     end
+#
+#     # config/config.exs
+#     config :my_app, HexPort.Repo.Contract, impl: MyApp.Repo.Ecto
 #
 # ## Usage
 #
@@ -13,20 +22,20 @@
 if Code.ensure_loaded?(Ecto) do
   defmodule HexPort.Repo.Ecto do
     @moduledoc """
-    Macro for generating a `HexPort.Repo` behaviour implementation that
-    delegates to a specific Ecto Repo module.
+    Macro for generating a `HexPort.Repo.Contract` behaviour implementation
+    that delegates to a specific Ecto Repo module.
 
-    Each operation in the `HexPort.Repo` contract is implemented by calling
+    Each operation in the `HexPort.Repo.Contract` is implemented by calling
     the corresponding function on the configured Repo module with the
     same arguments.
 
     ## Usage
 
-        defmodule MyApp.Repo.HexPort do
+        defmodule MyApp.Repo.Ecto do
           use HexPort.Repo.Ecto, repo: MyApp.Repo
         end
 
-    This generates a module satisfying `@behaviour HexPort.Repo` with
+    This generates a module satisfying `@behaviour HexPort.Repo.Contract` with
     functions like:
 
         def insert(changeset), do: MyApp.Repo.insert(changeset)
@@ -38,13 +47,13 @@ if Code.ensure_loaded?(Ecto) do
 
     ## Configuration
 
-        config :my_app, HexPort.Repo, impl: MyApp.Repo.HexPort
+        config :my_app, HexPort.Repo.Contract, impl: MyApp.Repo.Ecto
     """
 
     defmacro __using__(opts) do
       repo = Keyword.fetch!(opts, :repo)
 
-      operations = HexPort.Repo.__port_operations__()
+      operations = HexPort.Repo.Contract.__port_operations__()
 
       delegations =
         Enum.map(operations, fn %{name: name, params: params, arity: arity} ->
@@ -61,7 +70,7 @@ if Code.ensure_loaded?(Ecto) do
         end)
 
       quote do
-        @behaviour HexPort.Repo
+        @behaviour HexPort.Repo.Contract
 
         unquote_splicing(delegations)
       end

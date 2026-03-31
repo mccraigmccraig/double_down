@@ -7,7 +7,7 @@
 # ## Usage
 #
 #     HexPort.Testing.set_stateful_handler(
-#       HexPort.Repo,
+#       HexPort.Repo.Contract,
 #       &HexPort.Repo.InMemory.dispatch/3,
 #       HexPort.Repo.InMemory.new()
 #     )
@@ -17,11 +17,10 @@
 #       seed: [%User{id: 1, name: "Alice"}],
 #       fallback_fn: fn
 #         :all, [User] -> [%User{id: 1, name: "Alice"}]
-#         :get_by, [User, [email: "alice@example.com"]] -> %User{id: 1, name: "Alice"}
 #       end
 #     )
 #     HexPort.Testing.set_stateful_handler(
-#       HexPort.Repo,
+#       HexPort.Repo.Contract,
 #       &HexPort.Repo.InMemory.dispatch/3,
 #       initial
 #     )
@@ -31,7 +30,7 @@ if Code.ensure_loaded?(Ecto) do
     @moduledoc """
     Stateful in-memory Repo implementation for tests.
 
-    Provides a stateful handler function for `HexPort.Repo` operations.
+    Provides a stateful handler function for `HexPort.Repo.Contract` operations.
     State is a nested map keyed by `schema_module => %{primary_key => struct}`,
     giving read-after-write consistency for PK-based lookups within a test.
 
@@ -74,7 +73,7 @@ if Code.ensure_loaded?(Ecto) do
 
         # Basic — PK reads only, no fallback:
         HexPort.Testing.set_stateful_handler(
-          HexPort.Repo,
+          HexPort.Repo.Contract,
           &HexPort.Repo.InMemory.dispatch/3,
           HexPort.Repo.InMemory.new()
         )
@@ -90,7 +89,7 @@ if Code.ensure_loaded?(Ecto) do
           end
         )
         HexPort.Testing.set_stateful_handler(
-          HexPort.Repo,
+          HexPort.Repo.Contract,
           &HexPort.Repo.InMemory.dispatch/3,
           state
         )
@@ -202,7 +201,7 @@ if Code.ensure_loaded?(Ecto) do
     @doc """
     Stateful handler function for use with `HexPort.Testing.set_stateful_handler/3`.
 
-    Handles all `HexPort.Repo` operations. The function signature is
+    Handles all `HexPort.Repo.Contract` operations. The function signature is
     `(operation, args, store) -> {result, new_store}`.
 
     Write operations are handled directly by the state. PK-based reads check

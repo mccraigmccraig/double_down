@@ -45,10 +45,10 @@ defmodule HexPort.RepoTest do
   # Contract Tests
   # -------------------------------------------------------------------
 
-  describe "HexPort.Repo contract" do
+  describe "HexPort.Repo.Contract" do
     test "generates Behaviour module with all callbacks" do
-      {:module, _} = Code.ensure_loaded(Repo)
-      {:ok, callbacks} = Code.Typespec.fetch_callbacks(Repo)
+      {:module, _} = Code.ensure_loaded(Repo.Contract)
+      {:ok, callbacks} = Code.Typespec.fetch_callbacks(Repo.Contract)
       callback_names = Enum.map(callbacks, fn {name_arity, _} -> elem(name_arity, 0) end)
 
       assert :insert in callback_names
@@ -89,7 +89,7 @@ defmodule HexPort.RepoTest do
     end
 
     test "read bang operations are separate ports (not auto-generated bangs)" do
-      ops = Repo.__port_operations__() |> Enum.map(& &1.name)
+      ops = Repo.Contract.__port_operations__() |> Enum.map(& &1.name)
 
       # These are declared as defport with bang: false
       assert :get! in ops
@@ -98,7 +98,7 @@ defmodule HexPort.RepoTest do
     end
 
     test "__port_operations__ lists all 15 operations" do
-      ops = Repo.__port_operations__()
+      ops = Repo.Contract.__port_operations__()
 
       assert length(ops) == 15
 
@@ -164,7 +164,7 @@ defmodule HexPort.RepoTest do
 
   describe "Repo.Ecto delegation" do
     setup do
-      HexPort.Testing.set_handler(Repo, TestRepoPort)
+      HexPort.Testing.set_handler(Repo.Contract, TestRepoPort)
       :ok
     end
 
@@ -234,7 +234,7 @@ defmodule HexPort.RepoTest do
 
     test "bang variant raises on {:error, reason}" do
       # Override with an fn handler that returns an error
-      HexPort.Testing.set_fn_handler(Repo, fn
+      HexPort.Testing.set_fn_handler(Repo.Contract, fn
         :insert, [_cs] -> {:error, :validation_failed}
       end)
 
@@ -280,7 +280,7 @@ defmodule HexPort.RepoTest do
 
   describe "Repo.Test: write operations" do
     setup do
-      HexPort.Testing.set_fn_handler(Repo, Repo.Test.new())
+      HexPort.Testing.set_fn_handler(Repo.Contract, Repo.Test.new())
       :ok
     end
 
@@ -307,7 +307,7 @@ defmodule HexPort.RepoTest do
 
   describe "Repo.Test: read operations raise without fallback" do
     setup do
-      HexPort.Testing.set_fn_handler(Repo, Repo.Test.new())
+      HexPort.Testing.set_fn_handler(Repo.Contract, Repo.Test.new())
       :ok
     end
 
@@ -390,7 +390,7 @@ defmodule HexPort.RepoTest do
           end
         )
 
-      HexPort.Testing.set_fn_handler(Repo, handler)
+      HexPort.Testing.set_fn_handler(Repo.Contract, handler)
 
       assert ^alice = Repo.Port.get(User, 1)
       assert nil == Repo.Port.get(User, 999)
@@ -402,7 +402,7 @@ defmodule HexPort.RepoTest do
       handler =
         Repo.Test.new(fallback_fn: fn :get!, [User, 1] -> alice end)
 
-      HexPort.Testing.set_fn_handler(Repo, handler)
+      HexPort.Testing.set_fn_handler(Repo.Contract, handler)
       assert ^alice = Repo.Port.get!(User, 1)
     end
 
@@ -412,7 +412,7 @@ defmodule HexPort.RepoTest do
       handler =
         Repo.Test.new(fallback_fn: fn :get_by, [User, [name: "Alice"]] -> alice end)
 
-      HexPort.Testing.set_fn_handler(Repo, handler)
+      HexPort.Testing.set_fn_handler(Repo.Contract, handler)
       assert ^alice = Repo.Port.get_by(User, name: "Alice")
     end
 
@@ -422,7 +422,7 @@ defmodule HexPort.RepoTest do
       handler =
         Repo.Test.new(fallback_fn: fn :all, [User] -> users end)
 
-      HexPort.Testing.set_fn_handler(Repo, handler)
+      HexPort.Testing.set_fn_handler(Repo.Contract, handler)
       assert ^users = Repo.Port.all(User)
     end
 
@@ -430,7 +430,7 @@ defmodule HexPort.RepoTest do
       handler =
         Repo.Test.new(fallback_fn: fn :exists?, [User] -> true end)
 
-      HexPort.Testing.set_fn_handler(Repo, handler)
+      HexPort.Testing.set_fn_handler(Repo.Contract, handler)
       assert Repo.Port.exists?(User) == true
     end
 
@@ -438,7 +438,7 @@ defmodule HexPort.RepoTest do
       handler =
         Repo.Test.new(fallback_fn: fn :aggregate, [User, :count, :id] -> 42 end)
 
-      HexPort.Testing.set_fn_handler(Repo, handler)
+      HexPort.Testing.set_fn_handler(Repo.Contract, handler)
       assert 42 = Repo.Port.aggregate(User, :count, :id)
     end
 
@@ -446,7 +446,7 @@ defmodule HexPort.RepoTest do
       handler =
         Repo.Test.new(fallback_fn: fn :get, [User, 1] -> nil end)
 
-      HexPort.Testing.set_fn_handler(Repo, handler)
+      HexPort.Testing.set_fn_handler(Repo.Contract, handler)
 
       assert_raise ArgumentError, ~r/Repo.Test cannot service :get/, fn ->
         Repo.Port.get(User, 999)
@@ -456,7 +456,7 @@ defmodule HexPort.RepoTest do
 
   describe "Repo.Test: transact" do
     setup do
-      HexPort.Testing.set_fn_handler(Repo, Repo.Test.new())
+      HexPort.Testing.set_fn_handler(Repo.Contract, Repo.Test.new())
       :ok
     end
 
@@ -564,32 +564,32 @@ defmodule HexPort.RepoTest do
 
   describe "Repo.Test: dispatch logging" do
     test "logs write operations" do
-      HexPort.Testing.set_fn_handler(Repo, Repo.Test.new())
-      HexPort.Testing.enable_log(Repo)
+      HexPort.Testing.set_fn_handler(Repo.Contract, Repo.Test.new())
+      HexPort.Testing.enable_log(Repo.Contract)
       cs = User.changeset(%{name: "Alice"})
 
       Repo.Port.insert(cs)
 
-      log = HexPort.Testing.get_log(Repo)
+      log = HexPort.Testing.get_log(Repo.Contract)
       assert length(log) == 1
-      assert [{Repo, :insert, [^cs], {:ok, %User{name: "Alice"}}}] = log
+      assert [{Repo.Contract, :insert, [^cs], {:ok, %User{name: "Alice"}}}] = log
     end
 
     test "logs fallback-dispatched operations" do
       alice = %User{id: 1, name: "Alice"}
 
       HexPort.Testing.set_fn_handler(
-        Repo,
+        Repo.Contract,
         Repo.Test.new(fallback_fn: fn :get, [User, 1] -> alice end)
       )
 
-      HexPort.Testing.enable_log(Repo)
+      HexPort.Testing.enable_log(Repo.Contract)
 
       Repo.Port.get(User, 1)
 
-      log = HexPort.Testing.get_log(Repo)
+      log = HexPort.Testing.get_log(Repo.Contract)
       assert length(log) == 1
-      assert [{Repo, :get, [User, 1], ^alice}] = log
+      assert [{Repo.Contract, :get, [User, 1], ^alice}] = log
     end
   end
 
@@ -647,7 +647,7 @@ defmodule HexPort.RepoTest do
   describe "InMemory: write operations" do
     setup do
       HexPort.Testing.set_stateful_handler(
-        Repo,
+        Repo.Contract,
         &Repo.InMemory.dispatch/3,
         Repo.InMemory.new()
       )
@@ -674,7 +674,7 @@ defmodule HexPort.RepoTest do
       initial = Repo.InMemory.new(seed: [%User{id: 5, name: "Existing"}])
 
       HexPort.Testing.set_stateful_handler(
-        Repo,
+        Repo.Contract,
         &Repo.InMemory.dispatch/3,
         initial
       )
@@ -714,7 +714,7 @@ defmodule HexPort.RepoTest do
         )
 
       HexPort.Testing.set_stateful_handler(
-        Repo,
+        Repo.Contract,
         &Repo.InMemory.dispatch/3,
         initial
       )
@@ -741,7 +741,7 @@ defmodule HexPort.RepoTest do
           fallback_fn: fn :get, [User, 99], _state -> bob end
         )
 
-      HexPort.Testing.set_stateful_handler(Repo, &Repo.InMemory.dispatch/3, state)
+      HexPort.Testing.set_stateful_handler(Repo.Contract, &Repo.InMemory.dispatch/3, state)
 
       # Found in state
       assert %User{id: 1, name: "Alice"} = Repo.Port.get(User, 1)
@@ -753,7 +753,7 @@ defmodule HexPort.RepoTest do
       state =
         Repo.InMemory.new(fallback_fn: fn :get, [User, 42], _state -> nil end)
 
-      HexPort.Testing.set_stateful_handler(Repo, &Repo.InMemory.dispatch/3, state)
+      HexPort.Testing.set_stateful_handler(Repo.Contract, &Repo.InMemory.dispatch/3, state)
 
       assert_raise ArgumentError, ~r/InMemory cannot service :get/, fn ->
         Repo.Port.get(User, 999)
@@ -779,7 +779,7 @@ defmodule HexPort.RepoTest do
           fallback_fn: fn :get!, [User, 99], _state -> bob end
         )
 
-      HexPort.Testing.set_stateful_handler(Repo, &Repo.InMemory.dispatch/3, state)
+      HexPort.Testing.set_stateful_handler(Repo.Contract, &Repo.InMemory.dispatch/3, state)
 
       assert %User{id: 1, name: "Alice"} = Repo.Port.get!(User, 1)
       assert ^bob = Repo.Port.get!(User, 99)
@@ -801,7 +801,7 @@ defmodule HexPort.RepoTest do
           end
         )
 
-      HexPort.Testing.set_stateful_handler(Repo, &Repo.InMemory.dispatch/3, state)
+      HexPort.Testing.set_stateful_handler(Repo.Contract, &Repo.InMemory.dispatch/3, state)
 
       assert %User{name: "Alice"} = Repo.Port.get_by(User, name: "Alice")
 
@@ -814,7 +814,7 @@ defmodule HexPort.RepoTest do
 
     test "get_by raises without fallback" do
       HexPort.Testing.set_stateful_handler(
-        Repo,
+        Repo.Contract,
         &Repo.InMemory.dispatch/3,
         Repo.InMemory.new()
       )
@@ -830,7 +830,7 @@ defmodule HexPort.RepoTest do
       state =
         Repo.InMemory.new(fallback_fn: fn :get_by!, [User, [name: "Bob"]], _state -> bob end)
 
-      HexPort.Testing.set_stateful_handler(Repo, &Repo.InMemory.dispatch/3, state)
+      HexPort.Testing.set_stateful_handler(Repo.Contract, &Repo.InMemory.dispatch/3, state)
       assert %User{name: "Bob"} = Repo.Port.get_by!(User, name: "Bob")
     end
 
@@ -840,13 +840,13 @@ defmodule HexPort.RepoTest do
       state =
         Repo.InMemory.new(fallback_fn: fn :one, [User], _state -> alice end)
 
-      HexPort.Testing.set_stateful_handler(Repo, &Repo.InMemory.dispatch/3, state)
+      HexPort.Testing.set_stateful_handler(Repo.Contract, &Repo.InMemory.dispatch/3, state)
       assert %User{name: "Alice"} = Repo.Port.one(User)
     end
 
     test "one raises without fallback" do
       HexPort.Testing.set_stateful_handler(
-        Repo,
+        Repo.Contract,
         &Repo.InMemory.dispatch/3,
         Repo.InMemory.new()
       )
@@ -862,7 +862,7 @@ defmodule HexPort.RepoTest do
       state =
         Repo.InMemory.new(fallback_fn: fn :one!, [User], _state -> alice end)
 
-      HexPort.Testing.set_stateful_handler(Repo, &Repo.InMemory.dispatch/3, state)
+      HexPort.Testing.set_stateful_handler(Repo.Contract, &Repo.InMemory.dispatch/3, state)
       assert %User{name: "Alice"} = Repo.Port.one!(User)
     end
 
@@ -872,7 +872,7 @@ defmodule HexPort.RepoTest do
       state =
         Repo.InMemory.new(fallback_fn: fn :all, [User], _state -> users end)
 
-      HexPort.Testing.set_stateful_handler(Repo, &Repo.InMemory.dispatch/3, state)
+      HexPort.Testing.set_stateful_handler(Repo.Contract, &Repo.InMemory.dispatch/3, state)
 
       result = Repo.Port.all(User)
       assert length(result) == 2
@@ -881,7 +881,7 @@ defmodule HexPort.RepoTest do
 
     test "all raises without fallback" do
       HexPort.Testing.set_stateful_handler(
-        Repo,
+        Repo.Contract,
         &Repo.InMemory.dispatch/3,
         Repo.InMemory.new()
       )
@@ -899,13 +899,13 @@ defmodule HexPort.RepoTest do
           end
         )
 
-      HexPort.Testing.set_stateful_handler(Repo, &Repo.InMemory.dispatch/3, state)
+      HexPort.Testing.set_stateful_handler(Repo.Contract, &Repo.InMemory.dispatch/3, state)
       assert Repo.Port.exists?(User) == true
     end
 
     test "exists? raises without fallback" do
       HexPort.Testing.set_stateful_handler(
-        Repo,
+        Repo.Contract,
         &Repo.InMemory.dispatch/3,
         Repo.InMemory.new()
       )
@@ -928,7 +928,7 @@ defmodule HexPort.RepoTest do
           end
         )
 
-      HexPort.Testing.set_stateful_handler(Repo, &Repo.InMemory.dispatch/3, state)
+      HexPort.Testing.set_stateful_handler(Repo.Contract, &Repo.InMemory.dispatch/3, state)
 
       assert 3 = Repo.Port.aggregate(User, :count, :id)
       assert 55 = Repo.Port.aggregate(User, :sum, :age)
@@ -938,7 +938,7 @@ defmodule HexPort.RepoTest do
 
     test "aggregate raises without fallback" do
       HexPort.Testing.set_stateful_handler(
-        Repo,
+        Repo.Contract,
         &Repo.InMemory.dispatch/3,
         Repo.InMemory.new()
       )
@@ -954,13 +954,13 @@ defmodule HexPort.RepoTest do
       state =
         Repo.InMemory.new(fallback_fn: fn :delete_all, [User, []], _state -> {2, nil} end)
 
-      HexPort.Testing.set_stateful_handler(Repo, &Repo.InMemory.dispatch/3, state)
+      HexPort.Testing.set_stateful_handler(Repo.Contract, &Repo.InMemory.dispatch/3, state)
       assert {2, nil} = Repo.Port.delete_all(User, [])
     end
 
     test "delete_all raises without fallback" do
       HexPort.Testing.set_stateful_handler(
-        Repo,
+        Repo.Contract,
         &Repo.InMemory.dispatch/3,
         Repo.InMemory.new()
       )
@@ -976,13 +976,13 @@ defmodule HexPort.RepoTest do
           fallback_fn: fn :update_all, [User, [set: [name: "bulk"]], []], _state -> {3, nil} end
         )
 
-      HexPort.Testing.set_stateful_handler(Repo, &Repo.InMemory.dispatch/3, state)
+      HexPort.Testing.set_stateful_handler(Repo.Contract, &Repo.InMemory.dispatch/3, state)
       assert {3, nil} = Repo.Port.update_all(User, [set: [name: "bulk"]], [])
     end
 
     test "update_all raises without fallback" do
       HexPort.Testing.set_stateful_handler(
-        Repo,
+        Repo.Contract,
         &Repo.InMemory.dispatch/3,
         Repo.InMemory.new()
       )
@@ -996,7 +996,7 @@ defmodule HexPort.RepoTest do
   describe "InMemory: transact" do
     setup do
       HexPort.Testing.set_stateful_handler(
-        Repo,
+        Repo.Contract,
         &Repo.InMemory.dispatch/3,
         Repo.InMemory.new()
       )
@@ -1120,7 +1120,7 @@ defmodule HexPort.RepoTest do
   describe "InMemory: read-after-write consistency (PK reads)" do
     setup do
       HexPort.Testing.set_stateful_handler(
-        Repo,
+        Repo.Contract,
         &Repo.InMemory.dispatch/3,
         Repo.InMemory.new()
       )
@@ -1159,7 +1159,7 @@ defmodule HexPort.RepoTest do
   describe "InMemory: multiple schema types" do
     test "different schemas are stored independently (PK reads)" do
       HexPort.Testing.set_stateful_handler(
-        Repo,
+        Repo.Contract,
         &Repo.InMemory.dispatch/3,
         Repo.InMemory.new()
       )
@@ -1178,7 +1178,7 @@ defmodule HexPort.RepoTest do
       bob = %User{id: 2, name: "Bob"}
       state = Repo.InMemory.new(seed: [alice, bob])
 
-      HexPort.Testing.set_stateful_handler(Repo, &Repo.InMemory.dispatch/3, state)
+      HexPort.Testing.set_stateful_handler(Repo.Contract, &Repo.InMemory.dispatch/3, state)
 
       assert ^alice = Repo.Port.get(User, 1)
       assert ^bob = Repo.Port.get(User, 2)
@@ -1186,7 +1186,7 @@ defmodule HexPort.RepoTest do
 
     test "can add to seeded state and read back by PK" do
       state = Repo.InMemory.new(seed: [%User{id: 1, name: "Alice"}])
-      HexPort.Testing.set_stateful_handler(Repo, &Repo.InMemory.dispatch/3, state)
+      HexPort.Testing.set_stateful_handler(Repo.Contract, &Repo.InMemory.dispatch/3, state)
 
       {:ok, bob} = Repo.Port.insert(User.changeset(%{name: "Bob"}))
       assert ^bob = Repo.Port.get(User, bob.id)
@@ -1197,23 +1197,23 @@ defmodule HexPort.RepoTest do
   describe "InMemory: dispatch logging" do
     test "logs write and PK read operations" do
       HexPort.Testing.set_stateful_handler(
-        Repo,
+        Repo.Contract,
         &Repo.InMemory.dispatch/3,
         Repo.InMemory.new()
       )
 
-      HexPort.Testing.enable_log(Repo)
+      HexPort.Testing.enable_log(Repo.Contract)
 
       cs = User.changeset(%{name: "Alice"})
       {:ok, user} = Repo.Port.insert(cs)
       Repo.Port.get(User, user.id)
 
-      log = HexPort.Testing.get_log(Repo)
+      log = HexPort.Testing.get_log(Repo.Contract)
       assert length(log) == 2
 
       assert [
-               {Repo, :insert, [^cs], {:ok, %User{}}},
-               {Repo, :get, [User, _], %User{}}
+               {Repo.Contract, :insert, [^cs], {:ok, %User{}}},
+               {Repo.Contract, :get, [User, _], %User{}}
              ] = log
     end
 
@@ -1221,18 +1221,18 @@ defmodule HexPort.RepoTest do
       users = [%User{id: 1, name: "Alice"}]
 
       HexPort.Testing.set_stateful_handler(
-        Repo,
+        Repo.Contract,
         &Repo.InMemory.dispatch/3,
         Repo.InMemory.new(fallback_fn: fn :all, [User], _state -> users end)
       )
 
-      HexPort.Testing.enable_log(Repo)
+      HexPort.Testing.enable_log(Repo.Contract)
 
       Repo.Port.all(User)
 
-      log = HexPort.Testing.get_log(Repo)
+      log = HexPort.Testing.get_log(Repo.Contract)
       assert length(log) == 1
-      assert [{Repo, :all, [User], [%User{id: 1, name: "Alice"}]}] = log
+      assert [{Repo.Contract, :all, [User], [%User{id: 1, name: "Alice"}]}] = log
     end
   end
 end

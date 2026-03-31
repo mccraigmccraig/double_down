@@ -1,4 +1,4 @@
-# Stateless test implementation of HexPort.Repo.
+# Stateless test handler for HexPort.Repo.Contract.
 #
 # Provides a function handler for use with set_fn_handler. Write operations
 # apply changeset changes and return {:ok, struct}. Read operations go
@@ -6,7 +6,7 @@
 #
 # ## Usage
 #
-#     HexPort.Testing.set_fn_handler(HexPort.Repo, HexPort.Repo.Test.new())
+#     HexPort.Testing.set_fn_handler(HexPort.Repo.Contract, HexPort.Repo.Test.new())
 #
 #     # With fallback for reads:
 #     HexPort.Testing.set_fn_handler(
@@ -22,7 +22,7 @@
 if Code.ensure_loaded?(Ecto) do
   defmodule HexPort.Repo.Test do
     @moduledoc """
-    Stateless test implementation of `HexPort.Repo`.
+    Stateless test handler for `HexPort.Repo.Contract`.
 
     Provides a function handler via `new/1` for use with
     `HexPort.Testing.set_fn_handler/2`. Write operations (`insert`, `update`,
@@ -38,11 +38,11 @@ if Code.ensure_loaded?(Ecto) do
     ## Usage
 
         # Writes only — reads will raise:
-        HexPort.Testing.set_fn_handler(HexPort.Repo, HexPort.Repo.Test.new())
+        HexPort.Testing.set_fn_handler(HexPort.Repo.Contract, HexPort.Repo.Test.new())
 
         # With fallback for reads:
         HexPort.Testing.set_fn_handler(
-          HexPort.Repo,
+          HexPort.Repo.Contract,
           HexPort.Repo.Test.new(
             fallback_fn: fn
               :get, [User, 1] -> %User{id: 1, name: "Alice"}
@@ -53,7 +53,7 @@ if Code.ensure_loaded?(Ecto) do
 
         # With logging:
         HexPort.Testing.set_fn_handler(HexPort.Repo, HexPort.Repo.Test.new())
-        HexPort.Testing.enable_log(HexPort.Repo)
+        HexPort.Testing.enable_log(HexPort.Repo.Contract)
 
     ## Differences from Repo.InMemory
 

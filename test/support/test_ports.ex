@@ -6,10 +6,11 @@ defmodule HexPort.Test.Greeter.Port do
   use HexPort.Facade, contract: HexPort.Test.Greeter, otp_app: :hex_port
 end
 
-# Port facade for HexPort.Repo (library-provided contract).
-# In a real app this would be defined by the consuming application.
+# Facade for HexPort.Repo.Contract (library-provided contract).
+# In a real app this would be defined in the application's namespace,
+# e.g. MyApp.Repo. Here we use HexPort.Repo.Port for test purposes.
 defmodule HexPort.Repo.Port do
-  use HexPort.Facade, contract: HexPort.Repo, otp_app: :hex_port
+  use HexPort.Facade, contract: HexPort.Repo.Contract, otp_app: :hex_port
 end
 
 defmodule HexPort.Test.Counter.Port do

@@ -1,4 +1,4 @@
-# Port contract for common Ecto Repo operations.
+# Repo contract for common Ecto Repo operations.
 #
 # Provides a built-in set of defport declarations so that every domain
 # using HexPort for DB operations doesn't need to redeclare insert/update/
@@ -6,27 +6,36 @@
 #
 # ## Usage
 #
-#     alias HexPort.Repo
+#     # Define a facade in your app:
+#     defmodule MyApp.Repo do
+#       use HexPort.Facade, contract: HexPort.Repo.Contract, otp_app: :my_app
+#     end
 #
-#     Repo.Port.insert!(changeset)
+#     MyApp.Repo.insert!(changeset)
 #
 # ## Configuration
 #
-#     # config/config.exs
-#     config :my_app, HexPort.Repo, impl: MyApp.Repo.HexPort
-#
-# ## Handler Installation (test)
-#
-#     HexPort.Testing.set_handler(HexPort.Repo, HexPort.Repo.Test)
+#     config :my_app, HexPort.Repo.Contract, impl: MyApp.Repo.Ecto
 #
 if Code.ensure_loaded?(Ecto) do
-  defmodule HexPort.Repo do
+  defmodule HexPort.Repo.Contract do
     @moduledoc """
-    Port contract for common Ecto Repo operations.
+    Repo contract for common Ecto Repo operations.
 
     Provides `defport` declarations for the standard write and read operations
     from `Ecto.Repo`, so that code using `HexPort` for database access doesn't
     need to redeclare these with identical boilerplate.
+
+    ## Usage
+
+        # Define a facade in your app:
+        defmodule MyApp.Repo do
+          use HexPort.Facade, contract: HexPort.Repo.Contract, otp_app: :my_app
+        end
+
+        changeset = User.changeset(%User{}, attrs)
+        {:ok, user} = MyApp.Repo.insert(changeset)
+        user = MyApp.Repo.get!(User, user_id)
 
     ## Write Operations
 
@@ -47,15 +56,6 @@ if Code.ensure_loaded?(Ecto) do
 
     Bang read variants (`get!/2`, `get_by!/2`, `one!/1`) are provided as
     separate port operations that mirror Ecto's raise-on-not-found semantics.
-
-    ## Example
-
-        alias HexPort.Repo
-
-        changeset = User.changeset(%User{}, attrs)
-        {:ok, user} = Repo.Port.insert(changeset)
-
-        user = Repo.Port.get!(User, user_id)
     """
 
     use HexPort.Contract
@@ -154,7 +154,7 @@ if Code.ensure_loaded?(Ecto) do
     - **0-arity:** `fn -> {:ok, result} | {:error, reason} end`
     - **1-arity:** `fn repo -> {:ok, result} | {:error, reason} end` — where
       `repo` is the underlying Ecto Repo module (in the Ecto adapter) or the
-      Port facade module in test/in-memory adapters.
+      facade module in test/in-memory adapters.
 
     The function **must** return `{:ok, result}` or `{:error, reason}`.
     On `{:ok, result}`, the transaction is committed and `{:ok, result}` is returned.
@@ -166,23 +166,6 @@ if Code.ensure_loaded?(Ecto) do
     On success, returns `{:ok, changes}` where `changes` is a map of
     operation names to their results. On failure, returns
     `{:error, failed_operation, failed_value, changes_so_far}`.
-
-    ## Examples
-
-        # With a function
-        Repo.Port.transact(fn ->
-          {:ok, user} = Repo.Port.insert(user_changeset)
-          {:ok, profile} = Repo.Port.insert(profile_changeset(user))
-          {:ok, {user, profile}}
-        end)
-
-        # With Ecto.Multi
-        Ecto.Multi.new()
-        |> Ecto.Multi.insert(:user, user_changeset)
-        |> Ecto.Multi.insert(:profile, fn %{user: user} ->
-          profile_changeset(user)
-        end)
-        |> Repo.Port.transact()
     """
     defport transact(fun_or_multi :: term(), opts :: keyword()) ::
               {:ok, term()} | {:error, term()},
