@@ -35,31 +35,16 @@ giving you full async test isolation with zero global state.
 | Dispatch logging | Record every call that crosses a port boundary |
 | Built-in Repo contract | 15-operation `HexPort.Repo.Contract` with test + in-memory impls |
 
-## Two entry points
-
-HexPort has two macros for two separate concerns:
-
-- **`use HexPort.Contract`** — defines the contract (pure interface definition).
-  Generates `@callback` declarations on the contract module and
-  `X.__port_operations__/0` (introspection). The contract module *is*
-  the behaviour. No `otp_app`, no dispatch facade.
-
-- **`use HexPort.Facade, contract: X, otp_app: :my_app`** — generates the dispatch
-  facade. Reads `X.__port_operations__/0` at compile time and creates facade
-  functions, bang variants, and key helpers. The consuming application controls
-  which `otp_app` to use.
-
-This separation means library-provided contracts (like `HexPort.Repo.Contract`) don't
-hardcode an `otp_app` — the consuming application creates a facade module
-that binds the contract to its own config.
-
 ## Quick example
 
-### Define a contract
+### Single module — contract + facade together
+
+The simplest way to define a port. `use HexPort.Facade` implicitly
+sets up the contract when no `:contract` option is given:
 
 ```elixir
-defmodule MyApp.Todos.Contract do
-  use HexPort.Contract
+defmodule MyApp.Todos do
+  use HexPort.Facade, otp_app: :my_app
 
   defport get_todo(tenant_id :: String.t(), id :: String.t()) ::
     {:ok, Todo.t()} | {:error, term()}
@@ -70,27 +55,15 @@ defmodule MyApp.Todos.Contract do
 end
 ```
 
-This generates `@callback` declarations on `MyApp.Todos.Contract` (making
-it a behaviour) and `MyApp.Todos.Contract.__port_operations__/0` for
-introspection.
-
-### Generate a dispatch facade
-
-```elixir
-# In a separate file (contract must compile first)
-defmodule MyApp.Todos do
-  use HexPort.Facade, contract: MyApp.Todos.Contract, otp_app: :my_app
-end
-```
-
-This generates facade functions (`get_todo/2`, `list_todos/1`, `create_todo!/1`)
-that dispatch via `HexPort.Dispatch`.
+`MyApp.Todos` is both the contract (`@callback` declarations,
+`__port_operations__/0`) and the dispatch facade (caller functions,
+bang variants).
 
 ### Implement the behaviour
 
 ```elixir
 defmodule MyApp.Todos.Ecto do
-  @behaviour MyApp.Todos.Contract
+  @behaviour MyApp.Todos
 
   @impl true
   def get_todo(tenant_id, id) do
@@ -108,7 +81,7 @@ end
 
 ```elixir
 # config/config.exs
-config :my_app, MyApp.Todos.Contract, impl: MyApp.Todos.Ecto
+config :my_app, MyApp.Todos, impl: MyApp.Todos.Ecto
 ```
 
 ### Test with process-scoped handlers
@@ -122,7 +95,7 @@ defmodule MyApp.TodosTest do
   use ExUnit.Case, async: true
 
   setup do
-    HexPort.Testing.set_fn_handler(MyApp.Todos.Contract, fn
+    HexPort.Testing.set_fn_handler(MyApp.Todos, fn
       :get_todo, [_tenant, id] -> {:ok, %Todo{id: id, title: "Test"}}
       :list_todos, [_tenant] -> [%Todo{id: "1", title: "Test"}]
       :create_todo!, [params] -> struct!(Todo, params)
@@ -136,6 +109,30 @@ defmodule MyApp.TodosTest do
 end
 ```
 
+### Separate contract and facade
+
+When the contract needs to live in a different module (e.g. a
+library-provided contract like `HexPort.Repo.Contract`), use
+`use HexPort.Contract` and `use HexPort.Facade` separately:
+
+```elixir
+defmodule MyApp.Todos.Contract do
+  use HexPort.Contract
+
+  defport get_todo(tenant_id :: String.t(), id :: String.t()) ::
+    {:ok, Todo.t()} | {:error, term()}
+end
+
+# In a separate file (contract must compile first)
+defmodule MyApp.Todos do
+  use HexPort.Facade, contract: MyApp.Todos.Contract, otp_app: :my_app
+end
+```
+
+This is also how the built-in `HexPort.Repo.Contract` works — it defines
+the contract, and your app creates the facade that binds it to your
+`otp_app`.
+
 ## Testing features
 
 ### Function handlers
@@ -143,11 +140,15 @@ end
 Map operations to return values with a simple function:
 
 ```elixir
-HexPort.Testing.set_fn_handler(MyApp.Todos.Contract, fn
+HexPort.Testing.set_fn_handler(MyApp.Todos, fn
   :get_todo, [_, id] -> {:ok, %Todo{id: id}}
   :list_todos, [_] -> []
 end)
 ```
+
+Handler registration uses the **contract module** — which is `MyApp.Todos`
+itself in the combined pattern, or `MyApp.Todos.Contract` when using
+separate modules.
 
 ### Stateful handlers
 
@@ -155,7 +156,7 @@ Maintain state across calls with atomic updates:
 
 ```elixir
 HexPort.Testing.set_stateful_handler(
-  MyApp.Todos.Contract,
+  MyApp.Todos,
   fn
     :create_todo!, [params], state ->
       todo = struct!(Todo, params)
@@ -177,8 +178,8 @@ Record and inspect every call that crosses a port boundary:
 
 ```elixir
 setup do
-  HexPort.Testing.enable_log(MyApp.Todos.Contract)
-  HexPort.Testing.set_fn_handler(MyApp.Todos.Contract, fn
+  HexPort.Testing.enable_log(MyApp.Todos)
+  HexPort.Testing.set_fn_handler(MyApp.Todos, fn
     :get_todo, [_, id] -> {:ok, %Todo{id: id}}
   end)
   :ok
@@ -188,7 +189,7 @@ test "logs dispatch calls" do
   MyApp.Todos.get_todo("t1", "42")
 
   assert [{:get_todo, ["t1", "42"], {:ok, %Todo{id: "42"}}}] =
-    HexPort.Testing.get_log(MyApp.Todos.Contract)
+    HexPort.Testing.get_log(MyApp.Todos)
 end
 ```
 
@@ -199,7 +200,7 @@ tests run in full isolation. `Task.async` children automatically inherit
 their parent's handlers.
 
 ```elixir
-HexPort.Testing.allow(MyApp.Todos.Contract, self(), some_pid)
+HexPort.Testing.allow(MyApp.Todos, self(), some_pid)
 ```
 
 ## Built-in Repo contract
