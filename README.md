@@ -5,28 +5,30 @@
 [![Documentation](https://img.shields.io/badge/documentation-gray)](https://hexdocs.pm/hex_port/)
 
 Hexagonal architecture ports for Elixir — typed contracts, async-safe
-test doubles, and a built-in in-memory Repo that makes database-free
+stateful test doubles, and a built-in in-memory Repo that makes database-free
 testing practical.
 
 ## The problem
 
 Clean Architecture tells you to put domain logic behind port boundaries,
-but Elixir doesn't give you a standard way to define them. You end up
-with ad-hoc behaviours, manual delegation modules, test doubles that
-aren't process-safe, and no way to log or inspect what crossed a
-boundary during a test.
+but in practice a couple of things get in the way: maintaining contract
+behaviours and dispatch facades involves boilerplate that's tedious to keep
+in sync, and unit-testing with complex dependencies like Ecto is hard enough
+that most projects never do it - they just hit the database for every test
+and accept the speed penalty and the inability to adopt property-based testing.
 
 ## What HexPort does
 
-| Feature | Description |
-|---------|-------------|
-| Typed contracts | `defport` declarations with full typespecs |
-| Behaviour generation | Standard `@behaviour` + `@callback` — Mox-compatible |
-| Dispatch facades | `HexPort.Facade` generates config-dispatched caller functions |
-| Async-safe test doubles | Process-scoped handlers via NimbleOwnership |
-| Stateful test handlers | In-memory state with atomic updates and fallback dispatch |
-| Dispatch logging | Record every call that crosses a port boundary |
-| Built-in Repo contract | 15-operation Ecto Repo contract with stateless + in-memory impls |
+| Feature                       | Description                                                      |
+|-------------------------------|------------------------------------------------------------------|
+| Typed contracts               | `defport` declarations with full typespecs                       |
+| Contract behaviour generation | Standard `@behaviour` + `@callback` — Mox-compatible             |
+| Dispatch facades              | `HexPort.Facade` generates config-dispatched caller functions    |
+| LSP-friendly docs             | `@doc` tags on facade functions with types and parameter names   |
+| Async-safe test doubles       | Process-scoped handlers via NimbleOwnership                      |
+| Stateful test handlers        | In-memory state with atomic updates and fallback dispatch        |
+| Dispatch logging              | Record every call that crosses a port boundary                   |
+| Built-in Repo contract        | 15-operation Ecto Repo contract with stateless + in-memory impls |
 
 ## Quick example
 
