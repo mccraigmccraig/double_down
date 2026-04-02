@@ -4,11 +4,6 @@ defmodule HexPort.DispatchTest do
   alias HexPort.Test.Greeter
   alias HexPort.Test.Counter
 
-  setup do
-    on_exit(fn -> HexPort.Testing.reset() end)
-    :ok
-  end
-
   # -- Module handler dispatch --
 
   describe "module handler" do

@@ -4,11 +4,6 @@ defmodule HexPort.TestingTest do
   alias HexPort.Test.Greeter
   alias HexPort.Test.Counter
 
-  setup do
-    on_exit(fn -> HexPort.Testing.reset() end)
-    :ok
-  end
-
   # ── Handler registration API ──────────────────────────────
 
   describe "set_handler/2" do
@@ -323,7 +318,6 @@ defmodule HexPort.TestingTest do
 
         result = Greeter.Port.greet("test")
         send(test_pid, {:process_2_result, result})
-        HexPort.Testing.reset()
       end)
 
       assert "process-1: test" = Greeter.Port.greet("test")
@@ -343,7 +337,6 @@ defmodule HexPort.TestingTest do
         HexPort.Testing.enable_log(Greeter)
         Greeter.Port.greet("child")
         send(test_pid, {:child_log, HexPort.Testing.get_log(Greeter)})
-        HexPort.Testing.reset()
       end)
 
       parent_log = HexPort.Testing.get_log(Greeter)

@@ -3,11 +3,6 @@ defmodule HexPort.RepoTest do
 
   alias HexPort.Repo
 
-  setup do
-    on_exit(fn -> HexPort.Testing.reset() end)
-    :ok
-  end
-
   # -------------------------------------------------------------------
   # Test Schema
   # -------------------------------------------------------------------
