@@ -147,6 +147,47 @@ In practice, most tests just set handlers in `setup` without calling
 `reset` — NimbleOwnership's per-process isolation means there's no
 cross-test leakage.
 
+## Fail-fast configuration
+
+By default, if no test handler is set and your production config is
+inherited into the test environment, dispatch silently hits the real
+implementation. This can mask missing test setup — a test passes but
+it's talking to a real database or external service.
+
+To prevent this, override your contract configs in `config/test.exs`
+with a nil implementation:
+
+```elixir
+# config/test.exs
+config :my_app, MyApp.Todos, impl: nil
+config :my_app, HexPort.Repo.Contract, impl: nil
+```
+
+Now any test that forgets to set a handler gets an immediate error:
+
+    ** (RuntimeError) No test handler set for MyApp.Todos.
+
+    In your test setup, call one of:
+
+        HexPort.Testing.set_handler(MyApp.Todos, MyImpl)
+        HexPort.Testing.set_fn_handler(MyApp.Todos, fn operation, args -> ... end)
+        HexPort.Testing.set_stateful_handler(MyApp.Todos, handler_fn, initial_state)
+
+Every test must explicitly declare its dependencies via
+`set_handler`, `set_fn_handler`, or `set_stateful_handler`. For
+integration tests that need the real implementation, use
+`set_handler` with the production module:
+
+```elixir
+setup do
+  HexPort.Testing.set_handler(MyApp.Todos, MyApp.Todos.Ecto)
+  :ok
+end
+```
+
+This makes the choice to use the real implementation visible and
+intentional, rather than an accident of config inheritance.
+
 ## Mox compatibility
 
 Because `defport` generates standard `@callback` declarations, the

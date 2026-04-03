@@ -133,32 +133,26 @@ defmodule HexPort.Dispatch do
 
   # -- Config resolution --
 
-  defp invoke_from_config(otp_app, contract, operation, args) do
-    impl = resolve_impl_from_config(otp_app, contract)
-    apply(impl, operation, args)
-  end
-
-  defp resolve_impl_from_config(nil, contract) do
-    raise_no_impl(nil, contract)
-  end
-
-  defp resolve_impl_from_config(otp_app, contract) do
+  defp resolve_impl(otp_app, contract) do
     case Application.get_env(otp_app, contract) do
       nil ->
-        raise_no_impl(otp_app, contract)
+        :error
 
       config when is_list(config) ->
         case Keyword.get(config, :impl) do
-          nil ->
-            raise_no_impl(otp_app, contract)
-
-          impl ->
-            impl
+          nil -> :error
+          impl -> {:ok, impl}
         end
 
       impl when is_atom(impl) ->
-        # Allow config :my_app, MyContract, MyImpl (shorthand)
-        impl
+        {:ok, impl}
+    end
+  end
+
+  defp invoke_from_config(otp_app, contract, operation, args) do
+    case resolve_impl(otp_app, contract) do
+      {:ok, impl} -> apply(impl, operation, args)
+      :error -> raise_no_impl(otp_app, contract)
     end
   end
 
@@ -173,8 +167,8 @@ defmodule HexPort.Dispatch do
           HexPort.Testing.set_fn_handler(#{inspect(contract)}, fn operation, args -> ... end)
           HexPort.Testing.set_stateful_handler(#{inspect(contract)}, handler_fn, initial_state)
 
-      If you want to use the production implementation in this test, see
-      `HexPort.Testing.allow_passthrough/1`.
+      If you want to use the production implementation in this test:
+          HexPort.Testing.set_handler(#{inspect(contract)}, MyProductionImpl)
       """
     else
       config_example =
