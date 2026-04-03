@@ -149,17 +149,13 @@ defmodule HexPort.RepoTest do
     end
   end
 
-  defmodule TestRepoPort do
-    use HexPort.Repo.Ecto, repo: MockRepo
-  end
-
   # -------------------------------------------------------------------
-  # Repo.Ecto Tests
+  # Ecto Repo delegation tests (using MockRepo directly as impl)
   # -------------------------------------------------------------------
 
-  describe "Repo.Ecto delegation" do
+  describe "Ecto Repo delegation" do
     setup do
-      HexPort.Testing.set_handler(Repo.Contract, TestRepoPort)
+      HexPort.Testing.set_handler(Repo.Contract, MockRepo)
       :ok
     end
 

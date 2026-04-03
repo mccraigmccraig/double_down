@@ -15,7 +15,7 @@
 #
 # ## Configuration
 #
-#     config :my_app, HexPort.Repo.Contract, impl: MyApp.Repo.Ecto
+#     config :my_app, HexPort.Repo.Contract, impl: MyApp.EctoRepo
 #
 if Code.ensure_loaded?(Ecto) do
   defmodule HexPort.Repo.Contract do

@@ -42,21 +42,15 @@ implementation at runtime.
 
 ## Implementations
 
-### `Repo.Ecto` — production adapter
+### Production — your Ecto Repo directly
 
-Generates a module that delegates to your real `Ecto.Repo`:
-
-```elixir
-defmodule MyApp.Repo.Impl do
-  use HexPort.Repo.Ecto, repo: MyApp.EctoRepo
-end
-```
-
-Then wire it up:
+Point the facade config at your Ecto Repo module. No wrapper needed —
+Ecto.Repo modules already export functions at the arities the contract
+calls with:
 
 ```elixir
 # config/config.exs
-config :my_app, HexPort.Repo.Contract, impl: MyApp.Repo.Impl
+config :my_app, HexPort.Repo.Contract, impl: MyApp.EctoRepo
 ```
 
 All operations pass through to the underlying Ecto Repo with full

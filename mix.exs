@@ -44,7 +44,6 @@ defmodule HexPort.MixProject do
           ],
           Repo: [
             HexPort.Repo.Contract,
-            HexPort.Repo.Ecto,
             HexPort.Repo.Test,
             HexPort.Repo.InMemory,
             HexPort.Repo.MultiStepper
