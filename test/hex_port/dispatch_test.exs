@@ -72,7 +72,15 @@ defmodule HexPort.DispatchTest do
       # Ensure no config
       Application.delete_env(:hex_port, Greeter)
 
-      assert_raise RuntimeError, ~r/No implementation configured/, fn ->
+      assert_raise RuntimeError, ~r/No test handler set/, fn ->
+        Greeter.Port.greet("Nobody")
+      end
+    end
+
+    test "raises with test-oriented message mentioning set_fn_handler" do
+      Application.delete_env(:hex_port, Greeter)
+
+      assert_raise RuntimeError, ~r/set_fn_handler/, fn ->
         Greeter.Port.greet("Nobody")
       end
     end
@@ -81,7 +89,7 @@ defmodule HexPort.DispatchTest do
       Application.put_env(:hex_port, Greeter, [])
       on_exit(fn -> Application.delete_env(:hex_port, Greeter) end)
 
-      assert_raise RuntimeError, ~r/missing `:impl` key/, fn ->
+      assert_raise RuntimeError, ~r/No test handler set/, fn ->
         Greeter.Port.greet("Nobody")
       end
     end

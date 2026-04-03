@@ -142,8 +142,8 @@ defmodule HexPort.TestingTest do
 
       HexPort.Testing.reset()
 
-      # No handler, no config → raises
-      assert_raise RuntimeError, ~r/No implementation configured/, fn ->
+      # No handler, no config → raises with test-oriented message
+      assert_raise RuntimeError, ~r/No test handler set/, fn ->
         Greeter.Port.greet("X")
       end
     end
@@ -473,8 +473,8 @@ defmodule HexPort.TestingTest do
 
       HexPort.Testing.reset()
 
-      assert_raise RuntimeError, ~r/No implementation/, fn -> Greeter.Port.greet("X") end
-      assert_raise RuntimeError, ~r/No implementation/, fn -> Counter.Port.get_count() end
+      assert_raise RuntimeError, ~r/No test handler set/, fn -> Greeter.Port.greet("X") end
+      assert_raise RuntimeError, ~r/No test handler set/, fn -> Counter.Port.get_count() end
     end
   end
 end

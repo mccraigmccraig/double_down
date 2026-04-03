@@ -139,39 +139,18 @@ defmodule HexPort.Dispatch do
   end
 
   defp resolve_impl_from_config(nil, contract) do
-    raise """
-    No implementation configured for #{inspect(contract)}.
-
-    Either:
-      1. Create a facade module with `use HexPort.Facade, contract: #{inspect(contract)}, otp_app: :my_app`
-         and configure:
-           config :my_app, #{inspect(contract)}, impl: MyImpl
-
-      2. In tests, use `HexPort.Testing.set_handler/2` to set a test handler.
-    """
+    raise_no_impl(nil, contract)
   end
 
   defp resolve_impl_from_config(otp_app, contract) do
     case Application.get_env(otp_app, contract) do
       nil ->
-        raise """
-        No implementation configured for #{inspect(contract)}.
-
-        Add to your config:
-          config #{inspect(otp_app)}, #{inspect(contract)}, impl: MyImpl
-
-        Or in tests, use `HexPort.Testing.set_handler/2`.
-        """
+        raise_no_impl(otp_app, contract)
 
       config when is_list(config) ->
         case Keyword.get(config, :impl) do
           nil ->
-            raise """
-            Config for #{inspect(contract)} is missing `:impl` key.
-
-            Expected:
-              config #{inspect(otp_app)}, #{inspect(contract)}, impl: MyImpl
-            """
+            raise_no_impl(otp_app, contract)
 
           impl ->
             impl
@@ -181,6 +160,42 @@ defmodule HexPort.Dispatch do
         # Allow config :my_app, MyContract, MyImpl (shorthand)
         impl
     end
+  end
+
+  defp raise_no_impl(otp_app, contract) do
+    if testing?() do
+      raise """
+      No test handler set for #{inspect(contract)}.
+
+      In your test setup, call one of:
+
+          HexPort.Testing.set_handler(#{inspect(contract)}, MyImpl)
+          HexPort.Testing.set_fn_handler(#{inspect(contract)}, fn operation, args -> ... end)
+          HexPort.Testing.set_stateful_handler(#{inspect(contract)}, handler_fn, initial_state)
+
+      If you want to use the production implementation in this test, see
+      `HexPort.Testing.allow_passthrough/1`.
+      """
+    else
+      config_example =
+        if otp_app do
+          "config #{inspect(otp_app)}, #{inspect(contract)}, impl: MyImpl"
+        else
+          ~s'use HexPort.Facade, contract: #{inspect(contract)}, otp_app: :my_app\n' <>
+            "    then: config :my_app, #{inspect(contract)}, impl: MyImpl"
+        end
+
+      raise """
+      No implementation configured for #{inspect(contract)}.
+
+      Add to your config:
+          #{config_example}
+      """
+    end
+  end
+
+  defp testing? do
+    GenServer.whereis(@ownership_server) != nil
   end
 
   # -- Key normalization --
