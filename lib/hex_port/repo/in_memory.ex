@@ -215,6 +215,10 @@ if Code.ensure_loaded?(Ecto) do
     # Write operations — always authoritative
     # -----------------------------------------------------------------
 
+    def dispatch(:insert, [%Ecto.Changeset{valid?: false} = changeset], store) do
+      {{:error, changeset}, store}
+    end
+
     def dispatch(:insert, [changeset], store) do
       record = safe_apply_changes(changeset)
       schema = record.__struct__
@@ -231,6 +235,10 @@ if Code.ensure_loaded?(Ecto) do
         end
 
       {{:ok, record}, put_record(store, schema, id, record)}
+    end
+
+    def dispatch(:update, [%Ecto.Changeset{valid?: false} = changeset], store) do
+      {{:error, changeset}, store}
     end
 
     def dispatch(:update, [changeset], store) do

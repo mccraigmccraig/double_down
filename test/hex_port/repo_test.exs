@@ -294,6 +294,35 @@ defmodule HexPort.RepoTest do
       cs = User.changeset(%{name: "Alice"})
       assert %User{name: "Alice"} = Repo.Port.insert!(cs)
     end
+
+    test "insert returns {:error, changeset} for invalid changeset" do
+      cs =
+        %User{}
+        |> Ecto.Changeset.cast(%{name: "Alice"}, [:name])
+        |> Ecto.Changeset.add_error(:name, "is invalid")
+
+      assert {:error, %Ecto.Changeset{valid?: false}} = Repo.Port.insert(cs)
+    end
+
+    test "update returns {:error, changeset} for invalid changeset" do
+      cs =
+        %User{id: 1, name: "old"}
+        |> Ecto.Changeset.cast(%{name: "new"}, [:name])
+        |> Ecto.Changeset.add_error(:name, "is invalid")
+
+      assert {:error, %Ecto.Changeset{valid?: false}} = Repo.Port.update(cs)
+    end
+
+    test "insert! raises for invalid changeset" do
+      cs =
+        %User{}
+        |> Ecto.Changeset.cast(%{name: "Alice"}, [:name])
+        |> Ecto.Changeset.add_error(:name, "is invalid")
+
+      assert_raise RuntimeError, fn ->
+        Repo.Port.insert!(cs)
+      end
+    end
   end
 
   describe "Repo.Test: read operations raise without fallback" do
@@ -690,6 +719,46 @@ defmodule HexPort.RepoTest do
       # get with missing PK and no fallback raises
       assert_raise ArgumentError, ~r/InMemory cannot service :get/, fn ->
         Repo.Port.get(User, 1)
+      end
+    end
+
+    test "insert returns {:error, changeset} for invalid changeset and leaves store unchanged" do
+      cs =
+        %User{}
+        |> Ecto.Changeset.cast(%{name: "Alice"}, [:name])
+        |> Ecto.Changeset.add_error(:name, "is invalid")
+
+      assert {:error, %Ecto.Changeset{valid?: false}} = Repo.Port.insert(cs)
+
+      # Store is unchanged — no record was inserted
+      assert_raise ArgumentError, ~r/InMemory cannot service :get/, fn ->
+        Repo.Port.get(User, 1)
+      end
+    end
+
+    test "update returns {:error, changeset} for invalid changeset and leaves store unchanged" do
+      {:ok, _alice} =
+        Repo.Port.insert(User.changeset(%User{id: 1}, %{name: "Alice"}))
+
+      cs =
+        %User{id: 1, name: "Alice"}
+        |> Ecto.Changeset.cast(%{name: "Bad"}, [:name])
+        |> Ecto.Changeset.add_error(:name, "is invalid")
+
+      assert {:error, %Ecto.Changeset{valid?: false}} = Repo.Port.update(cs)
+
+      # Store is unchanged — original record preserved
+      assert %User{id: 1, name: "Alice"} = Repo.Port.get(User, 1)
+    end
+
+    test "insert! raises for invalid changeset" do
+      cs =
+        %User{}
+        |> Ecto.Changeset.cast(%{name: "Alice"}, [:name])
+        |> Ecto.Changeset.add_error(:name, "is invalid")
+
+      assert_raise RuntimeError, fn ->
+        Repo.Port.insert!(cs)
       end
     end
   end

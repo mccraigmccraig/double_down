@@ -105,8 +105,16 @@ if Code.ensure_loaded?(Ecto) do
     # Write Operations — always authoritative
     # -----------------------------------------------------------------
 
+    defp dispatch(:insert, [%Ecto.Changeset{valid?: false} = changeset], _fallback_fn) do
+      {:error, changeset}
+    end
+
     defp dispatch(:insert, [changeset], _fallback_fn) do
       {:ok, safe_apply_changes(changeset)}
+    end
+
+    defp dispatch(:update, [%Ecto.Changeset{valid?: false} = changeset], _fallback_fn) do
+      {:error, changeset}
     end
 
     defp dispatch(:update, [changeset], _fallback_fn) do
