@@ -1,6 +1,6 @@
 # Repo
 
-[< Testing](testing.md) | [Up: README](../README.md)
+[< Testing](testing.md) | [Up: README](../README.md) | [Migration >](migration.md)
 
 HexPort ships a ready-made 16-operation Ecto Repo contract with three
 implementations: one for production and two test doubles. The test
@@ -345,4 +345,4 @@ then use the Ecto adapter in integration tests for the full stack.
 
 ---
 
-[< Testing](testing.md) | [Up: README](../README.md)
+[< Testing](testing.md) | [Up: README](../README.md) | [Migration >](migration.md)

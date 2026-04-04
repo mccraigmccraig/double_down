@@ -133,9 +133,12 @@ for property-based testing. See [Repo](docs/repo.md).
 - **[Getting Started](docs/getting-started.md)** — contracts, facades,
   behaviours, config, dispatch resolution
 - **[Testing](docs/testing.md)** — handler modes, dispatch logging,
-  async safety, Mox compatibility
+  async safety, process sharing, Mox compatibility
 - **[Repo](docs/repo.md)** — built-in Ecto Repo contract, production
   adapter, stateless and in-memory test doubles
+- **[Migration](docs/migration.md)** — incremental adoption into
+  existing codebases, the two-contract pattern, coexisting with
+  direct Ecto.Repo calls
 
 ## Installation
 

@@ -1,0 +1,237 @@
+# Incremental Migration
+
+[< Repo](repo.md) | [Up: README](../README.md)
+
+This guide covers adopting HexPort into an existing Elixir/Phoenix
+codebase alongside direct Ecto.Repo calls. You don't need to migrate
+everything at once — the two styles coexist cleanly.
+
+## Strategy: new code first
+
+The highest-impact, lowest-risk approach is:
+
+1. **Don't migrate existing tests.** They work, they have value, leave
+   them on the Ecto sandbox.
+2. **Write new domain logic behind port contracts.** New contexts,
+   new features, new orchestration functions.
+3. **Migrate existing code opportunistically.** When you're already
+   changing a function, wrap it in a port boundary.
+
+This means your test suite gradually shifts from slow DB-backed tests
+to fast in-memory tests as new code accumulates — without any
+big-bang migration.
+
+## The two-contract pattern
+
+Most domain logic interacts with the database in two ways:
+
+1. **Generic Repo operations** — `insert`, `update`, `delete`, `get`,
+   `transact`. These are the same across all features.
+2. **Domain-specific queries** — "find active users with overdue
+   invoices", "get the latest shift for this employee". These are
+   unique to each feature.
+
+HexPort handles these with two contracts:
+
+- **`HexPort.Repo.Contract`** — ships with HexPort, covers all
+  generic Repo operations. One facade per app, shared by all features.
+- **A per-feature Queries contract** — you define this with `defport`
+  for each feature's domain-specific reads.
+
+### Example: wrapping a context function
+
+Suppose you have a `Billing.create_invoice/1` function that:
+
+1. Validates params and builds a changeset
+2. Looks up the customer's payment method
+3. Inserts the invoice
+4. Inserts line items
+
+**Step 1: Create a Repo facade** (once per app)
+
+```elixir
+defmodule MyApp.Repo do
+  use HexPort.Facade, contract: HexPort.Repo.Contract, otp_app: :my_app
+end
+```
+
+```elixir
+# config/config.exs
+config :my_app, HexPort.Repo.Contract, impl: MyApp.EctoRepo
+
+# config/test.exs
+config :my_app, HexPort.Repo.Contract, impl: nil
+```
+
+**Step 2: Define a Queries contract** for the domain reads
+
+```elixir
+defmodule MyApp.Billing.Queries do
+  use HexPort.Facade, otp_app: :my_app
+
+  defport get_payment_method(customer_id :: integer()) ::
+    {:ok, PaymentMethod.t()} | {:error, :not_found}
+end
+```
+
+```elixir
+# config/config.exs
+config :my_app, MyApp.Billing.Queries, impl: MyApp.Billing.Queries.Ecto
+
+# config/test.exs
+config :my_app, MyApp.Billing.Queries, impl: nil
+```
+
+**Step 3: Implement the Ecto adapter** for Queries
+
+```elixir
+defmodule MyApp.Billing.Queries.Ecto do
+  @behaviour MyApp.Billing.Queries
+
+  @impl true
+  def get_payment_method(customer_id) do
+    case MyApp.EctoRepo.get_by(PaymentMethod, customer_id: customer_id) do
+      nil -> {:error, :not_found}
+      pm -> {:ok, pm}
+    end
+  end
+end
+```
+
+**Step 4: Write the domain function** using both contracts
+
+```elixir
+defmodule MyApp.Billing do
+  alias MyApp.Repo
+  alias MyApp.Billing.Queries
+
+  def create_invoice(params) do
+    Repo.transact(fn ->
+      with {:ok, pm} <- Queries.get_payment_method(params.customer_id),
+           {:ok, invoice} <- Repo.insert(Invoice.changeset(params, pm)),
+           {:ok, _items} <- insert_line_items(invoice, params.items) do
+        {:ok, invoice}
+      end
+    end, [])
+  end
+
+  defp insert_line_items(invoice, items) do
+    Enum.reduce_while(items, {:ok, []}, fn item, {:ok, acc} ->
+      case Repo.insert(LineItem.changeset(invoice, item)) do
+        {:ok, li} -> {:cont, {:ok, [li | acc]}}
+        {:error, cs} -> {:halt, {:error, cs}}
+      end
+    end)
+  end
+end
+```
+
+**Step 5: Test without a database**
+
+```elixir
+defmodule MyApp.BillingTest do
+  use ExUnit.Case, async: true
+
+  alias MyApp.Repo
+  alias HexPort.Repo.Contract, as: RepoContract
+  alias MyApp.Billing.Queries
+
+  setup do
+    # Queries — stub domain-specific reads
+    HexPort.Testing.set_fn_handler(Queries, fn
+      :get_payment_method, [_customer_id] ->
+        {:ok, %PaymentMethod{id: 1, type: :card}}
+    end)
+
+    # Repo — stateless writes + fallback for any reads
+    HexPort.Testing.set_fn_handler(
+      RepoContract,
+      HexPort.Repo.Test.new()
+    )
+
+    :ok
+  end
+
+  test "create_invoice inserts invoice and line items" do
+    HexPort.Testing.enable_log(RepoContract)
+
+    assert {:ok, %Invoice{}} =
+      MyApp.Billing.create_invoice(%{
+        customer_id: 1,
+        items: [%{description: "Widget", amount: 100}]
+      })
+
+    log = HexPort.Testing.get_log(RepoContract)
+    operations = Enum.map(log, fn {_, op, _, _} -> op end)
+    assert :insert in operations
+  end
+end
+```
+
+This test runs in < 1ms. No database, no sandbox, no factories.
+
+## Coexisting with direct Ecto.Repo calls
+
+Code that hasn't been migrated continues to call `MyApp.EctoRepo`
+directly. Code behind port boundaries calls `MyApp.Repo` (the
+facade). Both work in the same application — there's no conflict.
+
+In tests:
+
+- **Migrated code** uses `HexPort.Testing.set_fn_handler` /
+  `set_stateful_handler` — no DB needed, `async: true`
+- **Unmigrated code** uses `Ecto.Adapters.SQL.Sandbox` as before
+
+The two can even coexist in the same test if needed (e.g., an
+integration test that uses the real DB for some operations and
+stubs others).
+
+## The fail-fast pattern
+
+Set `impl: nil` in `config/test.exs` for every contract:
+
+```elixir
+# config/test.exs
+config :my_app, HexPort.Repo.Contract, impl: nil
+config :my_app, MyApp.Billing.Queries, impl: nil
+```
+
+This ensures any test that forgets to set up handlers gets an
+immediate error instead of silently hitting the real implementation.
+For integration tests that intentionally use the real DB, set the
+handler explicitly:
+
+```elixir
+HexPort.Testing.set_handler(HexPort.Repo.Contract, MyApp.EctoRepo)
+```
+
+## When to use InMemory vs Test
+
+- **`Repo.Test`** — when your function does writes and you just need
+  them to succeed. No state, no read-after-write. Fastest setup.
+- **`Repo.InMemory`** — when your function inserts a record then
+  reads it back by PK within the same operation. Provides
+  read-after-write consistency.
+
+Most context functions that do `insert` then `get` in a transaction
+need `Repo.InMemory`. Simple command-style functions that just write
+and return can use `Repo.Test`.
+
+## What stays on the DB
+
+Some things should remain as integration tests against a real database:
+
+- **Query correctness** — `from u in User, where: u.age > 21` can't
+  be evaluated in memory. Test these via the Ecto adapter.
+- **Constraint validation** — unique indexes, foreign keys, check
+  constraints.
+- **Transaction isolation** — rollback behaviour, concurrent writes.
+- **Migration testing** — schema changes against a real DB.
+- **End-to-end flows** — API → context → DB → response.
+
+The goal isn't to eliminate DB tests — it's to ensure that the tests
+which don't *need* a DB don't *use* a DB.
+
+---
+
+[< Repo](repo.md) | [Up: README](../README.md)

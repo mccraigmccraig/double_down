@@ -156,6 +156,70 @@ interfere with each other. Only use global mode in tests with
 `async: false`. Call `set_mode_to_private/0` in `on_exit` to restore
 per-process isolation for subsequent tests.
 
+### Choosing the right approach
+
+| Situation | Approach | `async: true`? |
+|-----------|----------|----------------|
+| Direct function calls | No extra setup needed | Yes |
+| `Task.async` / `Task.Supervisor` | Automatic via `$callers` | Yes |
+| Known pid (Agent, named GenServer) | `allow/3` with the pid | Yes |
+| Pid not known at setup time | `allow/3` with lazy fn | Yes |
+| Supervision tree / Broadway / Oban | `set_mode_to_global/0` | **No** |
+
+### Example: testing a GenServer that dispatches through a port
+
+```elixir
+defmodule MyApp.WorkerTest do
+  use ExUnit.Case, async: true
+
+  setup do
+    HexPort.Testing.set_fn_handler(MyApp.Todos, fn
+      :get_todo, [id] -> {:ok, %Todo{id: id}}
+    end)
+
+    {:ok, pid} = MyApp.Worker.start_link([])
+    HexPort.Testing.allow(MyApp.Todos, self(), pid)
+
+    %{worker: pid}
+  end
+
+  test "worker fetches todo via port", %{worker: pid} do
+    assert {:ok, %Todo{id: "42"}} = MyApp.Worker.fetch(pid, "42")
+  end
+end
+```
+
+### Example: testing through a supervision tree
+
+When you can't easily get pids for every process in the tree, use
+global mode:
+
+```elixir
+defmodule MyApp.PipelineIntegrationTest do
+  use ExUnit.Case, async: false
+
+  setup do
+    HexPort.Testing.set_mode_to_global()
+
+    HexPort.Testing.set_stateful_handler(
+      HexPort.Repo.Contract,
+      &HexPort.Repo.InMemory.dispatch/3,
+      HexPort.Repo.InMemory.new()
+    )
+
+    on_exit(fn -> HexPort.Testing.set_mode_to_private() end)
+
+    start_supervised!(MyApp.Pipeline)
+    :ok
+  end
+
+  test "pipeline processes events end-to-end" do
+    MyApp.Pipeline.enqueue(%{type: :invoice, amount: 100})
+    # ... assert on results ...
+  end
+end
+```
+
 ## Cleanup
 
 Call `reset/0` to clear all handlers, state, and logs for the current
