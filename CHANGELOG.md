@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.14.0]
+
 ### Added
 
 - `HexPort.Repo.Contract.insert_all/3` — standalone bulk insert
@@ -184,7 +186,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `HexPort.Testing` with NimbleOwnership, `Repo.Test` stateless
   adapter, CI setup, Credo, Dialyzer.
 
-[Unreleased]: https://github.com/mccraigmccraig/hex_port/compare/v0.13.0...HEAD
+[Unreleased]: https://github.com/mccraigmccraig/hex_port/compare/v0.14.0...HEAD
+[0.14.0]: https://github.com/mccraigmccraig/hex_port/compare/v0.13.0...v0.14.0
 [0.13.0]: https://github.com/mccraigmccraig/hex_port/compare/v0.12.0...v0.13.0
 [0.12.0]: https://github.com/mccraigmccraig/hex_port/compare/v0.11.1...v0.12.0
 [0.11.1]: https://github.com/mccraigmccraig/hex_port/compare/v0.11.0...v0.11.1
