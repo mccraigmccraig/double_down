@@ -75,12 +75,9 @@ if Code.ensure_loaded?(Ecto) do
     - No autogeneration configured — raises `ArgumentError`
     """
     @spec maybe_autogenerate_id(struct(), module(), (module() -> [integer()])) ::
-            {term(), struct()}
+            {term(), struct()} | {:error, {:no_autogenerate, String.t()}}
     def maybe_autogenerate_id(record, schema, existing_integer_ids_fn) do
-      if not function_exported?(schema, :__schema__, 1) do
-        # Not an Ecto schema — fall back to :id field
-        {Map.get(record, :id), record}
-      else
+      if function_exported?(schema, :__schema__, 1) do
         case schema.__schema__(:primary_key) do
           [] ->
             # @primary_key false — no PK to generate
@@ -102,6 +99,9 @@ if Code.ensure_loaded?(Ecto) do
             key = List.to_tuple(Enum.map(fields, &Map.get(record, &1)))
             {key, record}
         end
+      else
+        # Not an Ecto schema — fall back to :id field
+        {Map.get(record, :id), record}
       end
     end
 
