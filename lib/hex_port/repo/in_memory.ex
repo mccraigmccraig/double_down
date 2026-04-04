@@ -324,12 +324,13 @@ if Code.ensure_loaded?(Ecto) do
       {:defer, fun}
     end
 
-    def dispatch(:transact, [fun, _opts], _store) when is_function(fun, 1) do
-      {:defer, fn -> fun.(nil) end}
+    def dispatch(:transact, [fun, opts], _store) when is_function(fun, 1) do
+      repo_facade = Keyword.get(opts, HexPort.Repo.Facade)
+      {:defer, fn -> fun.(repo_facade) end}
     end
 
     def dispatch(:transact, [%Ecto.Multi{} = multi, opts], _store) do
-      repo_facade = Keyword.get(opts, :repo_facade)
+      repo_facade = Keyword.get(opts, HexPort.Repo.Facade)
 
       {:defer, fn -> HexPort.Repo.MultiStepper.run(multi, repo_facade) end}
     end

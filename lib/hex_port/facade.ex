@@ -163,17 +163,19 @@ defmodule HexPort.Facade do
     # param_types and return_type are AST tuples from __port_operations__/0.
     # We splice them directly — unquote treats 3-tuples as AST.
     #
-    # For the :transact operation, we inject :repo_facade into opts so that
-    # adapters can pass the Port facade module to Ecto.Multi :run callbacks.
+    # For the :transact operation, we inject the facade module into opts so that
+    # adapters can pass it to 1-arity transaction functions and Ecto.Multi
+    # :run callbacks. Uses the namespaced key HexPort.Repo.Facade to avoid
+    # collisions with user-supplied opts.
     dispatch_args =
       if name == :transact do
-        # param_vars is [fun_or_multi_var, opts_var] — inject repo_facade into opts
+        # param_vars is [fun_or_multi_var, opts_var] — inject facade into opts
         [first_var | [opts_var | _]] = param_vars
 
         quote do
           [
             unquote(first_var),
-            Keyword.put(unquote(opts_var), :repo_facade, __MODULE__)
+            Keyword.put(unquote(opts_var), HexPort.Repo.Facade, __MODULE__)
           ]
         end
       else

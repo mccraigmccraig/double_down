@@ -484,8 +484,21 @@ defmodule HexPort.RepoTest do
       assert {:ok, :done} = Repo.Port.transact(fn -> {:ok, :done} end, [])
     end
 
-    test "transact with 1-arity fun passes nil" do
-      assert {:ok, nil} = Repo.Port.transact(fn repo -> {:ok, repo} end, [])
+    test "transact with 1-arity fun receives facade module" do
+      assert {:ok, Repo.Port} = Repo.Port.transact(fn repo -> {:ok, repo} end, [])
+    end
+
+    test "transact with 1-arity fun can call back into facade" do
+      result =
+        Repo.Port.transact(
+          fn repo ->
+            {:ok, user} = repo.insert(User.changeset(%{name: "Alice"}))
+            {:ok, user}
+          end,
+          []
+        )
+
+      assert {:ok, %User{name: "Alice"}} = result
     end
 
     test "transact propagates error tuples" do

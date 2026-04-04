@@ -590,8 +590,23 @@ defmodule HexPort.Repo.InMemoryTest do
       assert {:ok, :committed} = Repo.Port.transact(fn -> {:ok, :committed} end, [])
     end
 
-    test "transact with 1-arity fun passes nil and returns result" do
-      assert {:ok, nil} = Repo.Port.transact(fn repo -> {:ok, repo} end, [])
+    test "transact with 1-arity fun receives facade module" do
+      assert {:ok, Repo.Port} = Repo.Port.transact(fn repo -> {:ok, repo} end, [])
+    end
+
+    test "transact with 1-arity fun can call back into facade" do
+      result =
+        Repo.Port.transact(
+          fn repo ->
+            {:ok, user} = repo.insert(User.changeset(%{name: "Alice"}))
+            found = repo.get(User, user.id)
+            {:ok, {user, found}}
+          end,
+          []
+        )
+
+      assert {:ok, {%User{name: "Alice"} = user, %User{name: "Alice"} = found}} = result
+      assert user == found
     end
 
     test "transact propagates error tuples" do
