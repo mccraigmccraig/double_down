@@ -478,3 +478,119 @@ defmodule HexPort.TestingTest do
     end
   end
 end
+
+# Global mode tests must be async: false because they switch the
+# ownership server to shared mode, which affects all processes.
+defmodule HexPort.TestingGlobalModeTest do
+  use ExUnit.Case, async: false
+
+  alias HexPort.Test.Greeter
+  alias HexPort.Test.Counter
+
+  setup do
+    on_exit(fn ->
+      HexPort.Testing.set_mode_to_private()
+      HexPort.Testing.reset()
+    end)
+  end
+
+  describe "set_mode_to_global/0" do
+    test "returns :ok" do
+      HexPort.Testing.set_fn_handler(Greeter, fn :greet, [n] -> n end)
+      assert :ok = HexPort.Testing.set_mode_to_global()
+    end
+
+    test "makes handlers accessible to spawned processes without allow" do
+      HexPort.Testing.set_fn_handler(Greeter, fn :greet, [name] -> "global: #{name}" end)
+      HexPort.Testing.set_mode_to_global()
+
+      # Spawn a process that has no $callers link and no allow — only global mode makes this work
+      task =
+        Task.async(fn ->
+          Greeter.Port.greet("from_task")
+        end)
+
+      assert "global: from_task" = Task.await(task)
+    end
+
+    test "makes handlers accessible to named GenServer processes" do
+      HexPort.Testing.set_fn_handler(Greeter, fn :greet, [name] -> "global: #{name}" end)
+      HexPort.Testing.set_mode_to_global()
+
+      {:ok, agent} = Agent.start_link(fn -> nil end)
+
+      result =
+        Agent.get(agent, fn _ ->
+          Greeter.Port.greet("from_agent")
+        end)
+
+      assert "global: from_agent" = result
+      Agent.stop(agent)
+    end
+
+    test "works with stateful handlers" do
+      HexPort.Testing.set_stateful_handler(
+        Counter,
+        fn
+          :increment, [n], s -> {s + n, s + n}
+          :get_count, [], s -> {s, s}
+        end,
+        0
+      )
+
+      HexPort.Testing.set_mode_to_global()
+
+      # Increment from a spawned process
+      task = Task.async(fn -> Counter.Port.increment(10) end)
+      assert 10 = Task.await(task)
+
+      # Parent sees the updated state
+      assert 10 = Counter.Port.get_count()
+    end
+
+    test "handlers set after set_mode_to_global are also visible" do
+      HexPort.Testing.set_mode_to_global()
+      HexPort.Testing.set_fn_handler(Greeter, fn :greet, [name] -> "late: #{name}" end)
+
+      task = Task.async(fn -> Greeter.Port.greet("after") end)
+      assert "late: after" = Task.await(task)
+    end
+  end
+
+  describe "set_mode_to_private/0" do
+    test "restores per-process isolation after global mode" do
+      HexPort.Testing.set_fn_handler(Greeter, fn :greet, [name] -> "global: #{name}" end)
+      HexPort.Testing.set_mode_to_global()
+
+      # Global mode works — use bare spawn (no $callers) to prove it's global, not $callers
+      ref = make_ref()
+      parent = self()
+
+      spawn(fn ->
+        result = Greeter.Port.greet("check")
+        send(parent, {ref, result})
+      end)
+
+      assert_receive {^ref, "global: check"}
+
+      # Switch back to private
+      HexPort.Testing.set_mode_to_private()
+
+      # Now a bare spawned process can't see the handler
+      ref2 = make_ref()
+
+      spawn(fn ->
+        result =
+          try do
+            Greeter.Port.greet("should_fail")
+          rescue
+            e -> {:error, e}
+          end
+
+        send(parent, {ref2, result})
+      end)
+
+      assert_receive {^ref2, {:error, %RuntimeError{}}}
+    end
+  end
+end

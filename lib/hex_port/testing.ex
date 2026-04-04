@@ -114,6 +114,53 @@ defmodule HexPort.Testing do
   end
 
   @doc """
+  Set the ownership server to global mode.
+
+  In global mode, all handlers registered by the calling process are
+  visible to every process in the VM — no `allow/3` calls needed.
+  This is useful for integration-style tests that involve supervision
+  trees, named GenServers, Broadway pipelines, or Oban workers where
+  individual process pids are not easily accessible.
+
+  The calling process becomes the "shared owner". Any handlers set
+  by this process (before or after calling `set_mode_to_global/0`)
+  are accessible to all processes.
+
+  ## Warning
+
+  Global mode is **incompatible with `async: true`**. When global
+  mode is active, all tests share the same handlers, so concurrent
+  tests will interfere with each other. Only use global mode in
+  tests with `async: false`.
+
+  Call `set_mode_to_private/0` to restore per-process isolation.
+
+  ## Example
+
+      setup do
+        HexPort.Testing.set_mode_to_global()
+        HexPort.Testing.set_handler(MyApp.Repo.Contract, MyApp.Repo.InMemory)
+        on_exit(fn -> HexPort.Testing.set_mode_to_private() end)
+        :ok
+      end
+  """
+  @spec set_mode_to_global() :: :ok
+  def set_mode_to_global do
+    NimbleOwnership.set_mode_to_shared(@ownership_server, self())
+  end
+
+  @doc """
+  Restore the ownership server to private (per-process) mode.
+
+  After calling this, handlers are once again scoped to the process
+  that registered them. Use this to clean up after `set_mode_to_global/0`.
+  """
+  @spec set_mode_to_private() :: :ok
+  def set_mode_to_private do
+    NimbleOwnership.set_mode_to_private(@ownership_server)
+  end
+
+  @doc """
   Reset all handlers and logs for the current process.
   """
   @spec reset() :: :ok
