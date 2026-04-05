@@ -7,6 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.15.0]
+
+### Added
+
+- `pre_dispatch` option for `defport` — a generic mechanism for
+  transforming arguments before dispatch. Accepts a function
+  `(args, facade_module) -> args` declared at the contract level,
+  spliced into the generated facade function as AST.
+- `Repo.Test` tests split into dedicated `test/hex_port/repo/test_test.exs`
+  module.
+
+### Changed
+
+- 1-arity `transact` functions are now wrapped into 0-arity thunks
+  at the facade boundary via `pre_dispatch`. The thunk closes over
+  the facade module, so calls inside the function (e.g.
+  `repo.insert(cs)`) go through the facade dispatch chain. This
+  ensures facade-level concerns (logging, telemetry) apply in both
+  test and production.
+- `Repo.Test` and `Repo.InMemory` adapters no longer handle 1-arity
+  transaction functions — they always receive 0-arity thunks (from
+  `pre_dispatch` wrapping) or `Ecto.Multi` structs.
+- The hardcoded `:transact` special-case in `HexPort.Facade` has been
+  removed. The Repo-specific facade injection is now declared on the
+  `defport` in `HexPort.Repo.Contract` using the generic
+  `pre_dispatch` mechanism.
+
+### Fixed
+
+- User-supplied fallback functions in `Repo.InMemory` that raise
+  non-`FunctionClauseError` exceptions (e.g. `RuntimeError`,
+  `ArgumentError`) no longer crash the NimbleOwnership GenServer.
+  Exceptions are captured and re-raised in the calling test process
+  via `{:defer, fn -> reraise ... end}`.
+
 ## [0.14.0]
 
 ### Added
@@ -186,7 +221,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `HexPort.Testing` with NimbleOwnership, `Repo.Test` stateless
   adapter, CI setup, Credo, Dialyzer.
 
-[Unreleased]: https://github.com/mccraigmccraig/hex_port/compare/v0.14.0...HEAD
+[Unreleased]: https://github.com/mccraigmccraig/hex_port/compare/v0.15.0...HEAD
+[0.15.0]: https://github.com/mccraigmccraig/hex_port/compare/v0.14.0...v0.15.0
 [0.14.0]: https://github.com/mccraigmccraig/hex_port/compare/v0.13.0...v0.14.0
 [0.13.0]: https://github.com/mccraigmccraig/hex_port/compare/v0.12.0...v0.13.0
 [0.12.0]: https://github.com/mccraigmccraig/hex_port/compare/v0.11.1...v0.12.0
