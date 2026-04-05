@@ -104,6 +104,41 @@ defport fetch(key :: atom()) :: {:found, term()} | :missing,
   end
 ```
 
+### Pre-dispatch transforms
+
+The `:pre_dispatch` option lets a contract declare a function that
+transforms arguments before dispatch. The function receives `(args,
+facade_module)` and returns the (possibly modified) args list. It is
+spliced as AST into the generated facade function, so it runs at
+call-time in the caller's process.
+
+This is an advanced feature — most contracts don't need it. The
+canonical example is `HexPort.Repo.Contract`, which uses it to wrap
+1-arity transaction functions into 0-arity thunks that close over the
+facade module:
+
+```elixir
+defport transact(fun_or_multi :: term(), opts :: keyword()) ::
+          {:ok, term()} | {:error, term()},
+        bang: false,
+        pre_dispatch: fn args, facade_mod ->
+          case args do
+            [fun, opts] when is_function(fun, 1) ->
+              [fn -> fun.(facade_mod) end, opts]
+
+            [fun, _opts] when is_function(fun, 0) ->
+              args
+
+            _ ->
+              args
+          end
+        end
+```
+
+This ensures that `fn repo -> repo.insert(cs) end` routes calls
+through the facade dispatch chain (with logging, telemetry, etc.)
+rather than bypassing it.
+
 ## Implementing a contract
 
 Write a module that implements the behaviour. Use `@behaviour` and
@@ -193,8 +228,9 @@ but there are practical limitations:
   on compiled modules with beam files on disk, not on modules being
   compiled in the same project.
 - **No place for additional metadata.** `defport` supports options like
-  `bang:` that control bang variant generation. Plain `@callback` has
-  no mechanism for this.
+  `bang:` (bang variant generation) and `pre_dispatch:` (argument
+  transforms before dispatch). Plain `@callback` has no mechanism for
+  this.
 
 `defport` captures all metadata at macro expansion time in a
 structured form (`__port_operations__/0`), avoiding these limitations.
