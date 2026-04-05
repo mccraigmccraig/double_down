@@ -372,7 +372,16 @@ if Code.ensure_loaded?(Ecto) do
           try do
             {fallback_fn.(operation, args, clean_state), store}
           rescue
-            FunctionClauseError -> defer_raise_no_fallback(operation, args, store)
+            # FunctionClauseError means no matching clause — treat as missing fallback.
+            FunctionClauseError ->
+              defer_raise_no_fallback(operation, args, store)
+
+            # Any other exception from user-supplied fallback code must not crash
+            # the NimbleOwnership GenServer. Capture the exception and stacktrace,
+            # then defer the reraise to the calling test process.
+            exception ->
+              stacktrace = __STACKTRACE__
+              {{:defer, fn -> reraise exception, stacktrace end}, store}
           end
       end
     end

@@ -1102,4 +1102,64 @@ defmodule HexPort.Repo.InMemoryTest do
              ] = log
     end
   end
+
+  # -------------------------------------------------------------------
+  # Fallback error boundary
+  # -------------------------------------------------------------------
+
+  describe "fallback error boundary" do
+    test "fallback raising RuntimeError does not crash the ownership server" do
+      state =
+        Repo.InMemory.new(
+          fallback_fn: fn :all, [User], _state ->
+            raise RuntimeError, "boom from fallback"
+          end
+        )
+
+      HexPort.Testing.set_stateful_handler(Repo.Contract, &Repo.InMemory.dispatch/3, state)
+
+      # The RuntimeError is re-raised in the calling process, not in the GenServer
+      assert_raise RuntimeError, ~r/boom from fallback/, fn ->
+        Repo.Port.all(User)
+      end
+
+      # The ownership server is still alive — subsequent operations work
+      assert {:ok, %User{name: "Alice"}} = Repo.Port.insert(User.changeset(%{name: "Alice"}))
+    end
+
+    test "fallback raising ArgumentError does not crash the ownership server" do
+      state =
+        Repo.InMemory.new(
+          fallback_fn: fn :get_by, [User, [name: "Alice"]], _state ->
+            raise ArgumentError, "bad argument in fallback"
+          end
+        )
+
+      HexPort.Testing.set_stateful_handler(Repo.Contract, &Repo.InMemory.dispatch/3, state)
+
+      assert_raise ArgumentError, ~r/bad argument in fallback/, fn ->
+        Repo.Port.get_by(User, name: "Alice")
+      end
+
+      # Ownership server still works
+      assert {:ok, %User{name: "Bob"}} = Repo.Port.insert(User.changeset(%{name: "Bob"}))
+    end
+
+    test "FunctionClauseError from fallback still treated as missing clause" do
+      state =
+        Repo.InMemory.new(
+          fallback_fn: fn :all, [User], _state -> [%User{id: 1, name: "Alice"}] end
+        )
+
+      HexPort.Testing.set_stateful_handler(Repo.Contract, &Repo.InMemory.dispatch/3, state)
+
+      # Matching clause works
+      assert [%User{name: "Alice"}] = Repo.Port.all(User)
+
+      # Non-matching clause raises the "cannot service" error, not FunctionClauseError
+      assert_raise ArgumentError, ~r/InMemory cannot service :exists\?/, fn ->
+        Repo.Port.exists?(User)
+      end
+    end
+  end
 end
