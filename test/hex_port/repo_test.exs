@@ -786,5 +786,31 @@ defmodule HexPort.RepoTest do
       assert length(log) == 1
       assert [{Repo.Contract, :get, [User, 1], ^alice}] = log
     end
+
+    test "1-arity transact logs inner facade calls made from the transaction function" do
+      HexPort.Testing.set_fn_handler(Repo.Contract, Repo.Test.new())
+      HexPort.Testing.enable_log(Repo.Contract)
+
+      cs = User.changeset(%{name: "Alice"})
+
+      Repo.Port.transact(
+        fn repo ->
+          {:ok, _user} = repo.insert(cs)
+          {:ok, :done}
+        end,
+        []
+      )
+
+      log = HexPort.Testing.get_log(Repo.Contract)
+
+      # Inner calls are logged first (during fn execution), then the outer
+      # transact call is logged when it completes.
+      assert length(log) == 2
+
+      assert [
+               {Repo.Contract, :insert, [^cs], {:ok, %User{name: "Alice"}}},
+               {Repo.Contract, :transact, _, {:ok, :done}}
+             ] = log
+    end
   end
 end

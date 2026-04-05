@@ -1068,5 +1068,38 @@ defmodule HexPort.Repo.InMemoryTest do
       assert length(log) == 1
       assert [{Repo.Contract, :all, [User], [%User{id: 1, name: "Alice"}]}] = log
     end
+
+    test "1-arity transact logs inner facade calls made from the transaction function" do
+      HexPort.Testing.set_stateful_handler(
+        Repo.Contract,
+        &Repo.InMemory.dispatch/3,
+        Repo.InMemory.new()
+      )
+
+      HexPort.Testing.enable_log(Repo.Contract)
+
+      cs = User.changeset(%{name: "Alice"})
+
+      Repo.Port.transact(
+        fn repo ->
+          {:ok, user} = repo.insert(cs)
+          found = repo.get(User, user.id)
+          {:ok, {user, found}}
+        end,
+        []
+      )
+
+      log = HexPort.Testing.get_log(Repo.Contract)
+
+      # Inner calls are logged first (during deferred fn execution), then
+      # the outer transact call is logged when it completes.
+      assert length(log) == 3
+
+      assert [
+               {Repo.Contract, :insert, [^cs], {:ok, %User{name: "Alice"}}},
+               {Repo.Contract, :get, [User, _], %User{name: "Alice"}},
+               {Repo.Contract, :transact, _, {:ok, {%User{name: "Alice"}, %User{name: "Alice"}}}}
+             ] = log
+    end
   end
 end
