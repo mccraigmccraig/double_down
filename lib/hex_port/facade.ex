@@ -137,6 +137,7 @@ defmodule HexPort.Facade do
            params: param_names,
            param_types: param_types,
            return_type: return_type,
+           pre_dispatch: pre_dispatch,
            user_doc: user_doc
          },
          contract,
@@ -163,20 +164,15 @@ defmodule HexPort.Facade do
     # param_types and return_type are AST tuples from __port_operations__/0.
     # We splice them directly — unquote treats 3-tuples as AST.
     #
-    # For the :transact operation, we inject the facade module into opts so that
-    # adapters can pass it to 1-arity transaction functions and Ecto.Multi
-    # :run callbacks. Uses the namespaced key HexPort.Repo.Facade to avoid
-    # collisions with user-supplied opts.
+    # When a pre_dispatch function is declared on a defport, it is applied
+    # to the args list before dispatch. The function receives (args, facade_module)
+    # and returns the (possibly modified) args list. The pre_dispatch value
+    # is AST (double-escaped through __port_operations__/0) and is spliced
+    # directly into the generated function body.
     dispatch_args =
-      if name == :transact do
-        # param_vars is [fun_or_multi_var, opts_var] — inject facade into opts
-        [first_var | [opts_var | _]] = param_vars
-
+      if pre_dispatch do
         quote do
-          [
-            unquote(first_var),
-            Keyword.put(unquote(opts_var), HexPort.Repo.Facade, __MODULE__)
-          ]
+          unquote(pre_dispatch).(unquote(param_vars), __MODULE__)
         end
       else
         param_vars
@@ -327,6 +323,7 @@ defmodule HexPort.Facade do
          param_types: param_types,
          return_type: return_type,
          bang_mode: bang_mode,
+         pre_dispatch: pre_dispatch,
          user_doc: user_doc
        }) do
     %{
@@ -335,6 +332,7 @@ defmodule HexPort.Facade do
       param_types: param_types,
       return_type: return_type,
       bang_mode: bang_mode,
+      pre_dispatch: pre_dispatch,
       user_doc: user_doc,
       arity: length(param_names)
     }

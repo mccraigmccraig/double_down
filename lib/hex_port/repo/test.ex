@@ -163,15 +163,13 @@ if Code.ensure_loaded?(Ecto) do
 
     # -----------------------------------------------------------------
     # Transaction Operations
+    #
+    # The facade's pre_dispatch wraps 1-arity fns into 0-arity thunks,
+    # so implementations always receive a 0-arity fn or an Ecto.Multi.
     # -----------------------------------------------------------------
 
     defp dispatch(:transact, [fun, _opts], _fallback_fn) when is_function(fun, 0) do
       fun.()
-    end
-
-    defp dispatch(:transact, [fun, opts], _fallback_fn) when is_function(fun, 1) do
-      repo_facade = Keyword.get(opts, HexPort.Repo.Facade)
-      fun.(repo_facade)
     end
 
     defp dispatch(:transact, [%Ecto.Multi{} = multi, opts], _fallback_fn) do

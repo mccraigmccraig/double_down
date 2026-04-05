@@ -335,13 +335,11 @@ if Code.ensure_loaded?(Ecto) do
     # each acquire the lock individually. This avoids GenServer reentrancy
     # deadlock at the cost of not providing true transaction isolation —
     # acceptable for a test-only in-memory adapter.
+    #
+    # The facade's pre_dispatch wraps 1-arity fns into 0-arity thunks,
+    # so implementations always receive a 0-arity fn or an Ecto.Multi.
     def dispatch(:transact, [fun, _opts], _store) when is_function(fun, 0) do
       {:defer, fun}
-    end
-
-    def dispatch(:transact, [fun, opts], _store) when is_function(fun, 1) do
-      repo_facade = Keyword.get(opts, HexPort.Repo.Facade)
-      {:defer, fn -> fun.(repo_facade) end}
     end
 
     def dispatch(:transact, [%Ecto.Multi{} = multi, opts], _store) do

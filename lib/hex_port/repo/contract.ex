@@ -160,12 +160,16 @@ if Code.ensure_loaded?(Ecto) do
 
     - **0-arity:** `fn -> {:ok, result} | {:error, reason} end`
     - **1-arity:** `fn repo -> {:ok, result} | {:error, reason} end` — where
-      `repo` is the underlying Ecto Repo module (in the Ecto adapter) or the
-      facade module in test/in-memory adapters.
+      `repo` is the facade module. Calls to `repo.insert/1`, `repo.get/2`,
+      etc. go through the facade dispatch chain, ensuring logging, telemetry,
+      and other facade-level concerns are applied.
 
     The function **must** return `{:ok, result}` or `{:error, reason}`.
     On `{:ok, result}`, the transaction is committed and `{:ok, result}` is returned.
     On `{:error, reason}`, the transaction is rolled back and `{:error, reason}` is returned.
+
+    1-arity functions are wrapped into 0-arity thunks at the facade boundary,
+    binding the facade module. Implementations always receive a 0-arity function.
 
     ## Use with Ecto.Multi
 
@@ -173,9 +177,30 @@ if Code.ensure_loaded?(Ecto) do
     On success, returns `{:ok, changes}` where `changes` is a map of
     operation names to their results. On failure, returns
     `{:error, failed_operation, failed_value, changes_so_far}`.
+
+    The facade module is injected into opts under the `HexPort.Repo.Facade`
+    key so that test adapters can pass it to `HexPort.Repo.MultiStepper`
+    for `:run` callbacks.
     """
     defport transact(fun_or_multi :: term(), opts :: keyword()) ::
               {:ok, term()} | {:error, term()},
-            bang: false
+            bang: false,
+            pre_dispatch: fn args, facade_mod ->
+              case args do
+                [fun, opts] when is_function(fun, 1) ->
+                  # Wrap 1-arity fn into 0-arity thunk closing over facade.
+                  # Calls inside the fn go through the facade dispatch chain.
+                  [fn -> fun.(facade_mod) end, opts]
+
+                [%Ecto.Multi{} = _multi, opts] ->
+                  # Multi stays as-is. Inject facade into opts so test adapters
+                  # can extract it for MultiStepper.
+                  [Enum.at(args, 0), Keyword.put(opts, HexPort.Repo.Facade, facade_mod)]
+
+                [fun, _opts] when is_function(fun, 0) ->
+                  # 0-arity fn: pass through unchanged
+                  args
+              end
+            end
   end
 end

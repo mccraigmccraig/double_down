@@ -78,12 +78,21 @@ defmodule HexPort.Contract do
     * **`true`** — force standard `{:ok, v}` / `{:error, r}` unwrapping
     * **`false`** — suppress bang generation
     * **`unwrap_fn`** — generate bang using custom unwrap function
+
+  ## Pre-dispatch Transform
+
+    * **`:pre_dispatch`** — a function `(args, facade_module) -> args` that
+      transforms the argument list before dispatch. The function receives the
+      args as a list and the facade module atom, and must return the
+      (possibly modified) args list. This is useful for injecting
+      facade-specific context into arguments at the dispatch boundary.
   """
   defmacro defport(spec, opts \\ [])
 
   defmacro defport({:"::", _meta, [call_ast, return_type_ast]}, opts) do
     bang_opt = Keyword.get(opts, :bang, :auto)
-    build_defport_ast(call_ast, return_type_ast, bang_opt, __CALLER__)
+    pre_dispatch_opt = Keyword.get(opts, :pre_dispatch, nil)
+    build_defport_ast(call_ast, return_type_ast, bang_opt, pre_dispatch_opt, __CALLER__)
   end
 
   defmacro defport(other, _opts) do
@@ -97,7 +106,7 @@ defmodule HexPort.Contract do
 
   # -- AST capture (at macro expansion time) --
 
-  defp build_defport_ast(call_ast, return_type_ast, bang_opt, caller) do
+  defp build_defport_ast(call_ast, return_type_ast, bang_opt, pre_dispatch_opt, caller) do
     {name, params} = parse_call(call_ast, caller)
 
     param_names = Enum.map(params, &elem(&1, 0))
@@ -121,6 +130,7 @@ defmodule HexPort.Contract do
       param_types: param_types,
       return_type: return_type_ast,
       bang_mode: bang_mode,
+      pre_dispatch: pre_dispatch_opt,
       user_doc: nil
     }
 
@@ -246,6 +256,7 @@ defmodule HexPort.Contract do
                                 param_types: param_types,
                                 return_type: return_type,
                                 bang_mode: bang_mode,
+                                pre_dispatch: pre_dispatch,
                                 user_doc: user_doc
                               } ->
         quote do
@@ -255,6 +266,7 @@ defmodule HexPort.Contract do
             param_types: unquote(Macro.escape(param_types)),
             return_type: unquote(Macro.escape(return_type)),
             bang_mode: unquote(Macro.escape(bang_mode)),
+            pre_dispatch: unquote(Macro.escape(pre_dispatch)),
             user_doc: unquote(Macro.escape(user_doc)),
             arity: unquote(length(param_names))
           }

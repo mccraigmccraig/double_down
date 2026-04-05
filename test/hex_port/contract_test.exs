@@ -274,6 +274,7 @@ defmodule HexPort.ContractTest do
       assert Map.has_key?(op, :param_types)
       assert Map.has_key?(op, :return_type)
       assert Map.has_key?(op, :bang_mode)
+      assert Map.has_key?(op, :pre_dispatch)
       assert Map.has_key?(op, :arity)
     end
 

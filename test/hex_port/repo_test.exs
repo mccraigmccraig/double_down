@@ -211,8 +211,9 @@ defmodule HexPort.RepoTest do
     def exists?(_q), do: true
     def aggregate(_q, _agg, _f), do: 42
 
+    # The facade's pre_dispatch wraps 1-arity fns into 0-arity thunks,
+    # so implementations always receive a 0-arity fn or an Ecto.Multi.
     def transact(fun, _opts) when is_function(fun, 0), do: fun.()
-    def transact(fun, _opts) when is_function(fun, 1), do: fun.(__MODULE__)
 
     def transact(%Ecto.Multi{} = multi, _opts) do
       # Simulate what a real Ecto Repo does: step through the Multi
@@ -315,9 +316,11 @@ defmodule HexPort.RepoTest do
       assert {:ok, :committed} = result
     end
 
-    test "transact with 1-arity fun delegates to mock Repo (receives repo module)" do
+    test "transact with 1-arity fun delegates to mock Repo (receives facade module)" do
       result = Repo.Port.transact(fn repo -> {:ok, repo} end, [])
-      assert {:ok, MockRepo} = result
+      # 1-arity fns are wrapped into 0-arity thunks by the facade's pre_dispatch,
+      # so the fn receives the facade module (Repo.Port), not the impl (MockRepo).
+      assert {:ok, Repo.Port} = result
     end
 
     test "transact with Ecto.Multi delegates to mock Repo" do
