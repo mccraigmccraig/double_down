@@ -191,17 +191,50 @@ config :my_app, MyApp.Todos, impl: MyApp.Todos.Mock
 
 ## Dispatch resolution
 
-When you call `MyApp.Todos.get_todo("42")`, `HexPort.Dispatch.call/4`
-resolves the handler in order:
+When you call `MyApp.Todos.get_todo("42")`, the facade dispatches to
+the resolved implementation. The dispatch path is chosen **at compile
+time** based on the `:test_dispatch?` option:
 
-1. **Test handler** — NimbleOwnership process-scoped lookup. Zero-cost
-   in production: `GenServer.whereis` returns `nil` when the ownership
-   server isn't started.
+### Non-production (default)
+
+`HexPort.Dispatch.call/4` resolves the handler in order:
+
+1. **Test handler** — NimbleOwnership process-scoped lookup
 2. **Application config** — `Application.get_env(otp_app, contract)[:impl]`
-3. **Raise** — clear error message if nothing is configured.
+3. **Raise** — clear error message if nothing is configured
 
-This means test handlers always take priority over config, and config
-is the production path.
+Test handlers always take priority over config.
+
+### Production
+
+`HexPort.Dispatch.call_config/4` skips NimbleOwnership entirely:
+
+1. **Application config** — `Application.get_env(otp_app, contract)[:impl]`
+2. **Raise** — clear error message if nothing is configured
+
+No `GenServer.whereis` lookup, no NimbleOwnership code referenced in
+the compiled beam — zero overhead.
+
+### The `:test_dispatch?` option
+
+The dispatch path is controlled by the `:test_dispatch?` option on
+`use HexPort.Facade`. It accepts `true`, `false`, or a zero-arity
+function returning a boolean. The function is evaluated at compile
+time. The default is `fn -> Mix.env() != :prod end`:
+
+```elixir
+# Default — test dispatch in dev/test, config-only in prod
+use HexPort.Facade, otp_app: :my_app
+
+# Always config-only (e.g. a facade that never needs test doubles)
+use HexPort.Facade, otp_app: :my_app, test_dispatch?: false
+
+# Always test-aware
+use HexPort.Facade, otp_app: :my_app, test_dispatch?: true
+
+# Custom compile-time decision
+use HexPort.Facade, otp_app: :my_app, test_dispatch?: fn -> Mix.env() == :test end
+```
 
 ## Key helpers
 

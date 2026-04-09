@@ -15,9 +15,13 @@ Start the ownership server once in `test/test_helper.exs`:
 {:ok, _} = HexPort.Testing.start()
 ```
 
-This starts a `NimbleOwnership` GenServer. In production, this server
-doesn't exist, so the dispatch lookup is zero-cost (a single
-`GenServer.whereis` returning `nil`).
+This starts a `NimbleOwnership` GenServer used for process-scoped test
+handler isolation. In production, facades compiled with the default
+`:test_dispatch?` setting use `HexPort.Dispatch.call_config/4`, which
+doesn't reference NimbleOwnership at all — the test dispatch code path
+is absent from the compiled beam files. See
+[Dispatch resolution](getting-started.md#dispatch-resolution) for
+details.
 
 ## Handler modes
 
