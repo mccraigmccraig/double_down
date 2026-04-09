@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.16.1]
+
+### Fixed
+
+- Added `:mix` to `plt_add_apps` in `mix.exs` so Dialyzer can resolve
+  the compile-time `Mix.env/0` call in `HexPort.Facade.__using__/1`.
+
+### Changed
+
+- Documentation updates for `:test_dispatch?` in `docs/getting-started.md`
+  (dispatch resolution section) and `docs/testing.md` (setup section).
+
 ## [0.16.0]
 
 ### Added
@@ -236,7 +248,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `HexPort.Testing` with NimbleOwnership, `Repo.Test` stateless
   adapter, CI setup, Credo, Dialyzer.
 
-[Unreleased]: https://github.com/mccraigmccraig/hex_port/compare/v0.16.0...HEAD
+[Unreleased]: https://github.com/mccraigmccraig/hex_port/compare/v0.16.1...HEAD
+[0.16.1]: https://github.com/mccraigmccraig/hex_port/compare/v0.16.0...v0.16.1
 [0.16.0]: https://github.com/mccraigmccraig/hex_port/compare/v0.15.0...v0.16.0
 [0.15.0]: https://github.com/mccraigmccraig/hex_port/compare/v0.14.0...v0.15.0
 [0.14.0]: https://github.com/mccraigmccraig/hex_port/compare/v0.13.0...v0.14.0
