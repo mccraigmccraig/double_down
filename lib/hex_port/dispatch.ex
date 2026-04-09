@@ -2,15 +2,23 @@ defmodule HexPort.Dispatch do
   @moduledoc """
   Dispatch resolution for HexPort contracts.
 
-  Resolves the implementation for a contract operation via:
+  Two dispatch paths are available, selected at compile time by the
+  `:test_dispatch?` option on `use HexPort.Facade`:
+
+  ### `call/4` — test-aware dispatch (default in non-prod)
 
   1. **Test handler** — process-scoped via `NimbleOwnership`
      (only checked if the ownership server is running)
   2. **Application config** — `Application.get_env(otp_app, contract)[:impl]`
   3. **Raise** — no handler configured
 
-  In production, the NimbleOwnership server is not started, so dispatch
-  goes straight to Application config (one `GenServer.whereis` ETS lookup).
+  ### `call_config/4` — config-only dispatch (default in prod)
+
+  1. **Application config** — `Application.get_env(otp_app, contract)[:impl]`
+  2. **Raise** — no handler configured
+
+  No `NimbleOwnership` code is referenced in the generated facade
+  functions, eliminating the `GenServer.whereis` lookup entirely.
   """
 
   @ownership_server __MODULE__.Ownership
@@ -18,7 +26,10 @@ defmodule HexPort.Dispatch do
   @doc """
   Dispatch a port operation to the resolved implementation.
 
-  Called by generated `X.Port` facade functions.
+  Called by generated facade functions when `test_dispatch?: true`
+  (the default in non-production environments). Checks for a
+  process-scoped test handler via `NimbleOwnership` before falling
+  back to application config.
   """
   @spec call(atom() | nil, module(), atom(), [term()]) :: term()
   def call(otp_app, contract, operation, args) do
@@ -31,6 +42,18 @@ defmodule HexPort.Dispatch do
       :none ->
         invoke_from_config(otp_app, contract, operation, args)
     end
+  end
+
+  @doc """
+  Dispatch a port operation directly from application config.
+
+  Called by generated facade functions when `test_dispatch?: false`
+  (the default in production). Skips the `NimbleOwnership` test
+  handler lookup entirely — zero overhead beyond `Application.get_env`.
+  """
+  @spec call_config(atom() | nil, module(), atom(), [term()]) :: term()
+  def call_config(otp_app, contract, operation, args) do
+    invoke_from_config(otp_app, contract, operation, args)
   end
 
   @doc """

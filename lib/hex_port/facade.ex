@@ -37,6 +37,12 @@ defmodule HexPort.Facade do
       `__MODULE__` (combined contract + facade).
     * `:otp_app` (required) — the OTP application name for config-based dispatch.
       Implementations are resolved from `Application.get_env(otp_app, contract)[:impl]`.
+    * `:test_dispatch?` — controls whether the generated facade includes the
+      `NimbleOwnership`-based test handler resolution step. Accepts `true`,
+      `false`, or a zero-arity function returning a boolean. The function is
+      evaluated at compile time. Defaults to `fn -> Mix.env() != :prod end`,
+      so production builds get a config-only dispatch path with zero
+      `NimbleOwnership` overhead.
 
   ## Configuration
 
@@ -71,6 +77,27 @@ defmodule HexPort.Facade do
       end
 
     otp_app = Keyword.fetch!(opts, :otp_app)
+
+    test_dispatch? =
+      case Keyword.get(opts, :test_dispatch?) do
+        nil ->
+          # Default: enable test dispatch in non-prod environments
+          Mix.env() != :prod
+
+        bool when is_boolean(bool) ->
+          bool
+
+        fun when is_function(fun, 0) ->
+          # Direct function (e.g. from the default or programmatic use)
+          fun.()
+
+        ast ->
+          # Function literal passed as an option arrives as AST in the macro.
+          # Evaluate it at compile time in the caller's context.
+          {fun, _binding} = Code.eval_quoted(ast, [], __CALLER__)
+          fun.()
+      end
+
     self_ref? = contract == __CALLER__.module
 
     if self_ref? do
@@ -81,6 +108,7 @@ defmodule HexPort.Facade do
 
         @hex_port_contract unquote(contract)
         @hex_port_otp_app unquote(otp_app)
+        @hex_port_test_dispatch unquote(test_dispatch?)
         @before_compile {HexPort.Facade, :__before_compile__}
       end
     else
@@ -88,6 +116,7 @@ defmodule HexPort.Facade do
         require unquote(contract)
         @hex_port_contract unquote(contract)
         @hex_port_otp_app unquote(otp_app)
+        @hex_port_test_dispatch unquote(test_dispatch?)
         @before_compile {HexPort.Facade, :__before_compile__}
       end
     end
@@ -97,10 +126,11 @@ defmodule HexPort.Facade do
   defmacro __before_compile__(env) do
     contract = Module.get_attribute(env.module, :hex_port_contract)
     otp_app = Module.get_attribute(env.module, :hex_port_otp_app)
+    test_dispatch? = Module.get_attribute(env.module, :hex_port_test_dispatch)
 
     operations = fetch_operations!(contract, env)
 
-    facades = Enum.map(operations, &generate_facade(&1, contract, otp_app))
+    facades = Enum.map(operations, &generate_facade(&1, contract, otp_app, test_dispatch?))
 
     bangs =
       operations
@@ -141,7 +171,8 @@ defmodule HexPort.Facade do
            user_doc: user_doc
          },
          contract,
-         otp_app
+         otp_app,
+         test_dispatch?
        ) do
     param_vars = Enum.map(param_names, fn pname -> {pname, [], nil} end)
 
@@ -178,11 +209,17 @@ defmodule HexPort.Facade do
         param_vars
       end
 
+    # When test_dispatch? is true, use HexPort.Dispatch.call/4 which checks
+    # NimbleOwnership for test handlers before falling back to config.
+    # When false, use HexPort.Dispatch.call_config/4 which goes straight
+    # to Application config — no NimbleOwnership overhead at all.
+    dispatch_fn = if test_dispatch?, do: :call, else: :call_config
+
     quote do
       unquote(doc_ast)
       @spec unquote(name)(unquote_splicing(param_types)) :: unquote(return_type)
       def unquote(name)(unquote_splicing(param_vars)) do
-        HexPort.Dispatch.call(
+        HexPort.Dispatch.unquote(dispatch_fn)(
           unquote(otp_app),
           unquote(contract),
           unquote(name),
