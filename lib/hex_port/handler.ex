@@ -185,6 +185,14 @@ defmodule HexPort.Handler do
   operation handles the first call, the second handles the second,
   and so on.
 
+  Instead of a function, pass `:passthrough` to delegate to the
+  fallback (fn, stateful, or module) while still consuming the
+  expect for `verify!` counting:
+
+      HexPort.Handler.expect(MyContract, :get, :passthrough, times: 2)
+      |> HexPort.Handler.stub(MyContract, MyApp.Impl)
+      |> HexPort.Handler.install!()
+
   The accumulator argument is optional — when omitted, a fresh
   accumulator is created via `new/0`.
 
@@ -193,7 +201,7 @@ defmodule HexPort.Handler do
     * `:times` — enqueue the same function `n` times (default 1).
       Equivalent to calling `expect` `n` times with the same function.
   """
-  @spec expect(t(), module(), atom(), function(), keyword()) :: t()
+  @spec expect(t(), module(), atom(), function() | :passthrough, keyword()) :: t()
   def expect(contract, operation, fun) when is_atom(contract) do
     expect(new(), contract, operation, fun, [])
   end
@@ -204,12 +212,14 @@ defmodule HexPort.Handler do
   end
 
   def expect(%__MODULE__{} = acc, contract, operation, fun)
-      when is_atom(contract) and is_atom(operation) and is_function(fun, 1) do
+      when is_atom(contract) and is_atom(operation) and
+             (is_function(fun, 1) or fun == :passthrough) do
     expect(acc, contract, operation, fun, [])
   end
 
   def expect(%__MODULE__{} = acc, contract, operation, fun, opts)
-      when is_atom(contract) and is_atom(operation) and is_function(fun, 1) and is_list(opts) do
+      when is_atom(contract) and is_atom(operation) and
+             (is_function(fun, 1) or fun == :passthrough) and is_list(opts) do
     times = Keyword.get(opts, :times, 1)
 
     if times < 1 do
@@ -485,6 +495,10 @@ defmodule HexPort.Handler do
   defp build_handler_fn(contract, stubs, fallback) do
     fn operation, args, state ->
       case pop_expect(state, operation) do
+        {:ok, :passthrough, new_state} ->
+          # Delegate to fallback, consuming the expect for verify! counting
+          invoke_fallback_or_raise(fallback, contract, operation, args, new_state)
+
         {:ok, fun, new_state} ->
           {fun.(args), new_state}
 

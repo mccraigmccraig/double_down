@@ -396,26 +396,44 @@ test "retries after constraint violation" do
 end
 ```
 
-### Counting calls with passthrough expects
+### Counting calls with `:passthrough` expects
 
-Use expects that return the same result as the fallback would, to
-verify call counts without changing behaviour:
+Use `:passthrough` expects to verify call counts without changing
+behaviour — the call delegates to the fallback as normal, but the
+expect is consumed for `verify!` counting:
 
 ```elixir
 setup do
-  HexPort.Handler.expect(HexPort.Repo.Contract, :insert, fn [changeset] ->
-    # Return what Repo.Test would return
-    {:ok, Ecto.Changeset.apply_changes(changeset)}
-  end, times: 2)
-  |> HexPort.Handler.stub(HexPort.Repo.Contract, HexPort.Repo.Test.new())
+  HexPort.Handler.expect(HexPort.Repo.Contract, :insert, :passthrough, times: 2)
+  |> HexPort.Handler.stub(
+    HexPort.Repo.Contract,
+    &HexPort.Repo.InMemory.dispatch/3,
+    HexPort.Repo.InMemory.new()
+  )
   |> HexPort.Handler.install!()
   :ok
 end
 
 test "creates exactly two records" do
-  # ... code under test ...
+  # ... code under test that should insert twice ...
   HexPort.Handler.verify!()  # fails if insert wasn't called exactly twice
 end
+```
+
+You can mix `:passthrough` and function expects — for example,
+"first insert succeeds through InMemory, second fails":
+
+```elixir
+HexPort.Handler.expect(HexPort.Repo.Contract, :insert, :passthrough)
+|> HexPort.Handler.expect(HexPort.Repo.Contract, :insert, fn [changeset] ->
+  {:error, Ecto.Changeset.add_error(changeset, :email, "taken")}
+end)
+|> HexPort.Handler.stub(
+  HexPort.Repo.Contract,
+  &HexPort.Repo.InMemory.dispatch/3,
+  HexPort.Repo.InMemory.new()
+)
+|> HexPort.Handler.install!()
 ```
 
 ### Combining with `HexPort.Log`

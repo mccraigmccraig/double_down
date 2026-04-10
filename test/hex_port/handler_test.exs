@@ -430,6 +430,105 @@ defmodule HexPort.HandlerTest do
     end
   end
 
+  describe "dispatch with :passthrough expects" do
+    test "passthrough delegates to fn fallback and consumes expect" do
+      Handler.expect(Greeter, :greet, :passthrough)
+      |> Handler.stub(Greeter, fn
+        :greet, [name] -> "fallback: #{name}"
+        :fetch_greeting, [name] -> {:ok, "fallback: #{name}"}
+      end)
+      |> Handler.install!()
+
+      assert "fallback: Alice" = Greeter.Port.greet("Alice")
+      assert :ok = Handler.verify!()
+    end
+
+    test "passthrough delegates to module fallback" do
+      Handler.expect(Greeter, :greet, :passthrough)
+      |> Handler.stub(Greeter, Greeter.Impl)
+      |> Handler.install!()
+
+      assert "Hello, Alice!" = Greeter.Port.greet("Alice")
+      assert :ok = Handler.verify!()
+    end
+
+    test "passthrough delegates to stateful fallback with state threading" do
+      Handler.expect(Counter, :increment, :passthrough)
+      |> Handler.expect(Counter, :increment, :passthrough)
+      |> Handler.stub(
+        Counter,
+        fn
+          :increment, [n], count -> {count + n, count + n}
+          :get_count, [], count -> {count, count}
+        end,
+        0
+      )
+      |> Handler.install!()
+
+      assert 5 = Counter.Port.increment(5)
+      assert 8 = Counter.Port.increment(3)
+      # State was threaded through both passthrough calls
+      assert 8 = Counter.Port.get_count()
+      assert :ok = Handler.verify!()
+    end
+
+    test "passthrough with times: n" do
+      Handler.expect(Greeter, :greet, :passthrough, times: 3)
+      |> Handler.stub(Greeter, Greeter.Impl)
+      |> Handler.install!()
+
+      assert "Hello, A!" = Greeter.Port.greet("A")
+      assert "Hello, B!" = Greeter.Port.greet("B")
+      assert "Hello, C!" = Greeter.Port.greet("C")
+      assert :ok = Handler.verify!()
+    end
+
+    test "passthrough consumed before fallback — counts for verify!" do
+      Handler.expect(Counter, :increment, :passthrough, times: 2)
+      |> Handler.stub(
+        Counter,
+        fn
+          :increment, [n], count -> {count + n, count + n}
+          :get_count, [], count -> {count, count}
+        end,
+        0
+      )
+      |> Handler.install!()
+
+      Counter.Port.increment(1)
+
+      # Only consumed 1 of 2 passthrough expects
+      assert_raise RuntimeError, ~r/expectations not fulfilled/, fn ->
+        Handler.verify!()
+      end
+    end
+
+    test "passthrough raises when no fallback configured" do
+      Handler.expect(Greeter, :greet, :passthrough)
+      |> Handler.install!()
+
+      assert_raise RuntimeError, ~r/Unexpected call to.*greet/, fn ->
+        Greeter.Port.greet("Alice")
+      end
+    end
+
+    test "mixed passthrough and function expects" do
+      Handler.expect(Greeter, :greet, :passthrough)
+      |> Handler.expect(Greeter, :greet, fn [_] -> "custom" end)
+      |> Handler.expect(Greeter, :greet, :passthrough)
+      |> Handler.stub(Greeter, Greeter.Impl)
+      |> Handler.install!()
+
+      # First: passthrough to Greeter.Impl
+      assert "Hello, A!" = Greeter.Port.greet("A")
+      # Second: custom function
+      assert "custom" = Greeter.Port.greet("B")
+      # Third: passthrough again
+      assert "Hello, C!" = Greeter.Port.greet("C")
+      assert :ok = Handler.verify!()
+    end
+  end
+
   describe "dispatch with fallback stub" do
     test "fallback stub handles operations without specific stubs" do
       Handler.stub(Greeter, fn
