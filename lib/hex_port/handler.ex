@@ -83,7 +83,8 @@ defmodule HexPort.Handler do
           contracts: %{
             module() => %{
               expects: %{atom() => [:erlang.function()]},
-              stubs: %{atom() => :erlang.function()}
+              stubs: %{atom() => :erlang.function()},
+              fallback_stub: :erlang.function() | nil
             }
           }
         }
@@ -142,20 +143,50 @@ defmodule HexPort.Handler do
   end
 
   @doc """
-  Add a stub for a contract operation.
+  Add a stub for a contract operation or a contract-wide fallback.
+
+  ## Per-operation stub (3-arity function)
 
   The function receives the argument list and returns the result.
   Stubs handle any number of calls and are used after all expectations
   for an operation are consumed. Setting a stub twice for the same
   operation replaces the previous one.
 
+      HexPort.Handler.stub(MyContract, :list, fn [_] -> [] end)
+
+  ## Contract-wide fallback stub (2-arity function)
+
+  When the function is 2-arity `fn operation, args -> result end`,
+  it acts as a fallback for any operation on the contract that has
+  no per-operation expect or stub. This is the same signature as
+  `set_fn_handler`, so existing handler functions can be reused:
+
+      HexPort.Handler.stub(MyContract, fn
+        :list, [_] -> []
+        :count, [] -> 0
+      end)
+
+  Dispatch priority: expects > per-operation stubs > fallback stub > raise.
+
   The accumulator argument is optional — when omitted, a fresh
   accumulator is created via `new/0`.
   """
   @spec stub(t(), module(), atom(), function()) :: t()
+  def stub(contract, fun)
+      when is_atom(contract) and is_function(fun, 2) do
+    stub(new(), contract, fun)
+  end
+
   def stub(contract, operation, fun)
       when is_atom(contract) and is_atom(operation) and is_function(fun, 1) do
     stub(new(), contract, operation, fun)
+  end
+
+  def stub(%__MODULE__{} = acc, contract, fun)
+      when is_atom(contract) and is_function(fun, 2) do
+    update_contract(acc, contract, fn contract_data ->
+      %{contract_data | fallback_stub: fun}
+    end)
   end
 
   def stub(%__MODULE__{} = acc, contract, operation, fun)
@@ -181,8 +212,8 @@ defmodule HexPort.Handler do
   def install!(%__MODULE__{contracts: contracts}) do
     contract_modules = Map.keys(contracts)
 
-    for {contract, %{expects: expects, stubs: stubs}} <- contracts do
-      handler_fn = build_handler_fn(contract, stubs)
+    for {contract, %{expects: expects, stubs: stubs, fallback_stub: fallback_stub}} <- contracts do
+      handler_fn = build_handler_fn(contract, stubs, fallback_stub)
       initial_state = %{expects: expects}
 
       HexPort.Testing.set_stateful_handler(contract, handler_fn, initial_state)
@@ -253,7 +284,7 @@ defmodule HexPort.Handler do
   # -- Internal: accumulator manipulation --
 
   defp empty_contract_data do
-    %{expects: %{}, stubs: %{}}
+    %{expects: %{}, stubs: %{}, fallback_stub: nil}
   end
 
   defp update_contract(%__MODULE__{contracts: contracts} = acc, contract, update_fn) do
@@ -264,7 +295,7 @@ defmodule HexPort.Handler do
 
   # -- Internal: handler construction --
 
-  defp build_handler_fn(contract, stubs) do
+  defp build_handler_fn(contract, stubs, fallback_stub) do
     fn operation, args, state ->
       case pop_expect(state, operation) do
         {:ok, fun, new_state} ->
@@ -273,16 +304,31 @@ defmodule HexPort.Handler do
         :none ->
           case Map.get(stubs, operation) do
             nil ->
-              # Defer the raise so it happens in the calling process,
-              # not inside the NimbleOwnership GenServer.
-              msg = unexpected_call_message(contract, operation, args, state)
-              {{:defer, fn -> raise msg end}, state}
+              invoke_fallback_or_raise(fallback_stub, contract, operation, args, state)
 
             stub_fun ->
               {stub_fun.(args), state}
           end
       end
     end
+  end
+
+  defp invoke_fallback_or_raise(nil, contract, operation, args, state) do
+    # Defer the raise so it happens in the calling process,
+    # not inside the NimbleOwnership GenServer.
+    msg = unexpected_call_message(contract, operation, args, state)
+    {{:defer, fn -> raise msg end}, state}
+  end
+
+  defp invoke_fallback_or_raise(fallback_fn, contract, operation, args, state) do
+    result = fallback_fn.(operation, args)
+    {result, state}
+  rescue
+    FunctionClauseError ->
+      # FunctionClauseError from the fallback means it doesn't handle
+      # this operation — defer the raise to the calling process.
+      msg = unexpected_call_message(contract, operation, args, state)
+      {{:defer, fn -> reraise msg, __STACKTRACE__ end}, state}
   end
 
   defp pop_expect(%{expects: expects} = state, operation) do

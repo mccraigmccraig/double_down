@@ -103,6 +103,134 @@ defmodule HexPort.HandlerTest do
     end
   end
 
+  describe "stub/2..3 contract-wide fallback" do
+    test "sets fallback stub with 2-arity function" do
+      fun = fn _op, _args -> :fallback end
+
+      acc = Handler.stub(Greeter, fun)
+
+      assert acc.contracts[Greeter].fallback_stub == fun
+    end
+
+    test "replacing fallback stub overwrites previous" do
+      fun1 = fn _op, _args -> "first" end
+      fun2 = fn _op, _args -> "second" end
+
+      acc =
+        Handler.stub(Greeter, fun1)
+        |> Handler.stub(Greeter, fun2)
+
+      assert acc.contracts[Greeter].fallback_stub == fun2
+    end
+
+    test "default first arg starts with new()" do
+      acc = Handler.stub(Greeter, fn _op, _args -> :ok end)
+      assert %Handler{} = acc
+      assert Map.has_key?(acc.contracts, Greeter)
+    end
+
+    test "piped with accumulator" do
+      acc =
+        Handler.expect(Greeter, :greet, fn [_] -> "expected" end)
+        |> Handler.stub(Greeter, fn _op, _args -> :fallback end)
+
+      assert acc.contracts[Greeter].fallback_stub != nil
+      assert length(acc.contracts[Greeter].expects[:greet]) == 1
+    end
+
+    test "per-operation stub and fallback stub coexist" do
+      acc =
+        Handler.stub(Greeter, :greet, fn [_] -> "per-op" end)
+        |> Handler.stub(Greeter, fn _op, _args -> :fallback end)
+
+      assert acc.contracts[Greeter].stubs[:greet] != nil
+      assert acc.contracts[Greeter].fallback_stub != nil
+    end
+  end
+
+  describe "dispatch with fallback stub" do
+    test "fallback stub handles operations without specific stubs" do
+      Handler.stub(Greeter, fn
+        :greet, [name] -> "fallback: #{name}"
+        :fetch_greeting, [name] -> {:ok, "fallback: #{name}"}
+      end)
+      |> Handler.install!()
+
+      assert "fallback: Alice" = Greeter.Port.greet("Alice")
+      assert {:ok, "fallback: Bob"} = Greeter.Port.fetch_greeting("Bob")
+    end
+
+    test "per-operation stub takes priority over fallback" do
+      Handler.stub(Greeter, :greet, fn [name] -> "per-op: #{name}" end)
+      |> Handler.stub(Greeter, fn _op, [name] -> "fallback: #{name}" end)
+      |> Handler.install!()
+
+      assert "per-op: Alice" = Greeter.Port.greet("Alice")
+    end
+
+    test "expects take priority over fallback" do
+      Handler.expect(Greeter, :greet, fn [_] -> "expected" end)
+      |> Handler.stub(Greeter, fn _op, [name] -> "fallback: #{name}" end)
+      |> Handler.install!()
+
+      assert "expected" = Greeter.Port.greet("Alice")
+      # After expect consumed, fallback takes over
+      assert "fallback: Bob" = Greeter.Port.greet("Bob")
+    end
+
+    test "full priority chain: expects > per-op stubs > fallback" do
+      Handler.expect(Greeter, :greet, fn [_] -> "expected" end)
+      |> Handler.stub(Greeter, :fetch_greeting, fn [name] -> {:ok, "per-op: #{name}"} end)
+      |> Handler.stub(Greeter, fn _op, [name] -> "fallback: #{name}" end)
+      |> Handler.install!()
+
+      # greet: expect first, then fallback
+      assert "expected" = Greeter.Port.greet("Alice")
+      assert "fallback: Bob" = Greeter.Port.greet("Bob")
+
+      # fetch_greeting: per-op stub (not fallback)
+      assert {:ok, "per-op: Carol"} = Greeter.Port.fetch_greeting("Carol")
+    end
+
+    test "FunctionClauseError in fallback raises with descriptive error" do
+      Handler.stub(Greeter, fn
+        :greet, [name] -> "only greet: #{name}"
+      end)
+      |> Handler.install!()
+
+      # greet works
+      assert "only greet: Alice" = Greeter.Port.greet("Alice")
+
+      # fetch_greeting raises FunctionClauseError in fallback -> deferred raise
+      assert_raise RuntimeError, ~r/Unexpected call to.*fetch_greeting/, fn ->
+        Greeter.Port.fetch_greeting("Bob")
+      end
+    end
+
+    test "fallback stub works with verify!" do
+      Handler.expect(Greeter, :greet, fn [_] -> "expected" end)
+      |> Handler.stub(Greeter, fn _op, _args -> :fallback end)
+      |> Handler.install!()
+
+      Greeter.Port.greet("Alice")
+
+      assert :ok = Handler.verify!()
+    end
+
+    test "reuses set_fn_handler-style functions" do
+      handler_fn = fn
+        :greet, [name] -> "handler: #{name}"
+        :fetch_greeting, [name] -> {:ok, "handler: #{name}"}
+      end
+
+      Handler.stub(Greeter, handler_fn)
+      |> Handler.install!()
+
+      assert "handler: Alice" = Greeter.Port.greet("Alice")
+      assert {:ok, "handler: Bob"} = Greeter.Port.fetch_greeting("Bob")
+    end
+  end
+
   # ── install! tests ────────────────────────────────────────
 
   describe "install!/1" do
