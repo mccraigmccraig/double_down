@@ -48,10 +48,13 @@ defmodule HexPort.Handler do
   @doc """
   Add an expectation for a contract operation.
 
-  The function receives `[args]` (the argument list) and returns the
-  result. Expectations are consumed in order — the first `expect` for
-  an operation handles the first call, the second handles the second,
+  The function receives the argument list and returns the result.
+  Expectations are consumed in order — the first `expect` for an
+  operation handles the first call, the second handles the second,
   and so on.
+
+  The accumulator argument is optional — when omitted, a fresh
+  accumulator is created via `new/0`.
 
   ## Options
 
@@ -59,8 +62,22 @@ defmodule HexPort.Handler do
       Equivalent to calling `expect` `n` times with the same function.
   """
   @spec expect(t(), module(), atom(), function(), keyword()) :: t()
-  def expect(acc \\ new(), contract, operation, fun, opts \\ [])
+  def expect(contract, operation, fun) when is_atom(contract) do
+    expect(new(), contract, operation, fun, [])
+  end
+
+  def expect(contract, operation, fun, opts)
+      when is_atom(contract) and is_atom(operation) and is_list(opts) do
+    expect(new(), contract, operation, fun, opts)
+  end
+
+  def expect(%__MODULE__{} = acc, contract, operation, fun)
       when is_atom(contract) and is_atom(operation) and is_function(fun, 1) do
+    expect(acc, contract, operation, fun, [])
+  end
+
+  def expect(%__MODULE__{} = acc, contract, operation, fun, opts)
+      when is_atom(contract) and is_atom(operation) and is_function(fun, 1) and is_list(opts) do
     times = Keyword.get(opts, :times, 1)
 
     if times < 1 do
@@ -78,13 +95,21 @@ defmodule HexPort.Handler do
   @doc """
   Add a stub for a contract operation.
 
-  The function receives `[args]` (the argument list) and returns the
-  result. Stubs handle any number of calls and are used after all
-  expectations for an operation are consumed. Setting a stub twice
-  for the same operation replaces the previous one.
+  The function receives the argument list and returns the result.
+  Stubs handle any number of calls and are used after all expectations
+  for an operation are consumed. Setting a stub twice for the same
+  operation replaces the previous one.
+
+  The accumulator argument is optional — when omitted, a fresh
+  accumulator is created via `new/0`.
   """
   @spec stub(t(), module(), atom(), function()) :: t()
-  def stub(acc \\ new(), contract, operation, fun)
+  def stub(contract, operation, fun)
+      when is_atom(contract) and is_atom(operation) and is_function(fun, 1) do
+    stub(new(), contract, operation, fun)
+  end
+
+  def stub(%__MODULE__{} = acc, contract, operation, fun)
       when is_atom(contract) and is_atom(operation) and is_function(fun, 1) do
     update_contract(acc, contract, fn contract_data ->
       %{contract_data | stubs: Map.put(contract_data.stubs, operation, fun)}
@@ -201,7 +226,10 @@ defmodule HexPort.Handler do
         :none ->
           case Map.get(stubs, operation) do
             nil ->
-              raise_unexpected_call(contract, operation, args, state)
+              # Defer the raise so it happens in the calling process,
+              # not inside the NimbleOwnership GenServer.
+              msg = unexpected_call_message(contract, operation, args, state)
+              {{:defer, fn -> raise msg end}, state}
 
             stub_fun ->
               {stub_fun.(args), state}
@@ -221,7 +249,7 @@ defmodule HexPort.Handler do
     end
   end
 
-  defp raise_unexpected_call(contract, operation, args, %{expects: expects}) do
+  defp unexpected_call_message(contract, operation, args, %{expects: expects}) do
     remaining =
       expects
       |> Enum.reject(fn {_op, queue} -> queue == [] end)
@@ -234,7 +262,7 @@ defmodule HexPort.Handler do
         Enum.join(remaining, "\n")
       end
 
-    raise """
+    """
     Unexpected call to #{inspect(contract)}.#{operation}/#{length(args)}.
 
     No expectations or stubs defined for this operation.
