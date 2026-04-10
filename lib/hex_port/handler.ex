@@ -7,16 +7,65 @@ defmodule HexPort.Handler do
   Multi-contract expectations can be chained in a single pipeline
   and installed with one call.
 
-  ## Usage
+  This is essentially Mox's expect/stub model, but:
+
+  - **Multi-contract** — one pipeline across multiple contracts
+  - **No mock modules** — handlers installed directly on contracts
+  - **Built on `set_stateful_handler`** — doesn't replace or limit
+    the existing general-purpose handler APIs
+
+  ## Basic usage
 
       HexPort.Handler.expect(MyContract, :get_thing, fn [id] -> %Thing{id: id} end)
-      |> HexPort.Handler.expect(MyContract, :get_thing, fn [_] -> nil end)
       |> HexPort.Handler.stub(MyContract, :list, fn [_] -> [] end)
       |> HexPort.Handler.install!()
 
       # ... run code under test ...
 
       HexPort.Handler.verify!()
+
+  ## Sequenced expectations
+
+  Successive calls to `expect` for the same operation queue handlers
+  that are consumed in order:
+
+      HexPort.Handler.expect(MyContract, :get_thing, fn [_] -> {:error, :not_found} end)
+      |> HexPort.Handler.expect(MyContract, :get_thing, fn [id] -> %Thing{id: id} end)
+      |> HexPort.Handler.install!()
+
+      # First call returns :not_found, second returns the thing
+
+  ## Repeated expectations
+
+  Use `times: n` when the same function should handle multiple calls:
+
+      HexPort.Handler.expect(MyContract, :check, fn [_] -> :ok end, times: 3)
+      |> HexPort.Handler.install!()
+
+  ## Expects + stubs
+
+  When an operation has both expects and a stub, expects are consumed
+  first; once exhausted, the stub handles all subsequent calls:
+
+      HexPort.Handler.expect(MyContract, :get, fn [_] -> :first end)
+      |> HexPort.Handler.stub(MyContract, :get, fn [_] -> :default end)
+      |> HexPort.Handler.install!()
+
+  ## Multi-contract
+
+      HexPort.Handler.expect(TodosContract, :create, fn [p] -> {:ok, struct!(Todo, p)} end)
+      |> HexPort.Handler.stub(RepoContract, :one, fn [_] -> nil end)
+      |> HexPort.Handler.install!()
+
+  ## Relationship to Mox
+
+  | Mox | HexPort.Handler |
+  |-----|-----------------|
+  | `expect(Mock, :fn, n, fun)` | `expect(Contract, :fn, fun, times: n)` |
+  | `stub(Mock, :fn, fun)` | `stub(Contract, :fn, fun)` |
+  | `verify!()` | `verify!()` |
+  | `Mox.defmock(Mock, for: Behaviour)` | Not needed |
+  | `Application.put_env(...)` | `install!()` |
 
   ## Relationship to existing APIs
 

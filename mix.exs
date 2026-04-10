@@ -47,7 +47,8 @@ defmodule HexPort.MixProject do
             HexPort.Dispatch
           ],
           Testing: [
-            HexPort.Testing
+            HexPort.Testing,
+            HexPort.Handler
           ],
           Repo: [
             HexPort.Repo.Contract,

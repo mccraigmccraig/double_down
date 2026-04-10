@@ -87,6 +87,75 @@ need read-after-write consistency.
 For Ecto Repo operations specifically, HexPort ships ready-made
 stateful test doubles — see [Repo](repo.md).
 
+## Handler builder (expect/stub)
+
+`HexPort.Handler` provides a Mox-style expect/stub API for declaring
+test handlers. It builds on `set_stateful_handler` internally, but
+offers a more declarative interface with ordered expectations,
+multi-contract chaining, and verification.
+
+### Basic usage
+
+```elixir
+setup do
+  HexPort.Handler.expect(MyApp.Todos, :get_todo, fn [id] -> {:ok, %Todo{id: id}} end)
+  |> HexPort.Handler.stub(MyApp.Todos, :list_todos, fn [_] -> [] end)
+  |> HexPort.Handler.install!()
+  :ok
+end
+
+test "..." do
+  # ... run code under test ...
+  HexPort.Handler.verify!()
+end
+```
+
+Expectations are consumed in order. Stubs handle any number of calls
+and take over after expectations are exhausted. Calling an operation
+with no remaining expectations and no stub raises immediately.
+
+### Sequenced expectations
+
+```elixir
+HexPort.Handler.expect(MyApp.Todos, :get_todo, fn [_] -> {:error, :not_found} end)
+|> HexPort.Handler.expect(MyApp.Todos, :get_todo, fn [id] -> {:ok, %Todo{id: id}} end)
+|> HexPort.Handler.install!()
+
+# First call returns :not_found, second returns the todo
+```
+
+### Repeated expectations
+
+```elixir
+HexPort.Handler.expect(MyApp.Todos, :get_todo, fn [id] -> {:ok, %Todo{id: id}} end, times: 3)
+|> HexPort.Handler.install!()
+```
+
+### Multi-contract
+
+```elixir
+HexPort.Handler.expect(MyApp.Todos, :create_todo, fn [p] -> {:ok, struct!(Todo, p)} end)
+|> HexPort.Handler.stub(HexPort.Repo.Contract, :one, fn [_] -> nil end)
+|> HexPort.Handler.install!()
+```
+
+### Verification
+
+`verify!/0` checks that all expectations have been consumed. Stubs
+are not checked — zero calls is valid. Call it at the end of your
+test or in `on_exit`:
+
+```elixir
+on_exit(fn -> HexPort.Handler.verify!() end)
+```
+
+### When to use Handler vs raw handlers
+
+Use `HexPort.Handler` when you want Mox-style call counting and
+ordered expectations. Use `set_fn_handler` for simple canned
+responses. Use `set_stateful_handler` directly when you need custom
+state management (e.g. in-memory stores with complex query logic).
+
 ## Dispatch logging
 
 Record every call that crosses a port boundary, then assert on the
