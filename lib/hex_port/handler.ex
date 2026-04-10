@@ -88,6 +88,35 @@ defmodule HexPort.Handler do
     end)
   end
 
+  @doc """
+  Install all accumulated expectations and stubs.
+
+  Groups expectations by contract, builds a stateful handler function
+  for each, and registers them via `HexPort.Testing.set_stateful_handler/3`.
+
+  Returns `:ok`.
+  """
+  @spec install!(t()) :: :ok
+  def install!(%__MODULE__{contracts: contracts}) when contracts == %{} do
+    raise ArgumentError, "no expectations or stubs to install — call expect/5 or stub/4 first"
+  end
+
+  def install!(%__MODULE__{contracts: contracts}) do
+    contract_modules = Map.keys(contracts)
+
+    for {contract, %{expects: expects, stubs: stubs}} <- contracts do
+      handler_fn = build_handler_fn(contract, stubs)
+      initial_state = %{expects: expects}
+
+      HexPort.Testing.set_stateful_handler(contract, handler_fn, initial_state)
+    end
+
+    # Store the list of installed contracts so verify!/0 can find them
+    store_installed_contracts(contract_modules)
+
+    :ok
+  end
+
   # -- Internal: accumulator manipulation --
 
   defp empty_contract_data do
@@ -98,5 +127,69 @@ defmodule HexPort.Handler do
     contract_data = Map.get(contracts, contract, empty_contract_data())
     updated = update_fn.(contract_data)
     %{acc | contracts: Map.put(contracts, contract, updated)}
+  end
+
+  # -- Internal: handler construction --
+
+  @ownership_server HexPort.Dispatch.Ownership
+  @contracts_key HexPort.Handler.Contracts
+
+  defp build_handler_fn(contract, stubs) do
+    fn operation, args, state ->
+      case pop_expect(state, operation) do
+        {:ok, fun, new_state} ->
+          {fun.(args), new_state}
+
+        :none ->
+          case Map.get(stubs, operation) do
+            nil ->
+              raise_unexpected_call(contract, operation, args, state)
+
+            stub_fun ->
+              {stub_fun.(args), state}
+          end
+      end
+    end
+  end
+
+  defp pop_expect(%{expects: expects} = state, operation) do
+    case Map.get(expects, operation, []) do
+      [fun | rest] ->
+        new_expects = Map.put(expects, operation, rest)
+        {:ok, fun, %{state | expects: new_expects}}
+
+      [] ->
+        :none
+    end
+  end
+
+  defp raise_unexpected_call(contract, operation, args, %{expects: expects}) do
+    remaining =
+      expects
+      |> Enum.reject(fn {_op, queue} -> queue == [] end)
+      |> Enum.map(fn {op, queue} -> "  #{op}: #{length(queue)} expected call(s) remaining" end)
+
+    remaining_msg =
+      if remaining == [] do
+        "  (no expectations remaining)"
+      else
+        Enum.join(remaining, "\n")
+      end
+
+    raise """
+    Unexpected call to #{inspect(contract)}.#{operation}/#{length(args)}.
+
+    No expectations or stubs defined for this operation.
+
+    Remaining expectations for #{inspect(contract)}:
+    #{remaining_msg}
+    """
+  end
+
+  defp store_installed_contracts(contract_modules) do
+    NimbleOwnership.get_and_update(@ownership_server, self(), @contracts_key, fn
+      nil -> {:ok, contract_modules}
+      existing -> {:ok, Enum.uniq(existing ++ contract_modules)}
+    end)
   end
 end
