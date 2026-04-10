@@ -325,6 +325,139 @@ typically exercised in serial, single-process tests. If you need true
 transaction isolation, use the Ecto adapter with a real database and
 Ecto's sandbox.
 
+## Testing failure scenarios with Handler
+
+`HexPort.Handler` integrates with both Repo test doubles, letting you
+override specific operations to simulate failures while the rest of
+the Repo behaves normally.
+
+### Error simulation with `Repo.Test`
+
+Use a 2-arity function fallback (`Repo.Test.new/1` returns one) as
+the Handler's fallback stub, and add expects for the operations that
+should fail:
+
+```elixir
+setup do
+  HexPort.Handler.expect(HexPort.Repo.Contract, :insert, fn [changeset] ->
+    {:error, Ecto.Changeset.add_error(changeset, :email, "has already been taken")}
+  end)
+  |> HexPort.Handler.stub(HexPort.Repo.Contract, HexPort.Repo.Test.new())
+  |> HexPort.Handler.install!()
+  :ok
+end
+
+test "handles duplicate email gracefully" do
+  changeset = User.changeset(%User{}, %{email: "alice@example.com"})
+
+  # First insert fails (expect fires)
+  assert {:error, cs} = MyApp.Repo.insert(changeset)
+  assert {"has already been taken", _} = cs.errors[:email]
+
+  # Second insert succeeds (falls through to Repo.Test)
+  assert {:ok, %User{}} = MyApp.Repo.insert(changeset)
+
+  HexPort.Handler.verify!()
+end
+```
+
+### Error simulation with `Repo.InMemory`
+
+Use a 3-arity stateful fallback with `Repo.InMemory` for tests that
+need read-after-write consistency alongside failure simulation:
+
+```elixir
+setup do
+  HexPort.Handler.expect(HexPort.Repo.Contract, :insert, fn [changeset] ->
+    {:error, Ecto.Changeset.add_error(changeset, :email, "has already been taken")}
+  end)
+  |> HexPort.Handler.stub(
+    HexPort.Repo.Contract,
+    &HexPort.Repo.InMemory.dispatch/3,
+    HexPort.Repo.InMemory.new()
+  )
+  |> HexPort.Handler.install!()
+  :ok
+end
+
+test "retries after constraint violation" do
+  changeset = User.changeset(%User{}, %{email: "alice@example.com"})
+
+  # First insert: expect fires, returns error, InMemory state unchanged
+  assert {:error, _} = MyApp.Repo.insert(changeset)
+
+  # Second insert: falls through to InMemory, writes to store
+  assert {:ok, user} = MyApp.Repo.insert(changeset)
+
+  # Read-after-write: InMemory serves from store
+  assert ^user = MyApp.Repo.get(User, user.id)
+
+  HexPort.Handler.verify!()
+end
+```
+
+### Counting calls with passthrough expects
+
+Use expects that return the same result as the fallback would, to
+verify call counts without changing behaviour:
+
+```elixir
+setup do
+  HexPort.Handler.expect(HexPort.Repo.Contract, :insert, fn [changeset] ->
+    # Return what Repo.Test would return
+    {:ok, Ecto.Changeset.apply_changes(changeset)}
+  end, times: 2)
+  |> HexPort.Handler.stub(HexPort.Repo.Contract, HexPort.Repo.Test.new())
+  |> HexPort.Handler.install!()
+  :ok
+end
+
+test "creates exactly two records" do
+  # ... code under test ...
+  HexPort.Handler.verify!()  # fails if insert wasn't called exactly twice
+end
+```
+
+### Combining with `HexPort.Log`
+
+Handler and Log complement each other — Handler for controlling return
+values and counting calls, Log for asserting on what actually happened
+including computed results:
+
+```elixir
+setup do
+  HexPort.Handler.expect(HexPort.Repo.Contract, :insert, fn [changeset] ->
+    {:error, Ecto.Changeset.add_error(changeset, :email, "taken")}
+  end)
+  |> HexPort.Handler.stub(
+    HexPort.Repo.Contract,
+    &HexPort.Repo.InMemory.dispatch/3,
+    HexPort.Repo.InMemory.new()
+  )
+  |> HexPort.Handler.install!()
+
+  HexPort.Testing.enable_log(HexPort.Repo.Contract)
+  :ok
+end
+
+test "logs the failure then the success" do
+  changeset = User.changeset(%User{}, %{email: "alice@example.com"})
+
+  assert {:error, _} = MyApp.Repo.insert(changeset)
+  assert {:ok, %User{}} = MyApp.Repo.insert(changeset)
+
+  HexPort.Handler.verify!()
+
+  HexPort.Log.match(HexPort.Repo.Contract, :insert, fn
+    {_, _, _, {:error, _}} -> true
+  end)
+  |> HexPort.Log.match(HexPort.Repo.Contract, :insert, fn
+    {_, _, _, {:ok, %User{id: id}}} when is_binary(id) -> true
+  end)
+  |> HexPort.Log.verify!()
+end
+```
+
 ## Why this matters
 
 The in-memory Repo removes the database from your test feedback loop.
