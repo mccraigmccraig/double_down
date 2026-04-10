@@ -68,6 +68,24 @@ defmodule HexPort.Handler do
       end)
       |> HexPort.Handler.install!()
 
+  ### Stateful fallback
+
+  A 3-arity `fn operation, args, state -> {result, new_state} end` —
+  the same signature as `set_stateful_handler`. This integrates a
+  stateful fake (like `Repo.InMemory`) into the dispatch chain while
+  allowing expects to override specific calls:
+
+      # First insert fails, rest go through the stateful handler
+      HexPort.Handler.expect(RepoContract, :insert, fn [changeset] ->
+        {:error, Ecto.Changeset.add_error(changeset, :email, "taken")}
+      end)
+      |> HexPort.Handler.stub(RepoContract, &Repo.InMemory.handler/3, %{})
+      |> HexPort.Handler.install!()
+
+  The fallback's state is managed alongside the expect queue state.
+  When an expect short-circuits (e.g. returning an error), the
+  fallback state is unchanged — correct for error simulation.
+
   ### Module fallback
 
   A module implementing the contract's `@behaviour` — all operations
@@ -86,8 +104,8 @@ defmodule HexPort.Handler do
   module must call through the facade.
 
   Dispatch priority: expects > per-operation stubs > fallback > raise.
-  Function and module fallbacks are mutually exclusive — setting one
-  replaces the other.
+  Function, stateful, and module fallbacks are mutually exclusive —
+  setting one replaces the other.
 
   ## Multi-contract
 
@@ -102,6 +120,7 @@ defmodule HexPort.Handler do
   | `expect(Mock, :fn, n, fun)` | `expect(Contract, :fn, fun, times: n)` |
   | `stub(Mock, :fn, fun)` | `stub(Contract, :fn, fun)` — per-operation |
   | (no equivalent) | `stub(Contract, fn op, args -> ... end)` — function fallback |
+  | (no equivalent) | `stub(Contract, fn op, args, state -> ... end, init)` — stateful fallback |
   | (no equivalent) | `stub(Contract, ImplModule)` — module fallback |
   | `verify!()` | `verify!()` |
   | `verify_on_exit!()` | `verify_on_exit!()` |
@@ -120,7 +139,11 @@ defmodule HexPort.Handler do
 
   defstruct contracts: %{}
 
-  @type fallback :: nil | {:fn, :erlang.function()} | {:module, module()}
+  @type fallback ::
+          nil
+          | {:fn, :erlang.function()}
+          | {:stateful, :erlang.function(), term()}
+          | {:module, module()}
 
   @type t :: %__MODULE__{
           contracts: %{
@@ -209,6 +232,19 @@ defmodule HexPort.Handler do
         :count, [] -> 0
       end)
 
+  ## Stateful fallback (3-arity function + initial state)
+
+  When a 3-arity `fn operation, args, state -> {result, new_state} end`
+  is passed with an initial state, it acts as a stateful fallback.
+  This is the same signature as `set_stateful_handler`, allowing
+  stateful fakes like `Repo.InMemory` to be integrated:
+
+      HexPort.Handler.stub(RepoContract, &Repo.InMemory.handler/3, %{})
+
+  The fallback's state is threaded through calls automatically.
+  When an expect short-circuits (e.g. returning an error), the
+  fallback state is unchanged.
+
   ## Module fallback (atom)
 
   When an atom (module name) is passed, all unhandled operations
@@ -219,8 +255,8 @@ defmodule HexPort.Handler do
 
   The module is validated at `install!` time.
 
-  Function and module fallbacks are mutually exclusive — setting one
-  replaces the other.
+  Function, stateful, and module fallbacks are mutually exclusive —
+  setting one replaces the other.
 
   Dispatch priority: expects > per-operation stubs > fallback > raise.
 
@@ -243,6 +279,11 @@ defmodule HexPort.Handler do
     stub(new(), contract, operation, fun)
   end
 
+  def stub(contract, fun, init_state)
+      when is_atom(contract) and is_function(fun, 3) do
+    stub(new(), contract, fun, init_state)
+  end
+
   def stub(%__MODULE__{} = acc, contract, fun)
       when is_atom(contract) and is_function(fun, 2) do
     update_contract(acc, contract, fn contract_data ->
@@ -254,6 +295,13 @@ defmodule HexPort.Handler do
       when is_atom(contract) and is_atom(module) do
     update_contract(acc, contract, fn contract_data ->
       %{contract_data | fallback: {:module, module}}
+    end)
+  end
+
+  def stub(%__MODULE__{} = acc, contract, fun, init_state)
+      when is_atom(contract) and is_function(fun, 3) do
+    update_contract(acc, contract, fn contract_data ->
+      %{contract_data | fallback: {:stateful, fun, init_state}}
     end)
   end
 
@@ -283,7 +331,12 @@ defmodule HexPort.Handler do
     for {contract, %{expects: expects, stubs: stubs, fallback: fallback}} <- contracts do
       validate_fallback!(contract, fallback)
       handler_fn = build_handler_fn(contract, stubs, fallback)
-      initial_state = %{expects: expects}
+
+      initial_state =
+        case fallback do
+          {:stateful, _fun, init_state} -> %{expects: expects, fallback_state: init_state}
+          _ -> %{expects: expects}
+        end
 
       HexPort.Testing.set_stateful_handler(contract, handler_fn, initial_state)
     end
@@ -449,6 +502,16 @@ defmodule HexPort.Handler do
       {{:defer, fn -> reraise msg, __STACKTRACE__ end}, state}
   end
 
+  defp invoke_fallback_or_raise({:stateful, fallback_fn, _init}, contract, operation, args, state) do
+    fallback_state = state.fallback_state
+    {result, new_fallback_state} = fallback_fn.(operation, args, fallback_state)
+    {result, %{state | fallback_state: new_fallback_state}}
+  rescue
+    FunctionClauseError ->
+      msg = unexpected_call_message(contract, operation, args, state)
+      {{:defer, fn -> reraise msg, __STACKTRACE__ end}, state}
+  end
+
   defp invoke_fallback_or_raise({:module, module}, contract, operation, args, state) do
     result = apply(module, operation, args)
     {result, state}
@@ -495,6 +558,7 @@ defmodule HexPort.Handler do
 
   defp validate_fallback!(_contract, nil), do: :ok
   defp validate_fallback!(_contract, {:fn, _fun}), do: :ok
+  defp validate_fallback!(_contract, {:stateful, _fun, _init}), do: :ok
 
   defp validate_fallback!(contract, {:module, module}) do
     unless Code.ensure_loaded?(module) do

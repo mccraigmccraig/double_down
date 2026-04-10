@@ -148,6 +148,23 @@ end)
 |> HexPort.Handler.install!()
 ```
 
+**Stateful fallback** — a 3-arity `fn op, args, state -> {result, state}` with
+initial state. Same signature as `set_stateful_handler`, so stateful
+fakes like `Repo.InMemory` integrate directly. Override specific
+operations with expects while the fake handles everything else:
+
+```elixir
+# First insert fails with constraint error, rest go through InMemory
+HexPort.Handler.expect(RepoContract, :insert, fn [changeset] ->
+  {:error, Ecto.Changeset.add_error(changeset, :email, "taken")}
+end)
+|> HexPort.Handler.stub(RepoContract, &Repo.InMemory.handler/3, %{})
+|> HexPort.Handler.install!()
+```
+
+When an expect short-circuits (returns an error), the fallback
+state is unchanged — correct for error simulation.
+
 **Module fallback** — a module implementing the contract's behaviour.
 Override specific operations while the rest delegate to the real
 implementation:

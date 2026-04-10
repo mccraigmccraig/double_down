@@ -256,6 +256,180 @@ defmodule HexPort.HandlerTest do
     end
   end
 
+  describe "stub/3..4 stateful fallback" do
+    test "sets stateful fallback" do
+      fun = fn _op, _args, state -> {:ok, state} end
+
+      acc = Handler.stub(Counter, fun, 0)
+
+      assert {:stateful, ^fun, 0} = acc.contracts[Counter].fallback
+    end
+
+    test "default first arg starts with new()" do
+      acc = Handler.stub(Counter, fn _op, _args, state -> {:ok, state} end, 0)
+      assert %Handler{} = acc
+    end
+
+    test "piped with accumulator" do
+      acc =
+        Handler.expect(Counter, :increment, fn [_] -> 1 end)
+        |> Handler.stub(Counter, fn _op, _args, state -> {:ok, state} end, 0)
+
+      assert {:stateful, _, 0} = acc.contracts[Counter].fallback
+      assert length(acc.contracts[Counter].expects[:increment]) == 1
+    end
+
+    test "stateful fallback replaces fn fallback" do
+      stateful_fn = fn _op, _args, state -> {:ok, state} end
+
+      acc =
+        Handler.stub(Counter, fn _op, _args -> :fn_fallback end)
+        |> Handler.stub(Counter, stateful_fn, 0)
+
+      assert {:stateful, ^stateful_fn, 0} = acc.contracts[Counter].fallback
+    end
+
+    test "fn fallback replaces stateful fallback" do
+      fn_fallback = fn _op, _args -> :fn_fallback end
+
+      acc =
+        Handler.stub(Counter, fn _op, _args, state -> {:ok, state} end, 0)
+        |> Handler.stub(Counter, fn_fallback)
+
+      assert {:fn, ^fn_fallback} = acc.contracts[Counter].fallback
+    end
+  end
+
+  describe "dispatch with stateful fallback" do
+    test "stateful fallback handles operations with state threading" do
+      # A simple counter: increment adds to state, get_count reads it
+      Handler.stub(
+        Counter,
+        fn
+          :increment, [n], count -> {count + n, count + n}
+          :get_count, [], count -> {count, count}
+        end,
+        0
+      )
+      |> Handler.install!()
+
+      assert 5 = Counter.Port.increment(5)
+      assert 8 = Counter.Port.increment(3)
+      assert 8 = Counter.Port.get_count()
+    end
+
+    test "expects take priority over stateful fallback" do
+      Handler.expect(Counter, :increment, fn [_] -> 999 end)
+      |> Handler.stub(
+        Counter,
+        fn
+          :increment, [n], count -> {count + n, count + n}
+          :get_count, [], count -> {count, count}
+        end,
+        0
+      )
+      |> Handler.install!()
+
+      # First increment: expect fires (returns 999), state unchanged
+      assert 999 = Counter.Port.increment(5)
+      # Second increment: expect consumed, falls through to stateful fallback
+      assert 3 = Counter.Port.increment(3)
+      assert 3 = Counter.Port.get_count()
+    end
+
+    test "per-op stubs take priority over stateful fallback" do
+      Handler.stub(Counter, :get_count, fn [] -> 42 end)
+      |> Handler.stub(
+        Counter,
+        fn
+          :increment, [n], count -> {count + n, count + n}
+          :get_count, [], count -> {count, count}
+        end,
+        0
+      )
+      |> Handler.install!()
+
+      assert 5 = Counter.Port.increment(5)
+      # get_count: per-op stub, not stateful fallback
+      assert 42 = Counter.Port.get_count()
+    end
+
+    test "error simulation — expect short-circuits before fallback" do
+      # The key use case: first call returns error, rest go through stateful fallback
+      Handler.expect(Counter, :increment, fn [_n] -> {:error, :overflow} end)
+      |> Handler.stub(
+        Counter,
+        fn
+          :increment, [n], count -> {count + n, count + n}
+          :get_count, [], count -> {count, count}
+        end,
+        0
+      )
+      |> Handler.install!()
+
+      # First increment: expect returns error, fallback state unchanged (still 0)
+      assert {:error, :overflow} = Counter.Port.increment(100)
+      # Second increment: falls through to fallback, state is still 0
+      assert 5 = Counter.Port.increment(5)
+      assert 5 = Counter.Port.get_count()
+    end
+
+    test "stateful fallback works with verify!" do
+      Handler.expect(Counter, :increment, fn [_] -> 999 end)
+      |> Handler.stub(
+        Counter,
+        fn
+          :increment, [n], count -> {count + n, count + n}
+          :get_count, [], count -> {count, count}
+        end,
+        0
+      )
+      |> Handler.install!()
+
+      Counter.Port.increment(5)
+
+      assert :ok = Handler.verify!()
+    end
+
+    test "full priority chain: expects > per-op stubs > stateful fallback" do
+      Handler.expect(Counter, :increment, fn [_] -> :expected end)
+      |> Handler.stub(Counter, :get_count, fn [] -> :stubbed end)
+      |> Handler.stub(
+        Counter,
+        fn
+          :increment, [n], count -> {count + n, count + n}
+          :get_count, [], count -> {count, count}
+        end,
+        0
+      )
+      |> Handler.install!()
+
+      # increment: expect first
+      assert :expected = Counter.Port.increment(5)
+      # get_count: per-op stub
+      assert :stubbed = Counter.Port.get_count()
+      # increment: expect consumed, stateful fallback
+      assert 3 = Counter.Port.increment(3)
+    end
+
+    test "FunctionClauseError in stateful fallback raises with descriptive error" do
+      # Stateful fallback only handles :increment
+      Handler.stub(
+        Counter,
+        fn :increment, [n], count -> {count + n, count + n} end,
+        0
+      )
+      |> Handler.install!()
+
+      assert 5 = Counter.Port.increment(5)
+
+      # get_count not handled by fallback
+      assert_raise RuntimeError, ~r/Unexpected call to.*get_count/, fn ->
+        Counter.Port.get_count()
+      end
+    end
+  end
+
   describe "dispatch with fallback stub" do
     test "fallback stub handles operations without specific stubs" do
       Handler.stub(Greeter, fn
