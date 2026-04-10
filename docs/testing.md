@@ -165,6 +165,11 @@ end)
 When an expect short-circuits (returns an error), the fallback
 state is unchanged — correct for error simulation.
 
+Note: expects cannot delegate to the stateful fallback inline
+(no "passthrough" callback). This is because threading mutable
+state through a user-provided callback is an algebraic effects
+problem — Skuld provides this capability for cases that need it.
+
 **Module fallback** — a module implementing the contract's behaviour.
 Override specific operations while the rest delegate to the real
 implementation:

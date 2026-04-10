@@ -86,6 +86,22 @@ defmodule HexPort.Handler do
   When an expect short-circuits (e.g. returning an error), the
   fallback state is unchanged — correct for error simulation.
 
+  **Limitation: no inline passthrough.** Expects and per-operation
+  stubs cannot delegate to the stateful fallback inline — they
+  produce return values directly without access to the fallback's
+  state. This is a deliberate design choice: providing a
+  `passthrough` callback that threads mutable state through a
+  user-provided function is fundamentally an algebraic effects
+  problem. Without an effects library, any solution is either
+  janky (process dictionary side-channel) or leaky (exposing
+  `{result, state}` tuples to the user).
+
+  In practice, the main use case — error simulation — doesn't need
+  passthrough: the expect returns an error, the fallback never runs,
+  and its state is correctly unchanged. For wrapping or transforming
+  fallback results, [Skuld](https://github.com/mccraigmccraig/skuld)
+  provides algebraic effects that handle this naturally.
+
   ### Module fallback
 
   A module implementing the contract's `@behaviour` — all operations
