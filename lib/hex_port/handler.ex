@@ -51,12 +51,15 @@ defmodule HexPort.Handler do
       |> HexPort.Handler.stub(MyContract, :get, fn [_] -> :default end)
       |> HexPort.Handler.install!()
 
-  ## Contract-wide fallback stub
+  ## Contract-wide fallback
 
-  A 2-arity stub `fn operation, args -> result end` acts as a
-  catch-all for any operation without a specific expect or stub.
-  This is the same signature as `set_fn_handler`, so existing
-  handler functions can be reused directly:
+  A fallback handles any operation without a specific expect or
+  per-operation stub. Two forms are supported:
+
+  ### Function fallback
+
+  A 2-arity `fn operation, args -> result end` — the same signature
+  as `set_fn_handler`:
 
       HexPort.Handler.expect(MyContract, :get, fn [id] -> %Thing{id: id} end)
       |> HexPort.Handler.stub(MyContract, fn
@@ -65,7 +68,26 @@ defmodule HexPort.Handler do
       end)
       |> HexPort.Handler.install!()
 
-  Dispatch priority: expects > per-operation stubs > fallback stub > raise.
+  ### Module fallback
+
+  A module implementing the contract's `@behaviour` — all operations
+  delegate to the module via `apply(module, operation, args)`:
+
+      HexPort.Handler.expect(MyContract, :get, fn [_] -> {:error, :not_found} end)
+      |> HexPort.Handler.stub(MyContract, MyApp.Impl)
+      |> HexPort.Handler.install!()
+
+  The module is validated at `install!` time — all contract operations
+  must be exported.
+
+  **Mimic-style limitation:** if the module's `:bar` internally calls
+  `:foo`, and you've stubbed `:foo`, the module won't see your stub —
+  it calls its own `:foo` directly. For stubs to be visible, the
+  module must call through the facade.
+
+  Dispatch priority: expects > per-operation stubs > fallback > raise.
+  Function and module fallbacks are mutually exclusive — setting one
+  replaces the other.
 
   ## Multi-contract
 
@@ -79,7 +101,8 @@ defmodule HexPort.Handler do
   |-----|-----------------|
   | `expect(Mock, :fn, n, fun)` | `expect(Contract, :fn, fun, times: n)` |
   | `stub(Mock, :fn, fun)` | `stub(Contract, :fn, fun)` — per-operation |
-  | (no equivalent) | `stub(Contract, fn op, args -> ... end)` — contract-wide fallback |
+  | (no equivalent) | `stub(Contract, fn op, args -> ... end)` — function fallback |
+  | (no equivalent) | `stub(Contract, ImplModule)` — module fallback |
   | `verify!()` | `verify!()` |
   | `verify_on_exit!()` | `verify_on_exit!()` |
   | `Mox.defmock(Mock, for: Behaviour)` | Not needed |
@@ -97,12 +120,14 @@ defmodule HexPort.Handler do
 
   defstruct contracts: %{}
 
+  @type fallback :: nil | {:fn, :erlang.function()} | {:module, module()}
+
   @type t :: %__MODULE__{
           contracts: %{
             module() => %{
               expects: %{atom() => [:erlang.function()]},
               stubs: %{atom() => :erlang.function()},
-              fallback_stub: :erlang.function() | nil
+              fallback: fallback()
             }
           }
         }
@@ -163,7 +188,7 @@ defmodule HexPort.Handler do
   @doc """
   Add a stub for a contract operation or a contract-wide fallback.
 
-  ## Per-operation stub (3-arity function)
+  ## Per-operation stub (1-arity function)
 
   The function receives the argument list and returns the result.
   Stubs handle any number of calls and are used after all expectations
@@ -172,7 +197,7 @@ defmodule HexPort.Handler do
 
       HexPort.Handler.stub(MyContract, :list, fn [_] -> [] end)
 
-  ## Contract-wide fallback stub (2-arity function)
+  ## Function fallback (2-arity function)
 
   When the function is 2-arity `fn operation, args -> result end`,
   it acts as a fallback for any operation on the contract that has
@@ -184,7 +209,20 @@ defmodule HexPort.Handler do
         :count, [] -> 0
       end)
 
-  Dispatch priority: expects > per-operation stubs > fallback stub > raise.
+  ## Module fallback (atom)
+
+  When an atom (module name) is passed, all unhandled operations
+  delegate to the module via `apply(module, operation, args)`. The
+  module must implement the contract's `@behaviour`:
+
+      HexPort.Handler.stub(MyContract, MyApp.Impl)
+
+  The module is validated at `install!` time.
+
+  Function and module fallbacks are mutually exclusive — setting one
+  replaces the other.
+
+  Dispatch priority: expects > per-operation stubs > fallback > raise.
 
   The accumulator argument is optional — when omitted, a fresh
   accumulator is created via `new/0`.
@@ -195,6 +233,11 @@ defmodule HexPort.Handler do
     stub(new(), contract, fun)
   end
 
+  def stub(contract, module)
+      when is_atom(contract) and is_atom(module) do
+    stub(new(), contract, module)
+  end
+
   def stub(contract, operation, fun)
       when is_atom(contract) and is_atom(operation) and is_function(fun, 1) do
     stub(new(), contract, operation, fun)
@@ -203,7 +246,14 @@ defmodule HexPort.Handler do
   def stub(%__MODULE__{} = acc, contract, fun)
       when is_atom(contract) and is_function(fun, 2) do
     update_contract(acc, contract, fn contract_data ->
-      %{contract_data | fallback_stub: fun}
+      %{contract_data | fallback: {:fn, fun}}
+    end)
+  end
+
+  def stub(%__MODULE__{} = acc, contract, module)
+      when is_atom(contract) and is_atom(module) do
+    update_contract(acc, contract, fn contract_data ->
+      %{contract_data | fallback: {:module, module}}
     end)
   end
 
@@ -230,8 +280,9 @@ defmodule HexPort.Handler do
   def install!(%__MODULE__{contracts: contracts}) do
     contract_modules = Map.keys(contracts)
 
-    for {contract, %{expects: expects, stubs: stubs, fallback_stub: fallback_stub}} <- contracts do
-      handler_fn = build_handler_fn(contract, stubs, fallback_stub)
+    for {contract, %{expects: expects, stubs: stubs, fallback: fallback}} <- contracts do
+      validate_fallback!(contract, fallback)
+      handler_fn = build_handler_fn(contract, stubs, fallback)
       initial_state = %{expects: expects}
 
       HexPort.Testing.set_stateful_handler(contract, handler_fn, initial_state)
@@ -351,7 +402,7 @@ defmodule HexPort.Handler do
   # -- Internal: accumulator manipulation --
 
   defp empty_contract_data do
-    %{expects: %{}, stubs: %{}, fallback_stub: nil}
+    %{expects: %{}, stubs: %{}, fallback: nil}
   end
 
   defp update_contract(%__MODULE__{contracts: contracts} = acc, contract, update_fn) do
@@ -362,7 +413,7 @@ defmodule HexPort.Handler do
 
   # -- Internal: handler construction --
 
-  defp build_handler_fn(contract, stubs, fallback_stub) do
+  defp build_handler_fn(contract, stubs, fallback) do
     fn operation, args, state ->
       case pop_expect(state, operation) do
         {:ok, fun, new_state} ->
@@ -371,7 +422,7 @@ defmodule HexPort.Handler do
         :none ->
           case Map.get(stubs, operation) do
             nil ->
-              invoke_fallback_or_raise(fallback_stub, contract, operation, args, state)
+              invoke_fallback_or_raise(fallback, contract, operation, args, state)
 
             stub_fun ->
               {stub_fun.(args), state}
@@ -387,13 +438,23 @@ defmodule HexPort.Handler do
     {{:defer, fn -> raise msg end}, state}
   end
 
-  defp invoke_fallback_or_raise(fallback_fn, contract, operation, args, state) do
+  defp invoke_fallback_or_raise({:fn, fallback_fn}, contract, operation, args, state) do
     result = fallback_fn.(operation, args)
     {result, state}
   rescue
     FunctionClauseError ->
-      # FunctionClauseError from the fallback means it doesn't handle
+      # FunctionClauseError from the fallback fn means it doesn't handle
       # this operation — defer the raise to the calling process.
+      msg = unexpected_call_message(contract, operation, args, state)
+      {{:defer, fn -> reraise msg, __STACKTRACE__ end}, state}
+  end
+
+  defp invoke_fallback_or_raise({:module, module}, contract, operation, args, state) do
+    result = apply(module, operation, args)
+    {result, state}
+  rescue
+    UndefinedFunctionError ->
+      # The module doesn't implement this operation.
       msg = unexpected_call_message(contract, operation, args, state)
       {{:defer, fn -> reraise msg, __STACKTRACE__ end}, state}
   end
@@ -430,6 +491,41 @@ defmodule HexPort.Handler do
     Remaining expectations for #{inspect(contract)}:
     #{remaining_msg}
     """
+  end
+
+  defp validate_fallback!(_contract, nil), do: :ok
+  defp validate_fallback!(_contract, {:fn, _fun}), do: :ok
+
+  defp validate_fallback!(contract, {:module, module}) do
+    unless Code.ensure_loaded?(module) do
+      raise ArgumentError,
+            "module fallback #{inspect(module)} for #{inspect(contract)} is not loaded"
+    end
+
+    # Check that the module exports the contract's operations
+    Code.ensure_loaded(contract)
+
+    if function_exported?(contract, :__port_operations__, 0) do
+      operations = contract.__port_operations__()
+
+      missing =
+        Enum.reject(operations, fn %{name: name, arity: arity} ->
+          function_exported?(module, name, arity)
+        end)
+
+      if missing != [] do
+        details =
+          Enum.map_join(missing, ", ", fn %{name: name, arity: arity} ->
+            "#{name}/#{arity}"
+          end)
+
+        raise ArgumentError,
+              "module fallback #{inspect(module)} for #{inspect(contract)} " <>
+                "is missing functions: #{details}"
+      end
+    end
+
+    :ok
   end
 
   defp store_installed_contracts(contract_modules) do

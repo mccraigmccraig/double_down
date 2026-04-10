@@ -109,7 +109,7 @@ defmodule HexPort.HandlerTest do
 
       acc = Handler.stub(Greeter, fun)
 
-      assert acc.contracts[Greeter].fallback_stub == fun
+      assert acc.contracts[Greeter].fallback == {:fn, fun}
     end
 
     test "replacing fallback stub overwrites previous" do
@@ -120,7 +120,7 @@ defmodule HexPort.HandlerTest do
         Handler.stub(Greeter, fun1)
         |> Handler.stub(Greeter, fun2)
 
-      assert acc.contracts[Greeter].fallback_stub == fun2
+      assert acc.contracts[Greeter].fallback == {:fn, fun2}
     end
 
     test "default first arg starts with new()" do
@@ -134,17 +134,125 @@ defmodule HexPort.HandlerTest do
         Handler.expect(Greeter, :greet, fn [_] -> "expected" end)
         |> Handler.stub(Greeter, fn _op, _args -> :fallback end)
 
-      assert acc.contracts[Greeter].fallback_stub != nil
+      assert acc.contracts[Greeter].fallback != nil
       assert length(acc.contracts[Greeter].expects[:greet]) == 1
     end
 
-    test "per-operation stub and fallback stub coexist" do
+    test "per-operation stub and fallback coexist" do
       acc =
         Handler.stub(Greeter, :greet, fn [_] -> "per-op" end)
         |> Handler.stub(Greeter, fn _op, _args -> :fallback end)
 
       assert acc.contracts[Greeter].stubs[:greet] != nil
-      assert acc.contracts[Greeter].fallback_stub != nil
+      assert acc.contracts[Greeter].fallback != nil
+    end
+  end
+
+  describe "stub/2..3 module fallback" do
+    test "sets module fallback" do
+      acc = Handler.stub(Greeter, Greeter.Impl)
+      assert acc.contracts[Greeter].fallback == {:module, Greeter.Impl}
+    end
+
+    test "module fallback replaces fn fallback" do
+      acc =
+        Handler.stub(Greeter, fn _op, _args -> :fn_fallback end)
+        |> Handler.stub(Greeter, Greeter.Impl)
+
+      assert acc.contracts[Greeter].fallback == {:module, Greeter.Impl}
+    end
+
+    test "fn fallback replaces module fallback" do
+      fun = fn _op, _args -> :fn_fallback end
+
+      acc =
+        Handler.stub(Greeter, Greeter.Impl)
+        |> Handler.stub(Greeter, fun)
+
+      assert acc.contracts[Greeter].fallback == {:fn, fun}
+    end
+
+    test "default first arg starts with new()" do
+      acc = Handler.stub(Greeter, Greeter.Impl)
+      assert %Handler{} = acc
+    end
+
+    test "piped with accumulator" do
+      acc =
+        Handler.expect(Greeter, :greet, fn [_] -> "expected" end)
+        |> Handler.stub(Greeter, Greeter.Impl)
+
+      assert acc.contracts[Greeter].fallback == {:module, Greeter.Impl}
+      assert length(acc.contracts[Greeter].expects[:greet]) == 1
+    end
+  end
+
+  describe "dispatch with module fallback" do
+    test "module fallback handles operations without expects or stubs" do
+      Handler.stub(Greeter, Greeter.Impl)
+      |> Handler.install!()
+
+      assert "Hello, Alice!" = Greeter.Port.greet("Alice")
+      assert {:ok, "Hello, Bob!"} = Greeter.Port.fetch_greeting("Bob")
+    end
+
+    test "expects take priority over module fallback" do
+      Handler.expect(Greeter, :greet, fn [_] -> "expected" end)
+      |> Handler.stub(Greeter, Greeter.Impl)
+      |> Handler.install!()
+
+      assert "expected" = Greeter.Port.greet("Alice")
+      # After expect consumed, module fallback takes over
+      assert "Hello, Bob!" = Greeter.Port.greet("Bob")
+    end
+
+    test "per-op stubs take priority over module fallback" do
+      Handler.stub(Greeter, :greet, fn [name] -> "stubbed: #{name}" end)
+      |> Handler.stub(Greeter, Greeter.Impl)
+      |> Handler.install!()
+
+      assert "stubbed: Alice" = Greeter.Port.greet("Alice")
+      # fetch_greeting falls through to module
+      assert {:ok, "Hello, Bob!"} = Greeter.Port.fetch_greeting("Bob")
+    end
+
+    test "full priority chain: expects > per-op stubs > module fallback" do
+      Handler.expect(Greeter, :greet, fn [_] -> "expected" end)
+      |> Handler.stub(Greeter, :fetch_greeting, fn [name] -> {:ok, "stubbed: #{name}"} end)
+      |> Handler.stub(Greeter, Greeter.Impl)
+      |> Handler.install!()
+
+      # greet: expect first
+      assert "expected" = Greeter.Port.greet("Alice")
+      # greet: expect consumed, module fallback
+      assert "Hello, Bob!" = Greeter.Port.greet("Bob")
+      # fetch_greeting: per-op stub
+      assert {:ok, "stubbed: Carol"} = Greeter.Port.fetch_greeting("Carol")
+    end
+
+    test "module fallback works with verify!" do
+      Handler.expect(Greeter, :greet, fn [_] -> "expected" end)
+      |> Handler.stub(Greeter, Greeter.Impl)
+      |> Handler.install!()
+
+      Greeter.Port.greet("Alice")
+
+      assert :ok = Handler.verify!()
+    end
+
+    test "install! validates module exports contract operations" do
+      assert_raise ArgumentError, ~r/missing functions/, fn ->
+        # Use a module that doesn't implement the contract
+        Handler.stub(Greeter, String)
+        |> Handler.install!()
+      end
+    end
+
+    test "install! validates module is loaded" do
+      assert_raise ArgumentError, ~r/not loaded/, fn ->
+        Handler.stub(Greeter, DoesNotExist.Module)
+        |> Handler.install!()
+      end
     end
   end
 

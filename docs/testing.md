@@ -131,11 +131,13 @@ HexPort.Handler.expect(MyApp.Todos, :get_todo, fn [id] -> {:ok, %Todo{id: id}} e
 |> HexPort.Handler.install!()
 ```
 
-### Contract-wide fallback stub
+### Contract-wide fallback
 
-A 2-arity stub acts as a catch-all for operations without a specific
-expect or stub. This is the same signature as `set_fn_handler`, so
-existing handler functions can be reused:
+A fallback handles any operation without a specific expect or
+per-operation stub. Two forms are supported:
+
+**Function fallback** — a 2-arity `fn operation, args -> result end`,
+the same signature as `set_fn_handler`:
 
 ```elixir
 HexPort.Handler.expect(MyApp.Todos, :create_todo, fn [p] -> {:ok, struct!(Todo, p)} end)
@@ -146,7 +148,22 @@ end)
 |> HexPort.Handler.install!()
 ```
 
-Dispatch priority: expects > per-operation stubs > fallback stub > raise.
+**Module fallback** — a module implementing the contract's behaviour.
+Override specific operations while the rest delegate to the real
+implementation:
+
+```elixir
+HexPort.Handler.expect(MyApp.Todos, :create_todo, fn [_] -> {:error, :conflict} end)
+|> HexPort.Handler.stub(MyApp.Todos, MyApp.Todos.Ecto)
+|> HexPort.Handler.install!()
+```
+
+The module is validated at `install!` time. Note: if the module's
+`:bar` internally calls `:foo` and you've stubbed `:foo`, the module
+won't see your stub — it calls its own `:foo` directly. For stubs to
+be visible, the module must call through the facade.
+
+Dispatch priority: expects > per-operation stubs > fallback > raise.
 
 ### Multi-contract
 
