@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.19.0]
+
+### Added
+
+- `HexPort.Handler.stub/2` and `stub/3` (with accumulator) for
+  2-arity contract-wide fallback stubs. Accepts
+  `fn operation, args -> result end` — the same signature as
+  `set_fn_handler` — as a catch-all for operations without a
+  specific expect or per-operation stub. Dispatch priority:
+  expects > per-operation stubs > fallback stub > raise.
+
 ## [0.18.0]
 
 ### Added
@@ -281,7 +292,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `HexPort.Testing` with NimbleOwnership, `Repo.Test` stateless
   adapter, CI setup, Credo, Dialyzer.
 
-[Unreleased]: https://github.com/mccraigmccraig/hex_port/compare/v0.18.0...HEAD
+[Unreleased]: https://github.com/mccraigmccraig/hex_port/compare/v0.19.0...HEAD
+[0.19.0]: https://github.com/mccraigmccraig/hex_port/compare/v0.18.0...v0.19.0
 [0.18.0]: https://github.com/mccraigmccraig/hex_port/compare/v0.17.0...v0.18.0
 [0.17.0]: https://github.com/mccraigmccraig/hex_port/compare/v0.16.1...v0.17.0
 [0.16.1]: https://github.com/mccraigmccraig/hex_port/compare/v0.16.0...v0.16.1
