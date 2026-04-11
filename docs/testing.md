@@ -257,11 +257,13 @@ end
 
 ### When to use Double vs raw handlers
 
-Use `DoubleDown.Double` when you want Mox-style call counting,
-ordered expectations, or fakes with expect overrides. Use
-`set_fn_handler` for simple canned responses. Use
-`set_stateful_handler` directly when you need custom state management
-without the expect/stub/fake layer.
+`DoubleDown.Double` covers all common test double scenarios:
+`expect` for call counting and ordered expectations, `stub` for
+canned responses, and `fake` for stateful or module-backed
+implementations. The raw `set_fn_handler` and `set_stateful_handler`
+APIs are still available but entirely optional — they predate
+`Double` and remain for cases where you want direct control without
+the expect/stub/fake layer.
 
 ## Dispatch logging
 
