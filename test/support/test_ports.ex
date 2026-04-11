@@ -6,11 +6,11 @@ defmodule DoubleDown.Test.Greeter.Port do
   use DoubleDown.Facade, contract: DoubleDown.Test.Greeter, otp_app: :double_down
 end
 
-# Facade for DoubleDown.Repo.Contract (library-provided contract).
+# Facade for DoubleDown.Repo (library-provided contract).
 # In a real app this would be defined in the application's namespace,
 # e.g. MyApp.Repo. Here we use DoubleDown.Repo.Port for test purposes.
 defmodule DoubleDown.Repo.Port do
-  use DoubleDown.Facade, contract: DoubleDown.Repo.Contract, otp_app: :double_down
+  use DoubleDown.Facade, contract: DoubleDown.Repo, otp_app: :double_down
 end
 
 defmodule DoubleDown.Test.Counter.Port do

@@ -224,7 +224,7 @@ end)
 MyApp.Todos
 |> DoubleDown.Handler.expect(:create_todo, fn [p] -> {:ok, struct!(Todo, p)} end)
 
-DoubleDown.Handler.stub(DoubleDown.Repo.Contract, :one, fn [_] -> nil end)
+DoubleDown.Handler.stub(DoubleDown.Repo, :one, fn [_] -> nil end)
 ```
 
 ### Verification
@@ -451,7 +451,7 @@ defmodule MyApp.PipelineIntegrationTest do
     DoubleDown.Testing.set_mode_to_global()
 
     DoubleDown.Testing.set_stateful_handler(
-      DoubleDown.Repo.Contract,
+      DoubleDown.Repo,
       &DoubleDown.Repo.InMemory.dispatch/3,
       DoubleDown.Repo.InMemory.new()
     )
@@ -498,7 +498,7 @@ with a nil implementation:
 ```elixir
 # config/test.exs
 config :my_app, MyApp.Todos, impl: nil
-config :my_app, DoubleDown.Repo.Contract, impl: nil
+config :my_app, DoubleDown.Repo, impl: nil
 ```
 
 Now any test that forgets to set a handler gets an immediate error:

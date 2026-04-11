@@ -33,7 +33,7 @@ Most domain logic interacts with the database in two ways:
 
 DoubleDown handles these with two contracts:
 
-- **`DoubleDown.Repo.Contract`** — ships with DoubleDown, covers all
+- **`DoubleDown.Repo`** — ships with DoubleDown, covers all
   generic Repo operations. One facade per app, shared by all features.
 - **A per-feature Queries contract** — you define this with `defcallback`
   for each feature's domain-specific reads.
@@ -51,16 +51,16 @@ Suppose you have a `Billing.create_invoice/1` function that:
 
 ```elixir
 defmodule MyApp.Repo do
-  use DoubleDown.Facade, contract: DoubleDown.Repo.Contract, otp_app: :my_app
+  use DoubleDown.Facade, contract: DoubleDown.Repo, otp_app: :my_app
 end
 ```
 
 ```elixir
 # config/config.exs
-config :my_app, DoubleDown.Repo.Contract, impl: MyApp.EctoRepo
+config :my_app, DoubleDown.Repo, impl: MyApp.EctoRepo
 
 # config/test.exs
-config :my_app, DoubleDown.Repo.Contract, impl: nil
+config :my_app, DoubleDown.Repo, impl: nil
 ```
 
 **Step 2: Define a Queries contract** for the domain reads
@@ -133,7 +133,7 @@ defmodule MyApp.BillingTest do
   use ExUnit.Case, async: true
 
   alias MyApp.Repo
-  alias DoubleDown.Repo.Contract, as: RepoContract
+  alias DoubleDown.Repo, as: RepoContract
   alias MyApp.Billing.Queries
 
   setup do
@@ -192,7 +192,7 @@ Set `impl: nil` in `config/test.exs` for every contract:
 
 ```elixir
 # config/test.exs
-config :my_app, DoubleDown.Repo.Contract, impl: nil
+config :my_app, DoubleDown.Repo, impl: nil
 config :my_app, MyApp.Billing.Queries, impl: nil
 ```
 
@@ -202,7 +202,7 @@ For integration tests that intentionally use the real DB, set the
 handler explicitly:
 
 ```elixir
-DoubleDown.Testing.set_handler(DoubleDown.Repo.Contract, MyApp.EctoRepo)
+DoubleDown.Testing.set_handler(DoubleDown.Repo, MyApp.EctoRepo)
 ```
 
 ## When to use InMemory vs Test

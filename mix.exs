@@ -52,7 +52,7 @@ defmodule DoubleDown.MixProject do
             DoubleDown.Log
           ],
           Repo: [
-            DoubleDown.Repo.Contract,
+            DoubleDown.Repo,
             DoubleDown.Repo.Test,
             DoubleDown.Repo.InMemory,
             DoubleDown.Repo.MultiStepper

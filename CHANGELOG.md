@@ -185,7 +185,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `pre_dispatch` wrapping) or `Ecto.Multi` structs.
 - The hardcoded `:transact` special-case in `DoubleDown.Facade` has been
   removed. The Repo-specific facade injection is now declared on the
-  `defcallback` in `DoubleDown.Repo.Contract` using the generic
+  `defcallback` in `DoubleDown.Repo` using the generic
   `pre_dispatch` mechanism.
 
 ### Fixed
@@ -200,7 +200,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- `DoubleDown.Repo.Contract.insert_all/3` — standalone bulk insert
+- `DoubleDown.Repo.insert_all/3` — standalone bulk insert
   operation, dispatched via fallback in both test adapters.
 - `DoubleDown.Testing.set_mode_to_global/0` and `set_mode_to_private/0`
   — global handler mode for testing through supervision trees,
@@ -303,7 +303,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- `DoubleDown.Repo.Contract` — built-in 15-operation Ecto Repo
+- `DoubleDown.Repo` — built-in 15-operation Ecto Repo
   contract with `Repo.Test` (stateless) and `Repo.InMemory`
   (stateful) test doubles.
 - `MultiStepper` for stepping through `Ecto.Multi` operations

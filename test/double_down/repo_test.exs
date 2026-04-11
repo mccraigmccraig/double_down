@@ -40,10 +40,10 @@ defmodule DoubleDown.RepoTest do
   # Contract Tests
   # -------------------------------------------------------------------
 
-  describe "DoubleDown.Repo.Contract" do
+  describe "DoubleDown.Repo" do
     test "generates Behaviour module with all callbacks" do
-      {:module, _} = Code.ensure_loaded(Repo.Contract)
-      {:ok, callbacks} = Code.Typespec.fetch_callbacks(Repo.Contract)
+      {:module, _} = Code.ensure_loaded(Repo)
+      {:ok, callbacks} = Code.Typespec.fetch_callbacks(Repo)
       callback_names = Enum.map(callbacks, fn {name_arity, _} -> elem(name_arity, 0) end)
 
       assert :insert in callback_names
@@ -84,7 +84,7 @@ defmodule DoubleDown.RepoTest do
     end
 
     test "read bang operations are separate ports (not auto-generated bangs)" do
-      ops = Repo.Contract.__callbacks__() |> Enum.map(& &1.name)
+      ops = Repo.__callbacks__() |> Enum.map(& &1.name)
 
       # These are declared as defcallback with bang: false
       assert :get! in ops
@@ -93,7 +93,7 @@ defmodule DoubleDown.RepoTest do
     end
 
     test "__callbacks__ lists all 16 operations" do
-      ops = Repo.Contract.__callbacks__()
+      ops = Repo.__callbacks__()
 
       assert length(ops) == 16
 
@@ -158,7 +158,7 @@ defmodule DoubleDown.RepoTest do
 
   describe "Ecto Repo delegation" do
     setup do
-      DoubleDown.Testing.set_handler(Repo.Contract, MockRepo)
+      DoubleDown.Testing.set_handler(Repo, MockRepo)
       :ok
     end
 
@@ -232,7 +232,7 @@ defmodule DoubleDown.RepoTest do
 
     test "bang variant raises on {:error, reason}" do
       # Override with an fn handler that returns an error
-      DoubleDown.Testing.set_fn_handler(Repo.Contract, fn
+      DoubleDown.Testing.set_fn_handler(Repo, fn
         :insert, [_cs] -> {:error, :validation_failed}
       end)
 

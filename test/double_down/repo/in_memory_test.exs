@@ -239,7 +239,7 @@ defmodule DoubleDown.Repo.InMemoryTest do
   describe "write operations" do
     setup do
       DoubleDown.Testing.set_stateful_handler(
-        Repo.Contract,
+        Repo,
         &Repo.InMemory.dispatch/3,
         Repo.InMemory.new()
       )
@@ -266,7 +266,7 @@ defmodule DoubleDown.Repo.InMemoryTest do
       initial = Repo.InMemory.new(seed: [%User{id: 5, name: "Existing"}])
 
       DoubleDown.Testing.set_stateful_handler(
-        Repo.Contract,
+        Repo,
         &Repo.InMemory.dispatch/3,
         initial
       )
@@ -387,7 +387,7 @@ defmodule DoubleDown.Repo.InMemoryTest do
   describe "PK autogeneration" do
     setup do
       DoubleDown.Testing.set_stateful_handler(
-        Repo.Contract,
+        Repo,
         &Repo.InMemory.dispatch/3,
         Repo.InMemory.new()
       )
@@ -477,7 +477,7 @@ defmodule DoubleDown.Repo.InMemoryTest do
         )
 
       DoubleDown.Testing.set_stateful_handler(
-        Repo.Contract,
+        Repo,
         &Repo.InMemory.dispatch/3,
         initial
       )
@@ -504,7 +504,7 @@ defmodule DoubleDown.Repo.InMemoryTest do
           fallback_fn: fn :get, [User, 99], _state -> bob end
         )
 
-      DoubleDown.Testing.set_stateful_handler(Repo.Contract, &Repo.InMemory.dispatch/3, state)
+      DoubleDown.Testing.set_stateful_handler(Repo, &Repo.InMemory.dispatch/3, state)
 
       # Found in state
       assert %User{id: 1, name: "Alice"} = Repo.Port.get(User, 1)
@@ -516,7 +516,7 @@ defmodule DoubleDown.Repo.InMemoryTest do
       state =
         Repo.InMemory.new(fallback_fn: fn :get, [User, 42], _state -> nil end)
 
-      DoubleDown.Testing.set_stateful_handler(Repo.Contract, &Repo.InMemory.dispatch/3, state)
+      DoubleDown.Testing.set_stateful_handler(Repo, &Repo.InMemory.dispatch/3, state)
 
       assert_raise ArgumentError, ~r/InMemory cannot service :get/, fn ->
         Repo.Port.get(User, 999)
@@ -542,7 +542,7 @@ defmodule DoubleDown.Repo.InMemoryTest do
           fallback_fn: fn :get!, [User, 99], _state -> bob end
         )
 
-      DoubleDown.Testing.set_stateful_handler(Repo.Contract, &Repo.InMemory.dispatch/3, state)
+      DoubleDown.Testing.set_stateful_handler(Repo, &Repo.InMemory.dispatch/3, state)
 
       assert %User{id: 1, name: "Alice"} = Repo.Port.get!(User, 1)
       assert ^bob = Repo.Port.get!(User, 99)
@@ -568,7 +568,7 @@ defmodule DoubleDown.Repo.InMemoryTest do
           end
         )
 
-      DoubleDown.Testing.set_stateful_handler(Repo.Contract, &Repo.InMemory.dispatch/3, state)
+      DoubleDown.Testing.set_stateful_handler(Repo, &Repo.InMemory.dispatch/3, state)
 
       assert %User{name: "Alice"} = Repo.Port.get_by(User, name: "Alice")
 
@@ -581,7 +581,7 @@ defmodule DoubleDown.Repo.InMemoryTest do
 
     test "get_by raises without fallback" do
       DoubleDown.Testing.set_stateful_handler(
-        Repo.Contract,
+        Repo,
         &Repo.InMemory.dispatch/3,
         Repo.InMemory.new()
       )
@@ -597,7 +597,7 @@ defmodule DoubleDown.Repo.InMemoryTest do
       state =
         Repo.InMemory.new(fallback_fn: fn :get_by!, [User, [name: "Bob"]], _state -> bob end)
 
-      DoubleDown.Testing.set_stateful_handler(Repo.Contract, &Repo.InMemory.dispatch/3, state)
+      DoubleDown.Testing.set_stateful_handler(Repo, &Repo.InMemory.dispatch/3, state)
       assert %User{name: "Bob"} = Repo.Port.get_by!(User, name: "Bob")
     end
 
@@ -607,13 +607,13 @@ defmodule DoubleDown.Repo.InMemoryTest do
       state =
         Repo.InMemory.new(fallback_fn: fn :one, [User], _state -> alice end)
 
-      DoubleDown.Testing.set_stateful_handler(Repo.Contract, &Repo.InMemory.dispatch/3, state)
+      DoubleDown.Testing.set_stateful_handler(Repo, &Repo.InMemory.dispatch/3, state)
       assert %User{name: "Alice"} = Repo.Port.one(User)
     end
 
     test "one raises without fallback" do
       DoubleDown.Testing.set_stateful_handler(
-        Repo.Contract,
+        Repo,
         &Repo.InMemory.dispatch/3,
         Repo.InMemory.new()
       )
@@ -629,7 +629,7 @@ defmodule DoubleDown.Repo.InMemoryTest do
       state =
         Repo.InMemory.new(fallback_fn: fn :one!, [User], _state -> alice end)
 
-      DoubleDown.Testing.set_stateful_handler(Repo.Contract, &Repo.InMemory.dispatch/3, state)
+      DoubleDown.Testing.set_stateful_handler(Repo, &Repo.InMemory.dispatch/3, state)
       assert %User{name: "Alice"} = Repo.Port.one!(User)
     end
 
@@ -639,7 +639,7 @@ defmodule DoubleDown.Repo.InMemoryTest do
       state =
         Repo.InMemory.new(fallback_fn: fn :all, [User], _state -> users end)
 
-      DoubleDown.Testing.set_stateful_handler(Repo.Contract, &Repo.InMemory.dispatch/3, state)
+      DoubleDown.Testing.set_stateful_handler(Repo, &Repo.InMemory.dispatch/3, state)
 
       result = Repo.Port.all(User)
       assert length(result) == 2
@@ -648,7 +648,7 @@ defmodule DoubleDown.Repo.InMemoryTest do
 
     test "all raises without fallback" do
       DoubleDown.Testing.set_stateful_handler(
-        Repo.Contract,
+        Repo,
         &Repo.InMemory.dispatch/3,
         Repo.InMemory.new()
       )
@@ -666,13 +666,13 @@ defmodule DoubleDown.Repo.InMemoryTest do
           end
         )
 
-      DoubleDown.Testing.set_stateful_handler(Repo.Contract, &Repo.InMemory.dispatch/3, state)
+      DoubleDown.Testing.set_stateful_handler(Repo, &Repo.InMemory.dispatch/3, state)
       assert Repo.Port.exists?(User) == true
     end
 
     test "exists? raises without fallback" do
       DoubleDown.Testing.set_stateful_handler(
-        Repo.Contract,
+        Repo,
         &Repo.InMemory.dispatch/3,
         Repo.InMemory.new()
       )
@@ -699,7 +699,7 @@ defmodule DoubleDown.Repo.InMemoryTest do
           end
         )
 
-      DoubleDown.Testing.set_stateful_handler(Repo.Contract, &Repo.InMemory.dispatch/3, state)
+      DoubleDown.Testing.set_stateful_handler(Repo, &Repo.InMemory.dispatch/3, state)
 
       assert 3 = Repo.Port.aggregate(User, :count, :id)
       assert 55 = Repo.Port.aggregate(User, :sum, :age)
@@ -709,7 +709,7 @@ defmodule DoubleDown.Repo.InMemoryTest do
 
     test "aggregate raises without fallback" do
       DoubleDown.Testing.set_stateful_handler(
-        Repo.Contract,
+        Repo,
         &Repo.InMemory.dispatch/3,
         Repo.InMemory.new()
       )
@@ -733,13 +733,13 @@ defmodule DoubleDown.Repo.InMemoryTest do
           fallback_fn: fn :insert_all, [User, ^entries, []], _state -> {2, nil} end
         )
 
-      DoubleDown.Testing.set_stateful_handler(Repo.Contract, &Repo.InMemory.dispatch/3, state)
+      DoubleDown.Testing.set_stateful_handler(Repo, &Repo.InMemory.dispatch/3, state)
       assert {2, nil} = Repo.Port.insert_all(User, entries, [])
     end
 
     test "insert_all raises without fallback" do
       DoubleDown.Testing.set_stateful_handler(
-        Repo.Contract,
+        Repo,
         &Repo.InMemory.dispatch/3,
         Repo.InMemory.new()
       )
@@ -753,13 +753,13 @@ defmodule DoubleDown.Repo.InMemoryTest do
       state =
         Repo.InMemory.new(fallback_fn: fn :delete_all, [User, []], _state -> {2, nil} end)
 
-      DoubleDown.Testing.set_stateful_handler(Repo.Contract, &Repo.InMemory.dispatch/3, state)
+      DoubleDown.Testing.set_stateful_handler(Repo, &Repo.InMemory.dispatch/3, state)
       assert {2, nil} = Repo.Port.delete_all(User, [])
     end
 
     test "delete_all raises without fallback" do
       DoubleDown.Testing.set_stateful_handler(
-        Repo.Contract,
+        Repo,
         &Repo.InMemory.dispatch/3,
         Repo.InMemory.new()
       )
@@ -775,13 +775,13 @@ defmodule DoubleDown.Repo.InMemoryTest do
           fallback_fn: fn :update_all, [User, [set: [name: "bulk"]], []], _state -> {3, nil} end
         )
 
-      DoubleDown.Testing.set_stateful_handler(Repo.Contract, &Repo.InMemory.dispatch/3, state)
+      DoubleDown.Testing.set_stateful_handler(Repo, &Repo.InMemory.dispatch/3, state)
       assert {3, nil} = Repo.Port.update_all(User, [set: [name: "bulk"]], [])
     end
 
     test "update_all raises without fallback" do
       DoubleDown.Testing.set_stateful_handler(
-        Repo.Contract,
+        Repo,
         &Repo.InMemory.dispatch/3,
         Repo.InMemory.new()
       )
@@ -799,7 +799,7 @@ defmodule DoubleDown.Repo.InMemoryTest do
   describe "transact" do
     setup do
       DoubleDown.Testing.set_stateful_handler(
-        Repo.Contract,
+        Repo,
         &Repo.InMemory.dispatch/3,
         Repo.InMemory.new()
       )
@@ -942,7 +942,7 @@ defmodule DoubleDown.Repo.InMemoryTest do
   describe "read-after-write consistency (PK reads)" do
     setup do
       DoubleDown.Testing.set_stateful_handler(
-        Repo.Contract,
+        Repo,
         &Repo.InMemory.dispatch/3,
         Repo.InMemory.new()
       )
@@ -985,7 +985,7 @@ defmodule DoubleDown.Repo.InMemoryTest do
   describe "multiple schema types" do
     test "different schemas are stored independently (PK reads)" do
       DoubleDown.Testing.set_stateful_handler(
-        Repo.Contract,
+        Repo,
         &Repo.InMemory.dispatch/3,
         Repo.InMemory.new()
       )
@@ -1008,7 +1008,7 @@ defmodule DoubleDown.Repo.InMemoryTest do
       bob = %User{id: 2, name: "Bob"}
       state = Repo.InMemory.new(seed: [alice, bob])
 
-      DoubleDown.Testing.set_stateful_handler(Repo.Contract, &Repo.InMemory.dispatch/3, state)
+      DoubleDown.Testing.set_stateful_handler(Repo, &Repo.InMemory.dispatch/3, state)
 
       assert ^alice = Repo.Port.get(User, 1)
       assert ^bob = Repo.Port.get(User, 2)
@@ -1016,7 +1016,7 @@ defmodule DoubleDown.Repo.InMemoryTest do
 
     test "can add to seeded state and read back by PK" do
       state = Repo.InMemory.new(seed: [%User{id: 1, name: "Alice"}])
-      DoubleDown.Testing.set_stateful_handler(Repo.Contract, &Repo.InMemory.dispatch/3, state)
+      DoubleDown.Testing.set_stateful_handler(Repo, &Repo.InMemory.dispatch/3, state)
 
       {:ok, bob} = Repo.Port.insert(User.changeset(%{name: "Bob"}))
       assert ^bob = Repo.Port.get(User, bob.id)
@@ -1031,23 +1031,23 @@ defmodule DoubleDown.Repo.InMemoryTest do
   describe "dispatch logging" do
     test "logs write and PK read operations" do
       DoubleDown.Testing.set_stateful_handler(
-        Repo.Contract,
+        Repo,
         &Repo.InMemory.dispatch/3,
         Repo.InMemory.new()
       )
 
-      DoubleDown.Testing.enable_log(Repo.Contract)
+      DoubleDown.Testing.enable_log(Repo)
 
       cs = User.changeset(%{name: "Alice"})
       {:ok, user} = Repo.Port.insert(cs)
       Repo.Port.get(User, user.id)
 
-      log = DoubleDown.Testing.get_log(Repo.Contract)
+      log = DoubleDown.Testing.get_log(Repo)
       assert length(log) == 2
 
       assert [
-               {Repo.Contract, :insert, [^cs], {:ok, %User{}}},
-               {Repo.Contract, :get, [User, _], %User{}}
+               {Repo, :insert, [^cs], {:ok, %User{}}},
+               {Repo, :get, [User, _], %User{}}
              ] = log
     end
 
@@ -1055,28 +1055,28 @@ defmodule DoubleDown.Repo.InMemoryTest do
       users = [%User{id: 1, name: "Alice"}]
 
       DoubleDown.Testing.set_stateful_handler(
-        Repo.Contract,
+        Repo,
         &Repo.InMemory.dispatch/3,
         Repo.InMemory.new(fallback_fn: fn :all, [User], _state -> users end)
       )
 
-      DoubleDown.Testing.enable_log(Repo.Contract)
+      DoubleDown.Testing.enable_log(Repo)
 
       Repo.Port.all(User)
 
-      log = DoubleDown.Testing.get_log(Repo.Contract)
+      log = DoubleDown.Testing.get_log(Repo)
       assert length(log) == 1
-      assert [{Repo.Contract, :all, [User], [%User{id: 1, name: "Alice"}]}] = log
+      assert [{Repo, :all, [User], [%User{id: 1, name: "Alice"}]}] = log
     end
 
     test "1-arity transact logs inner facade calls made from the transaction function" do
       DoubleDown.Testing.set_stateful_handler(
-        Repo.Contract,
+        Repo,
         &Repo.InMemory.dispatch/3,
         Repo.InMemory.new()
       )
 
-      DoubleDown.Testing.enable_log(Repo.Contract)
+      DoubleDown.Testing.enable_log(Repo)
 
       cs = User.changeset(%{name: "Alice"})
 
@@ -1089,16 +1089,16 @@ defmodule DoubleDown.Repo.InMemoryTest do
         []
       )
 
-      log = DoubleDown.Testing.get_log(Repo.Contract)
+      log = DoubleDown.Testing.get_log(Repo)
 
       # Inner calls are logged first (during deferred fn execution), then
       # the outer transact call is logged when it completes.
       assert length(log) == 3
 
       assert [
-               {Repo.Contract, :insert, [^cs], {:ok, %User{name: "Alice"}}},
-               {Repo.Contract, :get, [User, _], %User{name: "Alice"}},
-               {Repo.Contract, :transact, _, {:ok, {%User{name: "Alice"}, %User{name: "Alice"}}}}
+               {Repo, :insert, [^cs], {:ok, %User{name: "Alice"}}},
+               {Repo, :get, [User, _], %User{name: "Alice"}},
+               {Repo, :transact, _, {:ok, {%User{name: "Alice"}, %User{name: "Alice"}}}}
              ] = log
     end
   end
@@ -1116,7 +1116,7 @@ defmodule DoubleDown.Repo.InMemoryTest do
           end
         )
 
-      DoubleDown.Testing.set_stateful_handler(Repo.Contract, &Repo.InMemory.dispatch/3, state)
+      DoubleDown.Testing.set_stateful_handler(Repo, &Repo.InMemory.dispatch/3, state)
 
       # The RuntimeError is re-raised in the calling process, not in the GenServer
       assert_raise RuntimeError, ~r/boom from fallback/, fn ->
@@ -1135,7 +1135,7 @@ defmodule DoubleDown.Repo.InMemoryTest do
           end
         )
 
-      DoubleDown.Testing.set_stateful_handler(Repo.Contract, &Repo.InMemory.dispatch/3, state)
+      DoubleDown.Testing.set_stateful_handler(Repo, &Repo.InMemory.dispatch/3, state)
 
       assert_raise ArgumentError, ~r/bad argument in fallback/, fn ->
         Repo.Port.get_by(User, name: "Alice")
@@ -1151,7 +1151,7 @@ defmodule DoubleDown.Repo.InMemoryTest do
           fallback_fn: fn :all, [User], _state -> [%User{id: 1, name: "Alice"}] end
         )
 
-      DoubleDown.Testing.set_stateful_handler(Repo.Contract, &Repo.InMemory.dispatch/3, state)
+      DoubleDown.Testing.set_stateful_handler(Repo, &Repo.InMemory.dispatch/3, state)
 
       # Matching clause works
       assert [%User{name: "Alice"}] = Repo.Port.all(User)

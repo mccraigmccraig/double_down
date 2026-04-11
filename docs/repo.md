@@ -10,7 +10,7 @@ property-based testing.
 
 ## The contract
 
-`DoubleDown.Repo.Contract` defines these operations:
+`DoubleDown.Repo` defines these operations:
 
 | Category | Operations |
 |----------|-----------|
@@ -32,7 +32,7 @@ Your app creates a facade module that binds the contract to your
 
 ```elixir
 defmodule MyApp.Repo do
-  use DoubleDown.Facade, contract: DoubleDown.Repo.Contract, otp_app: :my_app
+  use DoubleDown.Facade, contract: DoubleDown.Repo, otp_app: :my_app
 end
 ```
 
@@ -50,7 +50,7 @@ calls with:
 
 ```elixir
 # config/config.exs
-config :my_app, DoubleDown.Repo.Contract, impl: MyApp.EctoRepo
+config :my_app, DoubleDown.Repo, impl: MyApp.EctoRepo
 ```
 
 All operations pass through to the underlying Ecto Repo with full
@@ -69,13 +69,13 @@ error message.
 ```elixir
 # Writes only — reads will raise with a suggestion:
 DoubleDown.Testing.set_fn_handler(
-  DoubleDown.Repo.Contract,
+  DoubleDown.Repo,
   DoubleDown.Repo.Test.new()
 )
 
 # With fallback for reads:
 DoubleDown.Testing.set_fn_handler(
-  DoubleDown.Repo.Contract,
+  DoubleDown.Repo,
   DoubleDown.Repo.Test.new(
     fallback_fn: fn
       :get, [User, 1] -> %User{id: 1, name: "Alice"}
@@ -128,7 +128,7 @@ needed:
 ```elixir
 setup do
   DoubleDown.Testing.set_stateful_handler(
-    DoubleDown.Repo.Contract,
+    DoubleDown.Repo,
     &DoubleDown.Repo.InMemory.dispatch/3,
     DoubleDown.Repo.InMemory.new()
   )
@@ -206,7 +206,7 @@ setup do
   )
 
   DoubleDown.Testing.set_stateful_handler(
-    DoubleDown.Repo.Contract,
+    DoubleDown.Repo,
     &DoubleDown.Repo.InMemory.dispatch/3,
     state
   )
@@ -339,7 +339,7 @@ should fail:
 
 ```elixir
 setup do
-  DoubleDown.Repo.Contract
+  DoubleDown.Repo
   |> DoubleDown.Handler.stub(DoubleDown.Repo.Test.new())
   |> DoubleDown.Handler.expect(:insert, fn [changeset] ->
     {:error, Ecto.Changeset.add_error(changeset, :email, "has already been taken")}
@@ -368,7 +368,7 @@ need read-after-write consistency alongside failure simulation:
 
 ```elixir
 setup do
-  DoubleDown.Repo.Contract
+  DoubleDown.Repo
   |> DoubleDown.Handler.stub(&DoubleDown.Repo.InMemory.dispatch/3, DoubleDown.Repo.InMemory.new())
   |> DoubleDown.Handler.expect(:insert, fn [changeset] ->
     {:error, Ecto.Changeset.add_error(changeset, :email, "has already been taken")}
@@ -400,7 +400,7 @@ expect is consumed for `verify!` counting:
 
 ```elixir
 setup do
-  DoubleDown.Repo.Contract
+  DoubleDown.Repo
   |> DoubleDown.Handler.stub(&DoubleDown.Repo.InMemory.dispatch/3, DoubleDown.Repo.InMemory.new())
   |> DoubleDown.Handler.expect(:insert, :passthrough, times: 2)
   :ok
@@ -416,7 +416,7 @@ You can mix `:passthrough` and function expects — for example,
 "first insert succeeds through InMemory, second fails":
 
 ```elixir
-DoubleDown.Repo.Contract
+DoubleDown.Repo
 |> DoubleDown.Handler.stub(&DoubleDown.Repo.InMemory.dispatch/3, DoubleDown.Repo.InMemory.new())
 |> DoubleDown.Handler.expect(:insert, :passthrough)
 |> DoubleDown.Handler.expect(:insert, fn [changeset] ->
@@ -432,13 +432,13 @@ including computed results:
 
 ```elixir
 setup do
-  DoubleDown.Repo.Contract
+  DoubleDown.Repo
   |> DoubleDown.Handler.stub(&DoubleDown.Repo.InMemory.dispatch/3, DoubleDown.Repo.InMemory.new())
   |> DoubleDown.Handler.expect(:insert, fn [changeset] ->
     {:error, Ecto.Changeset.add_error(changeset, :email, "taken")}
   end)
 
-  DoubleDown.Testing.enable_log(DoubleDown.Repo.Contract)
+  DoubleDown.Testing.enable_log(DoubleDown.Repo)
   :ok
 end
 
@@ -450,10 +450,10 @@ test "logs the failure then the success" do
 
   DoubleDown.Handler.verify!()
 
-  DoubleDown.Log.match(DoubleDown.Repo.Contract, :insert, fn
+  DoubleDown.Log.match(DoubleDown.Repo, :insert, fn
     {_, _, _, {:error, _}} -> true
   end)
-  |> DoubleDown.Log.match(DoubleDown.Repo.Contract, :insert, fn
+  |> DoubleDown.Log.match(DoubleDown.Repo, :insert, fn
     {_, _, _, {:ok, %User{id: id}}} when is_binary(id) -> true
   end)
   |> DoubleDown.Log.verify!()

@@ -112,7 +112,7 @@ defmodule DoubleDown.Repo.TestTest do
 
   describe "write operations" do
     setup do
-      DoubleDown.Testing.set_fn_handler(Repo.Contract, Repo.Test.new())
+      DoubleDown.Testing.set_fn_handler(Repo, Repo.Test.new())
       :ok
     end
 
@@ -249,7 +249,7 @@ defmodule DoubleDown.Repo.TestTest do
 
   describe "read operations raise without fallback" do
     setup do
-      DoubleDown.Testing.set_fn_handler(Repo.Contract, Repo.Test.new())
+      DoubleDown.Testing.set_fn_handler(Repo, Repo.Test.new())
       :ok
     end
 
@@ -342,7 +342,7 @@ defmodule DoubleDown.Repo.TestTest do
           end
         )
 
-      DoubleDown.Testing.set_fn_handler(Repo.Contract, handler)
+      DoubleDown.Testing.set_fn_handler(Repo, handler)
 
       assert ^alice = Repo.Port.get(User, 1)
       assert nil == Repo.Port.get(User, 999)
@@ -354,7 +354,7 @@ defmodule DoubleDown.Repo.TestTest do
       handler =
         Repo.Test.new(fallback_fn: fn :get!, [User, 1] -> alice end)
 
-      DoubleDown.Testing.set_fn_handler(Repo.Contract, handler)
+      DoubleDown.Testing.set_fn_handler(Repo, handler)
       assert ^alice = Repo.Port.get!(User, 1)
     end
 
@@ -364,7 +364,7 @@ defmodule DoubleDown.Repo.TestTest do
       handler =
         Repo.Test.new(fallback_fn: fn :get_by, [User, [name: "Alice"]] -> alice end)
 
-      DoubleDown.Testing.set_fn_handler(Repo.Contract, handler)
+      DoubleDown.Testing.set_fn_handler(Repo, handler)
       assert ^alice = Repo.Port.get_by(User, name: "Alice")
     end
 
@@ -374,7 +374,7 @@ defmodule DoubleDown.Repo.TestTest do
       handler =
         Repo.Test.new(fallback_fn: fn :all, [User] -> users end)
 
-      DoubleDown.Testing.set_fn_handler(Repo.Contract, handler)
+      DoubleDown.Testing.set_fn_handler(Repo, handler)
       assert ^users = Repo.Port.all(User)
     end
 
@@ -382,7 +382,7 @@ defmodule DoubleDown.Repo.TestTest do
       handler =
         Repo.Test.new(fallback_fn: fn :exists?, [User] -> true end)
 
-      DoubleDown.Testing.set_fn_handler(Repo.Contract, handler)
+      DoubleDown.Testing.set_fn_handler(Repo, handler)
       assert Repo.Port.exists?(User) == true
     end
 
@@ -390,7 +390,7 @@ defmodule DoubleDown.Repo.TestTest do
       handler =
         Repo.Test.new(fallback_fn: fn :aggregate, [User, :count, :id] -> 42 end)
 
-      DoubleDown.Testing.set_fn_handler(Repo.Contract, handler)
+      DoubleDown.Testing.set_fn_handler(Repo, handler)
       assert 42 = Repo.Port.aggregate(User, :count, :id)
     end
 
@@ -398,7 +398,7 @@ defmodule DoubleDown.Repo.TestTest do
       handler =
         Repo.Test.new(fallback_fn: fn :get, [User, 1] -> nil end)
 
-      DoubleDown.Testing.set_fn_handler(Repo.Contract, handler)
+      DoubleDown.Testing.set_fn_handler(Repo, handler)
 
       assert_raise ArgumentError, ~r/Repo.Test cannot service :get/, fn ->
         Repo.Port.get(User, 999)
@@ -412,7 +412,7 @@ defmodule DoubleDown.Repo.TestTest do
 
   describe "transact" do
     setup do
-      DoubleDown.Testing.set_fn_handler(Repo.Contract, Repo.Test.new())
+      DoubleDown.Testing.set_fn_handler(Repo, Repo.Test.new())
       :ok
     end
 
@@ -537,37 +537,37 @@ defmodule DoubleDown.Repo.TestTest do
 
   describe "dispatch logging" do
     test "logs write operations" do
-      DoubleDown.Testing.set_fn_handler(Repo.Contract, Repo.Test.new())
-      DoubleDown.Testing.enable_log(Repo.Contract)
+      DoubleDown.Testing.set_fn_handler(Repo, Repo.Test.new())
+      DoubleDown.Testing.enable_log(Repo)
       cs = User.changeset(%{name: "Alice"})
 
       Repo.Port.insert(cs)
 
-      log = DoubleDown.Testing.get_log(Repo.Contract)
+      log = DoubleDown.Testing.get_log(Repo)
       assert length(log) == 1
-      assert [{Repo.Contract, :insert, [^cs], {:ok, %User{name: "Alice"}}}] = log
+      assert [{Repo, :insert, [^cs], {:ok, %User{name: "Alice"}}}] = log
     end
 
     test "logs fallback-dispatched operations" do
       alice = %User{id: 1, name: "Alice"}
 
       DoubleDown.Testing.set_fn_handler(
-        Repo.Contract,
+        Repo,
         Repo.Test.new(fallback_fn: fn :get, [User, 1] -> alice end)
       )
 
-      DoubleDown.Testing.enable_log(Repo.Contract)
+      DoubleDown.Testing.enable_log(Repo)
 
       Repo.Port.get(User, 1)
 
-      log = DoubleDown.Testing.get_log(Repo.Contract)
+      log = DoubleDown.Testing.get_log(Repo)
       assert length(log) == 1
-      assert [{Repo.Contract, :get, [User, 1], ^alice}] = log
+      assert [{Repo, :get, [User, 1], ^alice}] = log
     end
 
     test "1-arity transact logs inner facade calls made from the transaction function" do
-      DoubleDown.Testing.set_fn_handler(Repo.Contract, Repo.Test.new())
-      DoubleDown.Testing.enable_log(Repo.Contract)
+      DoubleDown.Testing.set_fn_handler(Repo, Repo.Test.new())
+      DoubleDown.Testing.enable_log(Repo)
 
       cs = User.changeset(%{name: "Alice"})
 
@@ -579,15 +579,15 @@ defmodule DoubleDown.Repo.TestTest do
         []
       )
 
-      log = DoubleDown.Testing.get_log(Repo.Contract)
+      log = DoubleDown.Testing.get_log(Repo)
 
       # Inner calls are logged first (during fn execution), then the outer
       # transact call is logged when it completes.
       assert length(log) == 2
 
       assert [
-               {Repo.Contract, :insert, [^cs], {:ok, %User{name: "Alice"}}},
-               {Repo.Contract, :transact, _, {:ok, :done}}
+               {Repo, :insert, [^cs], {:ok, %User{name: "Alice"}}},
+               {Repo, :transact, _, {:ok, :done}}
              ] = log
     end
   end

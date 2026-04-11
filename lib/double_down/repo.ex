@@ -8,17 +8,17 @@
 #
 #     # Define a facade in your app:
 #     defmodule MyApp.Repo do
-#       use DoubleDown.Facade, contract: DoubleDown.Repo.Contract, otp_app: :my_app
+#       use DoubleDown.Facade, contract: DoubleDown.Repo, otp_app: :my_app
 #     end
 #
 #     MyApp.Repo.insert!(changeset)
 #
 # ## Configuration
 #
-#     config :my_app, DoubleDown.Repo.Contract, impl: MyApp.EctoRepo
+#     config :my_app, DoubleDown.Repo, impl: MyApp.EctoRepo
 #
 if Code.ensure_loaded?(Ecto) do
-  defmodule DoubleDown.Repo.Contract do
+  defmodule DoubleDown.Repo do
     @moduledoc """
     Repo contract for common Ecto Repo operations.
 
@@ -30,7 +30,7 @@ if Code.ensure_loaded?(Ecto) do
 
         # Define a facade in your app:
         defmodule MyApp.Repo do
-          use DoubleDown.Facade, contract: DoubleDown.Repo.Contract, otp_app: :my_app
+          use DoubleDown.Facade, contract: DoubleDown.Repo, otp_app: :my_app
         end
 
         changeset = User.changeset(%User{}, attrs)

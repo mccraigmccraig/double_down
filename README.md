@@ -120,7 +120,7 @@ Layer expects over a stateful fake to simulate specific failures:
 ```elixir
 setup do
   # InMemory Repo as the baseline — real state, read-after-write
-  DoubleDown.Repo.Contract
+  DoubleDown.Repo
   |> DoubleDown.Handler.stub(&DoubleDown.Repo.InMemory.dispatch/3,
     DoubleDown.Repo.InMemory.new())
   # First insert fails with constraint error

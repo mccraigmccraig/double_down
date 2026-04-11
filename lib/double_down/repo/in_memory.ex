@@ -7,7 +7,7 @@
 # ## Usage
 #
 #     DoubleDown.Testing.set_stateful_handler(
-#       DoubleDown.Repo.Contract,
+#       DoubleDown.Repo,
 #       &DoubleDown.Repo.InMemory.dispatch/3,
 #       DoubleDown.Repo.InMemory.new()
 #     )
@@ -20,7 +20,7 @@
 #       end
 #     )
 #     DoubleDown.Testing.set_stateful_handler(
-#       DoubleDown.Repo.Contract,
+#       DoubleDown.Repo,
 #       &DoubleDown.Repo.InMemory.dispatch/3,
 #       initial
 #     )
@@ -30,7 +30,7 @@ if Code.ensure_loaded?(Ecto) do
     @moduledoc """
     Stateful in-memory Repo implementation for tests.
 
-    Provides a stateful handler function for `DoubleDown.Repo.Contract` operations.
+    Provides a stateful handler function for `DoubleDown.Repo` operations.
     State is a nested map keyed by `schema_module => %{primary_key => struct}`,
     giving read-after-write consistency for PK-based lookups within a test.
 
@@ -73,7 +73,7 @@ if Code.ensure_loaded?(Ecto) do
 
         # Basic — PK reads only, no fallback:
         DoubleDown.Testing.set_stateful_handler(
-          DoubleDown.Repo.Contract,
+          DoubleDown.Repo,
           &DoubleDown.Repo.InMemory.dispatch/3,
           DoubleDown.Repo.InMemory.new()
         )
@@ -89,7 +89,7 @@ if Code.ensure_loaded?(Ecto) do
           end
         )
         DoubleDown.Testing.set_stateful_handler(
-          DoubleDown.Repo.Contract,
+          DoubleDown.Repo,
           &DoubleDown.Repo.InMemory.dispatch/3,
           state
         )
@@ -211,7 +211,7 @@ if Code.ensure_loaded?(Ecto) do
     @doc """
     Stateful handler function for use with `DoubleDown.Testing.set_stateful_handler/3`.
 
-    Handles all `DoubleDown.Repo.Contract` operations. The function signature is
+    Handles all `DoubleDown.Repo` operations. The function signature is
     `(operation, args, store) -> {result, new_store}`.
 
     Write operations are handled directly by the state. PK-based reads check

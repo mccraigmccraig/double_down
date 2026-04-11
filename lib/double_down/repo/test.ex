@@ -1,4 +1,4 @@
-# Stateless test handler for DoubleDown.Repo.Contract.
+# Stateless test handler for DoubleDown.Repo.
 #
 # Provides a function handler for use with set_fn_handler. Write operations
 # apply changeset changes and return {:ok, struct}. Read operations go
@@ -6,7 +6,7 @@
 #
 # ## Usage
 #
-#     DoubleDown.Testing.set_fn_handler(DoubleDown.Repo.Contract, DoubleDown.Repo.Test.new())
+#     DoubleDown.Testing.set_fn_handler(DoubleDown.Repo, DoubleDown.Repo.Test.new())
 #
 #     # With fallback for reads:
 #     DoubleDown.Testing.set_fn_handler(
@@ -22,7 +22,7 @@
 if Code.ensure_loaded?(Ecto) do
   defmodule DoubleDown.Repo.Test do
     @moduledoc """
-    Stateless test handler for `DoubleDown.Repo.Contract`.
+    Stateless test handler for `DoubleDown.Repo`.
 
     Provides a function handler via `new/1` for use with
     `DoubleDown.Testing.set_fn_handler/2`. Write operations (`insert`, `update`,
@@ -38,11 +38,11 @@ if Code.ensure_loaded?(Ecto) do
     ## Usage
 
         # Writes only — reads will raise:
-        DoubleDown.Testing.set_fn_handler(DoubleDown.Repo.Contract, DoubleDown.Repo.Test.new())
+        DoubleDown.Testing.set_fn_handler(DoubleDown.Repo, DoubleDown.Repo.Test.new())
 
         # With fallback for reads:
         DoubleDown.Testing.set_fn_handler(
-          DoubleDown.Repo.Contract,
+          DoubleDown.Repo,
           DoubleDown.Repo.Test.new(
             fallback_fn: fn
               :get, [User, 1] -> %User{id: 1, name: "Alice"}
@@ -53,7 +53,7 @@ if Code.ensure_loaded?(Ecto) do
 
         # With logging:
         DoubleDown.Testing.set_fn_handler(DoubleDown.Repo, DoubleDown.Repo.Test.new())
-        DoubleDown.Testing.enable_log(DoubleDown.Repo.Contract)
+        DoubleDown.Testing.enable_log(DoubleDown.Repo)
 
     ## Differences from Repo.InMemory
 

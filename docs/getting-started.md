@@ -101,7 +101,7 @@ defmodule MyApp.Todos do
 end
 ```
 
-This is how the built-in `DoubleDown.Repo.Contract` works — it defines
+This is how the built-in `DoubleDown.Repo` works — it defines
 the contract, and your app creates a facade that binds it to your
 `otp_app`. See [Repo](repo.md).
 
@@ -154,7 +154,7 @@ spliced as AST into the generated facade function, so it runs at
 call-time in the caller's process.
 
 This is an advanced feature — most contracts don't need it. The
-canonical example is `DoubleDown.Repo.Contract`, which uses it to wrap
+canonical example is `DoubleDown.Repo`, which uses it to wrap
 1-arity transaction functions into 0-arity thunks that close over the
 facade module:
 
