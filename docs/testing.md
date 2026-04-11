@@ -87,7 +87,7 @@ need read-after-write consistency.
 For Ecto Repo operations specifically, DoubleDown ships ready-made
 stateful test doubles — see [Repo](repo.md).
 
-## Handler (expect/stub)
+## Double (expect/stub/fake)
 
 `DoubleDown.Double` provides a Mox-style expect/stub API for declaring
 test handlers. Each call writes directly to NimbleOwnership — no
@@ -130,7 +130,7 @@ MyApp.Todos
 DoubleDown.Double.expect(MyApp.Todos, :get_todo, fn [id] -> {:ok, %Todo{id: id}} end, times: 3)
 ```
 
-### Contract-wide fallback
+### Contract-wide fallback (stub or fake)
 
 A fallback handles any operation without a specific expect or
 per-operation stub. Three forms are supported:
@@ -147,7 +147,7 @@ end)
 |> DoubleDown.Double.expect(:create_todo, fn [p] -> {:ok, struct!(Todo, p)} end)
 ```
 
-**Stateful fallback** — a 3-arity `fn op, args, state -> {result, state}` with
+**Stateful fake** — a 3-arity `fn op, args, state -> {result, state}` with
 initial state. Same signature as `set_stateful_handler`, so stateful
 fakes like `Repo.InMemory` integrate directly. Override specific
 operations with expects while the fake handles everything else:
@@ -170,7 +170,7 @@ user-provided callback requires a complex API and seems of limited
 value given that the main use case — error simulation — doesn't
 need it. We decided to leave it out for now.
 
-**Module fallback** — a module implementing the contract's behaviour.
+**Module fake** — a module implementing the contract's behaviour.
 Override specific operations while the rest delegate to the real
 implementation:
 
@@ -180,7 +180,7 @@ MyApp.Todos
 |> DoubleDown.Double.expect(:create_todo, fn [_] -> {:error, :conflict} end)
 ```
 
-The module is validated at stub time. Note: if the module's
+The module is validated at `fake` time. Note: if the module's
 `:bar` internally calls `:foo` and you've stubbed `:foo`, the module
 won't see your stub — it calls its own `:foo` directly. For stubs to
 be visible, the module must call through the facade.
@@ -208,8 +208,8 @@ be mixed with function expects for patterns like "first call
 succeeds through the fallback, second call returns an error":
 
 ```elixir
-RepoContract
-|> DoubleDown.Double.fake(&Repo.InMemory.handler/3, %{})
+DoubleDown.Repo
+|> DoubleDown.Double.fake(&DoubleDown.Repo.InMemory.dispatch/3, DoubleDown.Repo.InMemory.new())
 |> DoubleDown.Double.expect(:insert, :passthrough)
 |> DoubleDown.Double.expect(:insert, fn [changeset] ->
   {:error, Ecto.Changeset.add_error(changeset, :email, "taken")}
@@ -255,12 +255,13 @@ test "creates a todo" do
 end
 ```
 
-### When to use Handler vs raw handlers
+### When to use Double vs raw handlers
 
-Use `DoubleDown.Double` when you want Mox-style call counting and
-ordered expectations. Use `set_fn_handler` for simple canned
-responses. Use `set_stateful_handler` directly when you need custom
-state management (e.g. in-memory stores with complex query logic).
+Use `DoubleDown.Double` when you want Mox-style call counting,
+ordered expectations, or fakes with expect overrides. Use
+`set_fn_handler` for simple canned responses. Use
+`set_stateful_handler` directly when you need custom state management
+without the expect/stub/fake layer.
 
 ## Dispatch logging
 
@@ -339,7 +340,7 @@ DoubleDown.Log.match(:insert, fn _ -> true end)
 
 ### Using with DoubleDown.Double
 
-Handler and Log serve complementary roles — Handler for fail-fast
+Double and Log serve complementary roles — Double for fail-fast
 validation and producing return values, Log for after-the-fact
 result inspection:
 
