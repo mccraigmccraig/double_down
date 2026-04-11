@@ -260,10 +260,10 @@ end
 `DoubleDown.Double` covers all common test double scenarios:
 `expect` for call counting and ordered expectations, `stub` for
 canned responses, and `fake` for stateful or module-backed
-implementations. The raw `set_fn_handler` and `set_stateful_handler`
-APIs are still available but entirely optional — they predate
-`Double` and remain for cases where you want direct control without
-the expect/stub/fake layer.
+implementations. `Double` is built on top of `set_stateful_handler`
+internally — `set_fn_handler` and `set_stateful_handler` are the
+low-level primitives that power it. They're still available as
+public API, but there's probably never a need to use them directly.
 
 ## Dispatch logging
 
