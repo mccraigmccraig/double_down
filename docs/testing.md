@@ -154,8 +154,8 @@ operations with expects while the fake handles everything else:
 
 ```elixir
 # First insert fails with constraint error, rest go through InMemory
-RepoContract
-|> DoubleDown.Handler.stub(&Repo.InMemory.handler/3, %{})
+DoubleDown.Repo
+|> DoubleDown.Handler.stub(&DoubleDown.Repo.InMemory.dispatch/3, DoubleDown.Repo.InMemory.new())
 |> DoubleDown.Handler.expect(:insert, fn [changeset] ->
   {:error, Ecto.Changeset.add_error(changeset, :email, "taken")}
 end)
@@ -165,9 +165,10 @@ When an expect short-circuits (returns an error), the fallback
 state is unchanged — correct for error simulation.
 
 Note: expects cannot delegate to the stateful fallback inline
-(no "passthrough" callback). This is because threading mutable
-state through a user-provided callback is an algebraic effects
-problem — Skuld provides this capability for cases that need it.
+(no "passthrough" callback). Threading mutable state through a
+user-provided callback requires a complex API and seems of limited
+value given that the main use case — error simulation — doesn't
+need it. We decided to leave it out for now.
 
 **Module fallback** — a module implementing the contract's behaviour.
 Override specific operations while the rest delegate to the real
@@ -263,8 +264,8 @@ state management (e.g. in-memory stores with complex query logic).
 
 ## Dispatch logging
 
-Record every call that crosses a port boundary, then assert on the
-sequence:
+Record every call that crosses a contract boundary, then assert on
+the sequence:
 
 ```elixir
 setup do
@@ -278,7 +279,7 @@ end
 test "logs dispatch calls" do
   MyApp.Todos.get_todo("42")
 
-  assert [{:get_todo, ["42"], {:ok, %Todo{id: "42"}}}] =
+  assert [{MyApp.Todos, :get_todo, ["42"], {:ok, %Todo{id: "42"}}}] =
     DoubleDown.Testing.get_log(MyApp.Todos)
 end
 ```
@@ -316,7 +317,7 @@ is caught and treated as "didn't match". No `_ -> false` needed.
 ### Counting occurrences
 
 ```elixir
-DoubleDown.Log.match(RepoContract, :insert, fn
+DoubleDown.Log.match(DoubleDown.Repo, :insert, fn
   {_, _, [%Changeset{data: %Discrepancy{}}], {:ok, _}} -> true
 end, times: 3)
 |> DoubleDown.Log.verify!()
@@ -415,7 +416,7 @@ per-process isolation for subsequent tests.
 | Pid not known at setup time | `allow/3` with lazy fn | Yes |
 | Supervision tree / Broadway / Oban | `set_mode_to_global/0` | **No** |
 
-### Example: testing a GenServer that dispatches through a port
+### Example: testing a GenServer that dispatches through a contract
 
 ```elixir
 defmodule MyApp.WorkerTest do
