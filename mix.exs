@@ -83,11 +83,9 @@ defmodule DoubleDown.MixProject do
 
   defp description do
     """
-    DoubleDown: Hexagonal architecture ports for Elixir.
-
-    Typed port contracts with async-safe test doubles, dispatch logging,
-    and stateful test handlers. Define boundaries with `defcallback`, swap
-    implementations for testing without a database.
+    Builds on the Mox pattern — generates behaviours and dispatch facades
+    from `defcallback` declarations — and adds stateful test doubles powerful
+    enough to test Ecto.Repo operations without a database.
     """
   end
 
