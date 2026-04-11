@@ -450,13 +450,13 @@ test "logs the failure then the success" do
 
   DoubleDown.Handler.verify!()
 
-  DoubleDown.Log.match(DoubleDown.Repo, :insert, fn
+  DoubleDown.Log.match(:insert, fn
     {_, _, _, {:error, _}} -> true
   end)
-  |> DoubleDown.Log.match(DoubleDown.Repo, :insert, fn
+  |> DoubleDown.Log.match(:insert, fn
     {_, _, _, {:ok, %User{id: id}}} when is_binary(id) -> true
   end)
-  |> DoubleDown.Log.verify!()
+  |> DoubleDown.Log.verify!(DoubleDown.Repo)
 end
 ```
 

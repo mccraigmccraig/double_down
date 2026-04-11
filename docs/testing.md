@@ -304,11 +304,11 @@ assertion, not a tautology.
 DoubleDown.Testing.enable_log(MyApp.Todos)
 # ... set handler and dispatch ...
 
-DoubleDown.Log.match(MyApp.Todos, :create_todo, fn
+DoubleDown.Log.match(:create_todo, fn
   {_, _, [params], {:ok, %Todo{id: id}}} when is_binary(id) -> true
 end)
-|> DoubleDown.Log.reject(MyApp.Todos, :delete_todo)
-|> DoubleDown.Log.verify!()
+|> DoubleDown.Log.reject(:delete_todo)
+|> DoubleDown.Log.verify!(MyApp.Todos)
 ```
 
 Matcher functions only need positive clauses — `FunctionClauseError`
@@ -320,10 +320,10 @@ matching alone.
 ### Counting occurrences
 
 ```elixir
-DoubleDown.Log.match(DoubleDown.Repo, :insert, fn
+DoubleDown.Log.match(:insert, fn
   {_, _, [%Changeset{data: %Discrepancy{}}], {:ok, _}} -> true
 end, times: 3)
-|> DoubleDown.Log.verify!()
+|> DoubleDown.Log.verify!(DoubleDown.Repo)
 ```
 
 ### Strict mode
@@ -332,9 +332,9 @@ By default, extra log entries between matchers are ignored (loose
 mode). Strict mode requires every log entry to be matched:
 
 ```elixir
-DoubleDown.Log.match(Contract, :insert, fn _ -> true end)
-|> DoubleDown.Log.match(Contract, :update, fn _ -> true end)
-|> DoubleDown.Log.verify!(strict: true)
+DoubleDown.Log.match(:insert, fn _ -> true end)
+|> DoubleDown.Log.match(:update, fn _ -> true end)
+|> DoubleDown.Log.verify!(MyContract, strict: true)
 ```
 
 ### Using with DoubleDown.Handler
@@ -356,10 +356,10 @@ MyModule.do_work(params)
 DoubleDown.Handler.verify!()
 
 # Verify log entries match expected patterns
-DoubleDown.Log.match(MyContract, :create, fn
+DoubleDown.Log.match(:create, fn
   {_, _, _, {:ok, %Thing{}}} -> true
 end)
-|> DoubleDown.Log.verify!()
+|> DoubleDown.Log.verify!(MyContract)
 ```
 
 ## Process sharing and async safety

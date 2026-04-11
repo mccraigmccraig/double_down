@@ -21,77 +21,65 @@ defmodule DoubleDown.LogTest do
     end
   end
 
-  describe "match/4..5" do
+  describe "match/2..3" do
     test "appends expectations in declaration order" do
       fn1 = fn _ -> true end
       fn2 = fn _ -> true end
 
       acc =
-        Log.match(Greeter, :greet, fn1)
-        |> Log.match(Greeter, :fetch_greeting, fn2)
+        Log.match(:greet, fn1)
+        |> Log.match(:fetch_greeting, fn2)
 
-      assert [{:match, Greeter, :greet, ^fn1, 1}, {:match, Greeter, :fetch_greeting, ^fn2, 1}] =
+      assert [{:match, :greet, ^fn1, 1}, {:match, :fetch_greeting, ^fn2, 1}] =
                acc.expectations
     end
 
     test "with times: n" do
       fn1 = fn _ -> true end
-      acc = Log.match(Greeter, :greet, fn1, times: 3)
+      acc = Log.match(:greet, fn1, times: 3)
 
-      assert [{:match, Greeter, :greet, ^fn1, 3}] = acc.expectations
+      assert [{:match, :greet, ^fn1, 3}] = acc.expectations
     end
 
     test "times: 0 raises" do
       assert_raise ArgumentError, ~r/times must be >= 1/, fn ->
-        Log.match(Greeter, :greet, fn _ -> true end, times: 0)
+        Log.match(:greet, fn _ -> true end, times: 0)
       end
     end
 
     test "default first arg starts with new()" do
-      acc = Log.match(Greeter, :greet, fn _ -> true end)
+      acc = Log.match(:greet, fn _ -> true end)
       assert %Log{} = acc
       assert length(acc.expectations) == 1
     end
-
-    test "multi-contract accumulation" do
-      acc =
-        Log.match(Greeter, :greet, fn _ -> true end)
-        |> Log.match(Counter, :increment, fn _ -> true end)
-
-      contracts =
-        Enum.map(acc.expectations, fn {:match, c, _, _, _} -> c end)
-
-      assert Greeter in contracts
-      assert Counter in contracts
-    end
   end
 
-  describe "reject/3" do
+  describe "reject/1..2" do
     test "appends reject expectation" do
-      acc = Log.reject(Greeter, :greet)
-      assert [{:reject, Greeter, :greet}] = acc.expectations
+      acc = Log.reject(:greet)
+      assert [{:reject, :greet}] = acc.expectations
     end
 
     test "default first arg starts with new()" do
-      acc = Log.reject(Greeter, :greet)
+      acc = Log.reject(:greet)
       assert %Log{} = acc
     end
 
     test "mixed match and reject" do
       acc =
-        Log.match(Greeter, :greet, fn _ -> true end)
-        |> Log.reject(Greeter, :fetch_greeting)
+        Log.match(:greet, fn _ -> true end)
+        |> Log.reject(:fetch_greeting)
 
-      assert [{:match, _, :greet, _, _}, {:reject, _, :fetch_greeting}] = acc.expectations
+      assert [{:match, :greet, _, _}, {:reject, :fetch_greeting}] = acc.expectations
     end
   end
 
   # ── Loose-partial verify tests ────────────────────────────
 
-  describe "verify!/2 loose mode" do
+  describe "verify!/2..3 loose mode" do
     test "raises on empty accumulator" do
       assert_raise ArgumentError, ~r/no expectations to verify/, fn ->
-        Log.verify!(Log.new())
+        Log.verify!(Log.new(), Greeter)
       end
     end
 
@@ -101,10 +89,10 @@ defmodule DoubleDown.LogTest do
       end)
 
       assert :ok =
-               Log.match(Greeter, :greet, fn
+               Log.match(:greet, fn
                  {Greeter, :greet, ["Alice"], "Hi, Alice!"} -> true
                end)
-               |> Log.verify!()
+               |> Log.verify!(Greeter)
     end
 
     test "multiple matchers in order" do
@@ -121,13 +109,13 @@ defmodule DoubleDown.LogTest do
       )
 
       assert :ok =
-               Log.match(Greeter, :greet, fn
+               Log.match(:greet, fn
                  {_, :greet, ["Alice"], _} -> true
                end)
-               |> Log.match(Greeter, :fetch_greeting, fn
+               |> Log.match(:fetch_greeting, fn
                  {_, :fetch_greeting, ["Bob"], _} -> true
                end)
-               |> Log.verify!()
+               |> Log.verify!(Greeter)
     end
 
     test "extra log entries between matchers are ignored" do
@@ -139,13 +127,13 @@ defmodule DoubleDown.LogTest do
 
       # Match first and third, skip second
       assert :ok =
-               Log.match(Greeter, :greet, fn
+               Log.match(:greet, fn
                  {_, _, ["Alice"], _} -> true
                end)
-               |> Log.match(Greeter, :greet, fn
+               |> Log.match(:greet, fn
                  {_, _, ["Carol"], _} -> true
                end)
-               |> Log.verify!()
+               |> Log.verify!(Greeter)
     end
 
     test "times: n matching" do
@@ -156,8 +144,8 @@ defmodule DoubleDown.LogTest do
       end)
 
       assert :ok =
-               Log.match(Greeter, :greet, fn {_, :greet, _, _} -> true end, times: 3)
-               |> Log.verify!()
+               Log.match(:greet, fn {_, :greet, _, _} -> true end, times: 3)
+               |> Log.verify!(Greeter)
     end
 
     test "matcher with pattern matching on args" do
@@ -166,10 +154,10 @@ defmodule DoubleDown.LogTest do
       end)
 
       assert :ok =
-               Log.match(Greeter, :greet, fn
+               Log.match(:greet, fn
                  {_, _, [name], _} when is_binary(name) -> true
                end)
-               |> Log.verify!()
+               |> Log.verify!(Greeter)
     end
 
     test "matcher with pattern matching on results" do
@@ -178,10 +166,10 @@ defmodule DoubleDown.LogTest do
       end)
 
       assert :ok =
-               Log.match(Greeter, :fetch_greeting, fn
+               Log.match(:fetch_greeting, fn
                  {_, _, _, {:ok, greeting}} when is_binary(greeting) -> true
                end)
-               |> Log.verify!()
+               |> Log.verify!(Greeter)
     end
 
     test "matcher with multiple clauses" do
@@ -190,11 +178,11 @@ defmodule DoubleDown.LogTest do
       end)
 
       assert :ok =
-               Log.match(Greeter, :greet, fn
+               Log.match(:greet, fn
                  {_, _, ["Bob"], _} -> true
                  {_, _, ["Alice"], _} -> true
                end)
-               |> Log.verify!()
+               |> Log.verify!(Greeter)
     end
 
     test "FunctionClauseError treated as no-match, scans forward" do
@@ -205,10 +193,10 @@ defmodule DoubleDown.LogTest do
 
       # Matcher only matches Bob — should skip Alice (FunctionClauseError) and find Bob
       assert :ok =
-               Log.match(Greeter, :greet, fn
+               Log.match(:greet, fn
                  {_, _, ["Bob"], _} -> true
                end)
-               |> Log.verify!()
+               |> Log.verify!(Greeter)
     end
 
     test "unsatisfied matcher raises with descriptive error" do
@@ -218,10 +206,10 @@ defmodule DoubleDown.LogTest do
 
       error =
         assert_raise RuntimeError, fn ->
-          Log.match(Greeter, :greet, fn
+          Log.match(:greet, fn
             {_, _, ["Nobody"], _} -> true
           end)
-          |> Log.verify!()
+          |> Log.verify!(Greeter)
         end
 
       assert error.message =~ inspect(Greeter)
@@ -243,26 +231,26 @@ defmodule DoubleDown.LogTest do
       )
 
       # greet declared first but appears second in log —
-      # loose-partial matches per-contract, each operation scans independently
+      # loose-partial: each operation scans independently
       assert :ok =
-               Log.match(Greeter, :greet, fn {_, _, ["Alice"], _} -> true end)
-               |> Log.match(Greeter, :fetch_greeting, fn {_, _, ["Bob"], _} -> true end)
-               |> Log.verify!()
+               Log.match(:greet, fn {_, _, ["Alice"], _} -> true end)
+               |> Log.match(:fetch_greeting, fn {_, _, ["Bob"], _} -> true end)
+               |> Log.verify!(Greeter)
     end
   end
 
   # ── Reject tests ──────────────────────────────────────────
 
-  describe "verify!/2 reject" do
+  describe "verify!/2..3 reject" do
     test "reject passes when operation absent from log" do
       with_logged_calls(Greeter, fn :greet, [name] -> "Hi, #{name}!" end, fn ->
         Greeter.Port.greet("Alice")
       end)
 
       assert :ok =
-               Log.match(Greeter, :greet, fn _ -> true end)
-               |> Log.reject(Greeter, :fetch_greeting)
-               |> Log.verify!()
+               Log.match(:greet, fn _ -> true end)
+               |> Log.reject(:fetch_greeting)
+               |> Log.verify!(Greeter)
     end
 
     test "reject raises when operation present in log" do
@@ -280,9 +268,9 @@ defmodule DoubleDown.LogTest do
 
       error =
         assert_raise RuntimeError, fn ->
-          Log.match(Greeter, :greet, fn _ -> true end)
-          |> Log.reject(Greeter, :fetch_greeting)
-          |> Log.verify!()
+          Log.match(:greet, fn _ -> true end)
+          |> Log.reject(:fetch_greeting)
+          |> Log.verify!(Greeter)
         end
 
       assert error.message =~ "reject"
@@ -293,7 +281,7 @@ defmodule DoubleDown.LogTest do
 
   # ── Strict mode tests ────────────────────────────────────
 
-  describe "verify!/2 strict mode" do
+  describe "verify!/2..3 strict mode" do
     test "strict passes when all entries matched" do
       with_logged_calls(Greeter, fn :greet, [name] -> "Hi, #{name}!" end, fn ->
         Greeter.Port.greet("Alice")
@@ -301,8 +289,8 @@ defmodule DoubleDown.LogTest do
       end)
 
       assert :ok =
-               Log.match(Greeter, :greet, fn _ -> true end, times: 2)
-               |> Log.verify!(strict: true)
+               Log.match(:greet, fn _ -> true end, times: 2)
+               |> Log.verify!(Greeter, strict: true)
     end
 
     test "strict raises when unmatched entries exist" do
@@ -320,8 +308,8 @@ defmodule DoubleDown.LogTest do
 
       error =
         assert_raise RuntimeError, fn ->
-          Log.match(Greeter, :greet, fn _ -> true end)
-          |> Log.verify!(strict: true)
+          Log.match(:greet, fn _ -> true end)
+          |> Log.verify!(Greeter, strict: true)
         end
 
       assert error.message =~ "strict"
@@ -338,10 +326,10 @@ defmodule DoubleDown.LogTest do
 
       error =
         assert_raise RuntimeError, fn ->
-          Log.match(Greeter, :greet, fn
+          Log.match(:greet, fn
             {_, _, ["Bob"], _} -> true
           end)
-          |> Log.verify!(strict: true)
+          |> Log.verify!(Greeter, strict: true)
         end
 
       assert error.message =~ "Alice"
@@ -364,9 +352,9 @@ defmodule DoubleDown.LogTest do
       Greeter.Port.fetch_greeting("Bob")
 
       assert :ok =
-               Log.match(Greeter, :greet, fn {_, _, ["Alice"], _} -> true end)
-               |> Log.match(Greeter, :fetch_greeting, fn {_, _, ["Bob"], {:ok, _}} -> true end)
-               |> Log.verify!()
+               Log.match(:greet, fn {_, _, ["Alice"], _} -> true end)
+               |> Log.match(:fetch_greeting, fn {_, _, ["Bob"], {:ok, _}} -> true end)
+               |> Log.verify!(Greeter)
     end
 
     test "multi-contract verification" do
@@ -389,10 +377,13 @@ defmodule DoubleDown.LogTest do
       Counter.Port.get_count()
 
       assert :ok =
-               Log.match(Greeter, :greet, fn {_, _, ["Alice"], _} -> true end)
-               |> Log.match(Counter, :increment, fn {_, _, [5], 5} -> true end)
-               |> Log.match(Counter, :get_count, fn {_, _, [], 5} -> true end)
-               |> Log.verify!()
+               Log.match(:greet, fn {_, _, ["Alice"], _} -> true end)
+               |> Log.verify!(Greeter)
+
+      assert :ok =
+               Log.match(:increment, fn {_, _, [5], 5} -> true end)
+               |> Log.match(:get_count, fn {_, _, [], 5} -> true end)
+               |> Log.verify!(Counter)
     end
 
     test "mix of match and reject expectations" do
@@ -401,9 +392,9 @@ defmodule DoubleDown.LogTest do
       end)
 
       assert :ok =
-               Log.match(Greeter, :greet, fn _ -> true end)
-               |> Log.reject(Greeter, :fetch_greeting)
-               |> Log.verify!()
+               Log.match(:greet, fn _ -> true end)
+               |> Log.reject(:fetch_greeting)
+               |> Log.verify!(Greeter)
     end
 
     test "used alongside DoubleDown.Handler" do
@@ -423,9 +414,9 @@ defmodule DoubleDown.LogTest do
 
       # Also verify log expectations
       assert :ok =
-               Log.match(Greeter, :greet, fn {_, _, ["Alice"], _} -> true end)
-               |> Log.match(Greeter, :fetch_greeting, fn {_, _, ["Bob"], {:ok, _}} -> true end)
-               |> Log.verify!()
+               Log.match(:greet, fn {_, _, ["Alice"], _} -> true end)
+               |> Log.match(:fetch_greeting, fn {_, _, ["Bob"], {:ok, _}} -> true end)
+               |> Log.verify!(Greeter)
     end
   end
 end
