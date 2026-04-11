@@ -10,7 +10,7 @@ enough to test Ecto.Repo operations without a database.
 
 ## Why DoubleDown?
 
-DoubleDown builds on the familiar Mox pattern and extends it:
+DoubleDown extends the Mox pattern:
 
 - **Explicit contracts at system boundaries** — Jose Valim's
   [Mocks and explicit contracts](https://dashbit.co/blog/mocks-and-explicit-contracts)
@@ -86,11 +86,41 @@ defmodule MyApp.Todos do
 end
 ```
 
+Implement the behaviour:
+
+```elixir
+defmodule MyApp.Todos.Ecto do
+  @behaviour MyApp.Todos
+
+  @impl true
+  def create_todo(params), do: MyApp.Repo.insert(Todo.changeset(params))
+
+  @impl true
+  def get_todo(id) do
+    case MyApp.Repo.get(Todo, id) do
+      nil -> {:error, :not_found}
+      todo -> {:ok, todo}
+    end
+  end
+
+  @impl true
+  def list_todos(tenant_id) do
+    MyApp.Repo.all(from t in Todo, where: t.tenant_id == ^tenant_id)
+  end
+end
+```
+
 Wire it up:
 
 ```elixir
 # config/config.exs
 config :my_app, MyApp.Todos, impl: MyApp.Todos.Ecto
+```
+
+Start the test ownership server in `test/test_helper.exs`:
+
+```elixir
+DoubleDown.Testing.start()
 ```
 
 Test with expects and stubs — no database, full async isolation:
@@ -172,7 +202,7 @@ the built-in Repo contract.
 
 ## Relationship to Skuld
 
-DoubleDown extracts the port system from
+DoubleDown extracts the contract and test double system from
 [Skuld](https://github.com/mccraigmccraig/skuld) (algebraic effects
 for Elixir) into a standalone library. You get typed contracts,
 async-safe test doubles, and dispatch logging without needing Skuld's
