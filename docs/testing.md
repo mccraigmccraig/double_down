@@ -23,76 +23,11 @@ is absent from the compiled beam files. See
 [Dispatch resolution](getting-started.md#dispatch-resolution) for
 details.
 
-## Handler modes
-
-DoubleDown provides three ways to register test handlers. All are
-process-scoped and isolated between concurrent tests.
-
-### Module handler
-
-Register any module that implements the contract's `@behaviour`:
-
-```elixir
-DoubleDown.Testing.set_handler(MyApp.Todos, MyApp.Todos.Fake)
-```
-
-Dispatch calls `apply(MyApp.Todos.Fake, operation, args)`.
-
-### Function handler
-
-Register a 2-arity closure `(operation, args) -> result` with pattern
-matching:
-
-```elixir
-DoubleDown.Testing.set_fn_handler(MyApp.Todos, fn
-  :create_todo, [params] -> {:ok, struct!(Todo, params)}
-  :get_todo, [id] -> {:ok, %Todo{id: id, title: "Test"}}
-  :list_todos, [_tenant] -> [%Todo{id: "1", title: "Test"}]
-end)
-```
-
-This is the most common mode for simple tests where you just need
-canned return values.
-
-### Stateful handler
-
-Register a 3-arity closure `(operation, args, state) -> {result, new_state}`
-with an initial state value:
-
-```elixir
-DoubleDown.Testing.set_stateful_handler(
-  MyApp.Todos,
-  fn
-    :create_todo, [params], todos ->
-      todo = struct!(Todo, Map.put(params, :id, map_size(todos) + 1))
-      {{:ok, todo}, Map.put(todos, todo.id, todo)}
-
-    :get_todo, [id], todos ->
-      case Map.get(todos, id) do
-        nil -> {{:error, :not_found}, todos}
-        todo -> {{:ok, todo}, todos}
-      end
-
-    :list_todos, [_tenant], todos ->
-      {Map.values(todos), todos}
-  end,
-  %{}  # initial state
-)
-```
-
-State is stored in NimbleOwnership and updated atomically on each
-dispatch. This gives you a lightweight in-memory store for tests that
-need read-after-write consistency.
-
-For Ecto Repo operations specifically, DoubleDown ships ready-made
-stateful test doubles — see [Repo](repo.md).
-
 ## Double (expect/stub/fake)
 
-`DoubleDown.Double` provides a Mox-style expect/stub API for declaring
-test handlers. Each call writes directly to NimbleOwnership — no
-builder, no `install!` step. All functions return the contract module
-for piping.
+`DoubleDown.Double` is the primary API for setting up test doubles.
+Each call writes directly to NimbleOwnership — no builder, no
+`install!` step. All functions return the contract module for piping.
 
 ### Basic usage
 
@@ -135,8 +70,8 @@ DoubleDown.Double.expect(MyApp.Todos, :get_todo, fn [id] -> {:ok, %Todo{id: id}}
 A fallback handles any operation without a specific expect or
 per-operation stub. Three forms are supported:
 
-**Function fallback** — a 2-arity `fn operation, args -> result end`,
-the same signature as `set_fn_handler`:
+**Function fallback** — a stateless 2-arity
+`fn operation, args -> result end`:
 
 ```elixir
 MyApp.Todos
@@ -147,10 +82,10 @@ end)
 |> DoubleDown.Double.expect(:create_todo, fn [p] -> {:ok, struct!(Todo, p)} end)
 ```
 
-**Stateful fake** — a 3-arity `fn op, args, state -> {result, state}` with
-initial state. Same signature as `set_stateful_handler`, so stateful
-fakes like `Repo.InMemory` integrate directly. Override specific
-operations with expects while the fake handles everything else:
+**Stateful fake** — a 3-arity `fn op, args, state -> {result, state}`
+with initial state. Fakes like `Repo.InMemory` integrate directly.
+Override specific operations with expects while the fake handles
+everything else:
 
 ```elixir
 # First insert fails with constraint error, rest go through InMemory
@@ -161,11 +96,11 @@ DoubleDown.Repo
 end)
 ```
 
-When an expect short-circuits (returns an error), the fallback
-state is unchanged — correct for error simulation.
+When an expect short-circuits (returns an error), the fake state is
+unchanged — correct for error simulation.
 
-Note: expects cannot delegate to the stateful fallback inline
-(no "passthrough" callback). Threading mutable state through a
+Note: expects cannot delegate to a stateful fake inline (no
+"passthrough" callback). Threading mutable state through a
 user-provided callback requires a complex API and seems of limited
 value given that the main use case — error simulation — doesn't
 need it. We decided to leave it out for now.
@@ -185,13 +120,13 @@ The module is validated at `fake` time. Note: if the module's
 won't see your stub — it calls its own `:foo` directly. For stubs to
 be visible, the module must call through the facade.
 
-Dispatch priority: expects > per-operation stubs > fallback > raise.
+Dispatch priority: expects > per-operation stubs > fallback/fake > raise.
 
 ### Passthrough expects
 
-When a fallback is configured, pass `:passthrough` instead of a
-function to delegate to the fallback while still consuming the
-expect for `verify!` counting:
+When a fallback/fake is configured, pass `:passthrough` instead of a
+function to delegate while still consuming the expect for `verify!`
+counting:
 
 ```elixir
 MyApp.Todos
@@ -203,9 +138,9 @@ MyApp.Todos
 ```
 
 `:passthrough` works with all fallback types (function, stateful,
-module) and threads state correctly for stateful fallbacks. It can
-be mixed with function expects for patterns like "first call
-succeeds through the fallback, second call returns an error":
+module) and threads state correctly for stateful fakes. It can be
+mixed with function expects for patterns like "first call succeeds
+through the fake, second call returns an error":
 
 ```elixir
 DoubleDown.Repo
@@ -231,7 +166,7 @@ DoubleDown.Double.stub(DoubleDown.Repo, :one, fn [_] -> nil end)
 ### Verification
 
 `verify!/0` checks that all expectations have been consumed. Stubs
-are not checked — zero calls is valid.
+and fakes are not checked — zero calls is valid.
 
 The easiest approach is `verify_on_exit!/0` in a setup block — it
 automatically verifies after each test, catching forgotten `verify!`
@@ -255,16 +190,6 @@ test "creates a todo" do
 end
 ```
 
-### When to use Double vs raw handlers
-
-`DoubleDown.Double` covers all common test double scenarios:
-`expect` for call counting and ordered expectations, `stub` for
-canned responses, and `fake` for stateful or module-backed
-implementations. `Double` is built on top of `set_stateful_handler`
-internally — `set_fn_handler` and `set_stateful_handler` are the
-low-level primitives that power it. They're still available as
-public API, but there's probably never a need to use them directly.
-
 ## Dispatch logging
 
 Record every call that crosses a contract boundary, then assert on
@@ -272,10 +197,10 @@ the sequence:
 
 ```elixir
 setup do
+  MyApp.Todos
+  |> DoubleDown.Double.stub(:get_todo, fn [id] -> {:ok, %Todo{id: id}} end)
+
   DoubleDown.Testing.enable_log(MyApp.Todos)
-  DoubleDown.Testing.set_fn_handler(MyApp.Todos, fn
-    :get_todo, [id] -> {:ok, %Todo{id: id}}
-  end)
   :ok
 end
 
@@ -297,15 +222,15 @@ returns the full sequence.
 log. Unlike `get_log/1` + manual assertions, it supports ordered
 matching, counting, reject expectations, and strict mode.
 
-This is particularly valuable with handlers like `Repo.Test` that
-do real computation — matching on results in the log is a meaningful
+This is particularly valuable with fakes like `Repo.Test` that do
+real computation — matching on results in the log is a meaningful
 assertion, not a tautology.
 
 ### Basic usage
 
 ```elixir
 DoubleDown.Testing.enable_log(MyApp.Todos)
-# ... set handler and dispatch ...
+# ... set up double and dispatch ...
 
 DoubleDown.Log.match(:create_todo, fn
   {_, _, [params], {:ok, %Todo{id: id}}} when is_binary(id) -> true
@@ -347,7 +272,7 @@ validation and producing return values, Log for after-the-fact
 result inspection:
 
 ```elixir
-# Set up handlers
+# Set up double
 DoubleDown.Double.expect(MyContract, :create, fn [p] -> {:ok, struct!(Thing, p)} end)
 
 DoubleDown.Testing.enable_log(MyContract)
@@ -355,7 +280,7 @@ DoubleDown.Testing.enable_log(MyContract)
 # Run code under test
 MyModule.do_work(params)
 
-# Verify handler expectations consumed
+# Verify expectations consumed
 DoubleDown.Double.verify!()
 
 # Verify log entries match expected patterns
@@ -367,10 +292,10 @@ end)
 
 ## Process sharing and async safety
 
-All test handlers are process-scoped. `async: true` tests run in full
-isolation — each test process has its own handlers, state, and logs.
+All test doubles are process-scoped. `async: true` tests run in full
+isolation — each test process has its own doubles, state, and logs.
 
-**Task.async children** automatically inherit their parent's handlers
+**Task.async children** automatically inherit their parent's doubles
 via the `$callers` chain. No setup needed.
 
 **Other processes** (plain `spawn`, Agent, GenServer) need explicit
@@ -397,17 +322,21 @@ mode:
 ```elixir
 setup do
   DoubleDown.Testing.set_mode_to_global()
-  DoubleDown.Testing.set_handler(MyApp.Todos, MyApp.Todos.InMemory)
+
+  DoubleDown.Repo
+  |> DoubleDown.Double.fake(&DoubleDown.Repo.InMemory.dispatch/3,
+    DoubleDown.Repo.InMemory.new())
+
   on_exit(fn -> DoubleDown.Testing.set_mode_to_private() end)
   :ok
 end
 ```
 
-In global mode, all handlers registered by the test process are
+In global mode, all doubles registered by the test process are
 visible to every process in the VM without explicit `allow/3` calls.
 
 **Warning:** Global mode is incompatible with `async: true`. When
-active, all tests share the same handlers, so concurrent tests will
+active, all tests share the same doubles, so concurrent tests will
 interfere with each other. Only use global mode in tests with
 `async: false`. Call `set_mode_to_private/0` in `on_exit` to restore
 per-process isolation for subsequent tests.
@@ -429,9 +358,8 @@ defmodule MyApp.WorkerTest do
   use ExUnit.Case, async: true
 
   setup do
-    DoubleDown.Testing.set_fn_handler(MyApp.Todos, fn
-      :get_todo, [id] -> {:ok, %Todo{id: id}}
-    end)
+    MyApp.Todos
+    |> DoubleDown.Double.stub(:get_todo, fn [id] -> {:ok, %Todo{id: id}} end)
 
     {:ok, pid} = MyApp.Worker.start_link([])
     DoubleDown.Testing.allow(MyApp.Todos, self(), pid)
@@ -457,11 +385,9 @@ defmodule MyApp.PipelineIntegrationTest do
   setup do
     DoubleDown.Testing.set_mode_to_global()
 
-    DoubleDown.Testing.set_stateful_handler(
-      DoubleDown.Repo,
-      &DoubleDown.Repo.InMemory.dispatch/3,
-      DoubleDown.Repo.InMemory.new()
-    )
+    DoubleDown.Repo
+    |> DoubleDown.Double.fake(&DoubleDown.Repo.InMemory.dispatch/3,
+      DoubleDown.Repo.InMemory.new())
 
     on_exit(fn -> DoubleDown.Testing.set_mode_to_private() end)
 
@@ -478,23 +404,23 @@ end
 
 ## Cleanup
 
-Call `reset/0` to clear all handlers, state, and logs for the current
+Call `reset/0` to clear all doubles, state, and logs for the current
 process:
 
 ```elixir
 setup do
   DoubleDown.Testing.reset()
-  # ... set up fresh handlers ...
+  # ... set up fresh doubles ...
 end
 ```
 
-In practice, most tests just set handlers in `setup` without calling
+In practice, most tests just set doubles in `setup` without calling
 `reset` — NimbleOwnership's per-process isolation means there's no
 cross-test leakage.
 
 ## Fail-fast configuration
 
-By default, if no test handler is set and your production config is
+By default, if no test double is set and your production config is
 inherited into the test environment, dispatch silently hits the real
 implementation. This can mask missing test setup — a test passes but
 it's talking to a real database or external service.
@@ -508,30 +434,43 @@ config :my_app, MyApp.Todos, impl: nil
 config :my_app, DoubleDown.Repo, impl: nil
 ```
 
-Now any test that forgets to set a handler gets an immediate error:
+Now any test that forgets to set up a double gets an immediate error:
 
     ** (RuntimeError) No test handler set for MyApp.Todos.
 
     In your test setup, call one of:
 
-        DoubleDown.Testing.set_handler(MyApp.Todos, MyImpl)
-        DoubleDown.Testing.set_fn_handler(MyApp.Todos, fn operation, args -> ... end)
-        DoubleDown.Testing.set_stateful_handler(MyApp.Todos, handler_fn, initial_state)
+        DoubleDown.Double.stub(MyApp.Todos, :op, fn [args] -> result end)
+        DoubleDown.Double.fake(MyApp.Todos, MyApp.Todos.Impl)
 
-Every test must explicitly declare its dependencies via
-`set_handler`, `set_fn_handler`, or `set_stateful_handler`. For
-integration tests that need the real implementation, use
-`set_handler` with the production module:
+Every test must explicitly declare its dependencies. For integration
+tests that need the real implementation, use `fake` with the
+production module:
 
 ```elixir
 setup do
-  DoubleDown.Testing.set_handler(MyApp.Todos, MyApp.Todos.Ecto)
+  DoubleDown.Double.fake(MyApp.Todos, MyApp.Todos.Ecto)
   :ok
 end
 ```
 
 This makes the choice to use the real implementation visible and
 intentional, rather than an accident of config inheritance.
+
+## Low-level handler APIs
+
+`DoubleDown.Double` is built on top of `set_stateful_handler`
+internally. The low-level handler APIs are still available but
+there's probably never a need to use them directly:
+
+- `set_handler(contract, module)` — register a module handler
+- `set_fn_handler(contract, fn op, args -> result end)` — register
+  a 2-arity function handler
+- `set_stateful_handler(contract, fn op, args, state -> {result, state} end, init)` —
+  register a 3-arity stateful handler
+
+These are the primitives that power `Double.stub`, `Double.fake`,
+and `Double.expect`.
 
 ## Mox compatibility
 
@@ -559,15 +498,15 @@ test "get_todo returns the expected todo" do
 end
 ```
 
-This works because DoubleDown's dispatch resolution checks test handlers
-first, then falls back to application config. When using Mox, the
-config points to the mock module, and Mox's own process-scoped
+This works because DoubleDown's dispatch resolution checks test
+doubles first, then falls back to application config. When using Mox,
+the config points to the mock module, and Mox's own process-scoped
 expectations provide the isolation.
 
-You can use either approach — DoubleDown's built-in handlers or Mox —
-depending on your preference. DoubleDown's handlers don't require
-defining mock modules or changing config, and the stateful handler
-mode has no Mox equivalent.
+You can use either approach — DoubleDown's built-in doubles or Mox —
+depending on your preference. DoubleDown's doubles don't require
+defining mock modules or changing config, and the stateful fake
+capability has no Mox equivalent.
 
 ---
 
