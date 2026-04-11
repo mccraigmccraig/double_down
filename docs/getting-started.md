@@ -15,20 +15,20 @@ If you're coming from Mox or standard Elixir, here's the mapping:
 
 ### Test double types
 
-DoubleDown supports several kinds of test double, all built on the same
-handler mechanism:
+DoubleDown supports several kinds of test double, all configured via
+`DoubleDown.Double`:
 
 | Type | What it does | DoubleDown API |
 |---|---|---|
-| **Stub** | Returns canned responses, no verification | `set_fn_handler`, `DoubleDown.Double.stub` |
-| **Mock** | Returns canned responses + verifies call counts/order | `DoubleDown.Double.expect` + `verify!` |
-| **Fake** | Working logic, simpler than production but behaviourally realistic | `set_stateful_handler`, `Repo.Test`, `Repo.InMemory` |
+| **Stub** | Returns canned responses, no verification | `Double.stub` |
+| **Mock** | Returns canned responses + verifies call counts/order | `Double.expect` + `verify!` |
+| **Fake** | Working logic, simpler than production but behaviourally realistic | `Double.fake`, `Repo.Test`, `Repo.InMemory` |
 
 **Stubs** are the simplest — register a function that returns what you
 need, don't bother checking how many times it was called.
 
-**Mocks** (via `DoubleDown.Double`) add expectations — the handler is
-consumed in order, and `verify!` checks that all expected calls were
+**Mocks** (via `DoubleDown.Double`) add expectations — each expectation
+is consumed in order, and `verify!` checks that all expected calls were
 made. This is the Mox model.
 
 **Fakes** are the most powerful — they have real logic. `Repo.Test`
@@ -239,7 +239,7 @@ config :my_app, MyApp.Todos, impl: MyApp.Todos.Ecto
 ```
 
 For test environments, set `impl: nil` to enable the fail-fast
-pattern — any test that forgets to set a handler gets an immediate
+pattern — any test that forgets to set up a double gets an immediate
 error instead of silently hitting a real implementation:
 
 ```elixir
@@ -258,13 +258,13 @@ time** based on the `:test_dispatch?` option:
 
 ### Non-production (default)
 
-`DoubleDown.Dispatch.call/4` resolves the handler in order:
+`DoubleDown.Dispatch.call/4` resolves the implementation in order:
 
-1. **Test handler** — NimbleOwnership process-scoped lookup
+1. **Test double** — NimbleOwnership process-scoped lookup
 2. **Application config** — `Application.get_env(otp_app, contract)[:impl]`
 3. **Raise** — clear error message if nothing is configured
 
-Test handlers always take priority over config.
+Test doubles always take priority over config.
 
 ### Production (default)
 
