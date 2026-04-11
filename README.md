@@ -27,8 +27,8 @@ DoubleDown extends the Mox pattern:
 - **Stubs are not always enough** — modelling stateful dependencies
   like a database with plain mocks is verbose and fragile, so most
   projects just hit the real DB and accept the speed penalty.
-  DoubleDown's stateful handlers - fakes - maintain in-memory state
-  with atomic updates, enabling read-after-write consistency without
+  DoubleDown's stateful fakes maintain in-memory state with atomic
+  updates, enabling read-after-write consistency without
   a database — fast enough for property-based testing.
 - **Fakes with expectations** — testing "what happens when the second
   insert fails with a constraint violation?" means either a real DB
@@ -62,7 +62,7 @@ DoubleDown extends the Mox pattern:
 | Stateful fakes                     | In-memory state with atomic updates via NimbleOwnership                    |
 | Expect + fake composition          | Layer expects over a stateful fake for failure simulation                  |
 | `:passthrough` expects             | Count calls without changing behaviour                                     |
-| Module/function/stateful fallbacks | Dispatch priority chain: expects > stubs > fallback > raise                |
+| Stubs and fakes as fallbacks       | Dispatch priority chain: expects > stubs > fake > raise                    |
 | Dispatch logging                   | Record `{contract, op, args, result}` for every call                       |
 | Structured log matching            | `DoubleDown.Log` — pattern-match on logged results                         |
 | Built-in Ecto Repo                 | 16-operation contract with `Repo.Test` and `Repo.InMemory` fakes           |
@@ -178,7 +178,7 @@ end
 
 - **[Getting Started](docs/getting-started.md)** — contracts, facades,
   dispatch resolution, terminology
-- **[Testing](docs/testing.md)** — Handler expect/stub, dispatch
+- **[Testing](docs/testing.md)** — Double expect/stub/fake, dispatch
   logging, Log matchers, async safety, process sharing
 - **[Repo](docs/repo.md)** — built-in Ecto Repo contract, `Repo.Test`,
   `Repo.InMemory`, failure scenario testing
@@ -192,7 +192,7 @@ Add `double_down` to your dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:double_down, "~> 0.24"}
+    {:double_down, "~> 0.25"}
   ]
 end
 ```
