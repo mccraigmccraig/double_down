@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.23.0]
+
+### Changed
+
+- **Breaking:** `HexPort.Handler` API simplified — `expect` and `stub`
+  now write directly to NimbleOwnership with immediate effect. Removed
+  `%HexPort.Handler{}` struct, `new/0`, and `install!/1`. All functions
+  return the contract module atom for Mimic-style piping:
+
+      MyContract
+      |> HexPort.Handler.stub(MyImpl)
+      |> HexPort.Handler.expect(:get, fn [id] -> %Thing{id: id} end)
+
+  A canonical handler function is installed on first touch and reads
+  dispatch config from state — no builder assembly step needed.
+
 ## [0.22.0]
 
 ### Added
@@ -349,7 +365,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `HexPort.Testing` with NimbleOwnership, `Repo.Test` stateless
   adapter, CI setup, Credo, Dialyzer.
 
-[Unreleased]: https://github.com/mccraigmccraig/hex_port/compare/v0.22.0...HEAD
+[Unreleased]: https://github.com/mccraigmccraig/hex_port/compare/v0.23.0...HEAD
+[0.23.0]: https://github.com/mccraigmccraig/hex_port/compare/v0.22.0...v0.23.0
 [0.22.0]: https://github.com/mccraigmccraig/hex_port/compare/v0.21.0...v0.22.0
 [0.21.0]: https://github.com/mccraigmccraig/hex_port/compare/v0.20.0...v0.21.0
 [0.20.0]: https://github.com/mccraigmccraig/hex_port/compare/v0.19.0...v0.20.0
