@@ -132,28 +132,22 @@ end
 defmodule MyApp.BillingTest do
   use ExUnit.Case, async: true
 
-  alias MyApp.Repo
-  alias DoubleDown.Repo, as: RepoContract
   alias MyApp.Billing.Queries
 
   setup do
     # Queries — stub domain-specific reads
-    DoubleDown.Testing.set_fn_handler(Queries, fn
-      :get_payment_method, [_customer_id] ->
-        {:ok, %PaymentMethod{id: 1, type: :card}}
+    DoubleDown.Double.stub(Queries, :get_payment_method, fn [_customer_id] ->
+      {:ok, %PaymentMethod{id: 1, type: :card}}
     end)
 
-    # Repo — stateless writes + fallback for any reads
-    DoubleDown.Testing.set_fn_handler(
-      RepoContract,
-      DoubleDown.Repo.Test.new()
-    )
+    # Repo — stateless writes via Repo.Test fake
+    DoubleDown.Double.stub(DoubleDown.Repo, DoubleDown.Repo.Test.new())
 
     :ok
   end
 
   test "create_invoice inserts invoice and line items" do
-    DoubleDown.Testing.enable_log(RepoContract)
+    DoubleDown.Testing.enable_log(DoubleDown.Repo)
 
     assert {:ok, %Invoice{}} =
       MyApp.Billing.create_invoice(%{
@@ -161,7 +155,7 @@ defmodule MyApp.BillingTest do
         items: [%{description: "Widget", amount: 100}]
       })
 
-    log = DoubleDown.Testing.get_log(RepoContract)
+    log = DoubleDown.Testing.get_log(DoubleDown.Repo)
     operations = Enum.map(log, fn {_, op, _, _} -> op end)
     assert :insert in operations
   end
@@ -178,8 +172,8 @@ facade). Both work in the same application — there's no conflict.
 
 In tests:
 
-- **Migrated code** uses `DoubleDown.Testing.set_fn_handler` /
-  `set_stateful_handler` — no DB needed, `async: true`
+- **Migrated code** uses `DoubleDown.Double` (expect/stub/fake)
+  — no DB needed, `async: true`
 - **Unmigrated code** uses `Ecto.Adapters.SQL.Sandbox` as before
 
 The two can even coexist in the same test if needed (e.g., an
@@ -196,13 +190,13 @@ config :my_app, DoubleDown.Repo, impl: nil
 config :my_app, MyApp.Billing.Queries, impl: nil
 ```
 
-This ensures any test that forgets to set up handlers gets an
+This ensures any test that forgets to set up a double gets an
 immediate error instead of silently hitting the real implementation.
-For integration tests that intentionally use the real DB, set the
-handler explicitly:
+For integration tests that intentionally use the real DB, use `fake`
+with the production module:
 
 ```elixir
-DoubleDown.Testing.set_handler(DoubleDown.Repo, MyApp.EctoRepo)
+DoubleDown.Double.fake(DoubleDown.Repo, MyApp.EctoRepo)
 ```
 
 ## When to use InMemory vs Test
