@@ -1,8 +1,8 @@
-defmodule HexPort.Contract do
+defmodule DoubleDown.Contract do
   @moduledoc """
   Macro for defining typed port contracts with `defport` declarations.
 
-  `use HexPort.Contract` imports the `defport` macro and registers a
+  `use DoubleDown.Contract` imports the `defport` macro and registers a
   `@before_compile` hook that generates:
 
     * `@callback` declarations on the contract module itself — the
@@ -11,13 +11,13 @@ defmodule HexPort.Contract do
 
   Contracts are purely static interface definitions. They do **not**
   generate a dispatch facade (`.Port` module) — that is the concern of
-  `HexPort.Facade`, which the consuming application uses separately to
+  `DoubleDown.Facade`, which the consuming application uses separately to
   bind a contract to an OTP application's config.
 
   ## Usage
 
       defmodule MyApp.Todos do
-        use HexPort.Contract
+        use DoubleDown.Contract
 
         defport get_todo(tenant_id :: String.t(), id :: String.t()) ::
           {:ok, Todo.t()} | {:error, term()}
@@ -37,13 +37,13 @@ defmodule HexPort.Contract do
 
   Compatible with `Mox.defmock(Mock, for: MyApp.Todos)`.
 
-  To generate a dispatch facade, use `HexPort.Facade` in a separate module:
+  To generate a dispatch facade, use `DoubleDown.Facade` in a separate module:
 
       defmodule MyApp.Todos do
-        use HexPort.Facade, contract: MyApp.Todos.Contract, otp_app: :my_app
+        use DoubleDown.Facade, contract: MyApp.Todos.Contract, otp_app: :my_app
       end
 
-  See `HexPort.Facade` for dispatch configuration and `HexPort` for an overview.
+  See `DoubleDown.Facade` for dispatch configuration and `DoubleDown` for an overview.
   """
 
   @doc false
@@ -51,15 +51,15 @@ defmodule HexPort.Contract do
     quote do
       # import is always safe to repeat and must be at module scope
       # (imports inside blocks like `unless` are scoped to that block)
-      import HexPort.Contract, only: [defport: 1, defport: 2]
+      import DoubleDown.Contract, only: [defport: 1, defport: 2]
 
       # Guard the non-idempotent parts: registering the accumulator attribute
-      # and the @before_compile hook. This makes `use HexPort.Contract`
-      # idempotent, so a module can both `use HexPort.Contract` directly and
+      # and the @before_compile hook. This makes `use DoubleDown.Contract`
+      # idempotent, so a module can both `use DoubleDown.Contract` directly and
       # `use Skuld.Effects.Port.Contract` (which calls it internally).
       unless Module.has_attribute?(__MODULE__, :port_operations) do
         Module.register_attribute(__MODULE__, :port_operations, accumulate: true)
-        @before_compile HexPort.Contract
+        @before_compile DoubleDown.Contract
       end
     end
   end
@@ -155,7 +155,7 @@ defmodule HexPort.Contract do
     if operations == [] do
       raise CompileError,
         description:
-          "#{inspect(env.module)} uses HexPort.Contract but has no defport declarations",
+          "#{inspect(env.module)} uses DoubleDown.Contract but has no defport declarations",
         file: env.file,
         line: 0
     end

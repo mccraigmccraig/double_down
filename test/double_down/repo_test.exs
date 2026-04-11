@@ -1,7 +1,7 @@
-defmodule HexPort.RepoTest do
+defmodule DoubleDown.RepoTest do
   use ExUnit.Case, async: true
 
-  alias HexPort.Repo
+  alias DoubleDown.Repo
 
   # -------------------------------------------------------------------
   # Test Schemas
@@ -40,7 +40,7 @@ defmodule HexPort.RepoTest do
   # Contract Tests
   # -------------------------------------------------------------------
 
-  describe "HexPort.Repo.Contract" do
+  describe "DoubleDown.Repo.Contract" do
     test "generates Behaviour module with all callbacks" do
       {:module, _} = Code.ensure_loaded(Repo.Contract)
       {:ok, callbacks} = Code.Typespec.fetch_callbacks(Repo.Contract)
@@ -63,7 +63,7 @@ defmodule HexPort.RepoTest do
       assert :transact in callback_names
     end
 
-    test "Facade (defined via use HexPort.Facade) has all operations" do
+    test "Facade (defined via use DoubleDown.Facade) has all operations" do
       {:module, _} = Code.ensure_loaded(Repo.Port)
 
       assert function_exported?(Repo.Port, :insert, 1)
@@ -148,7 +148,7 @@ defmodule HexPort.RepoTest do
     def transact(%Ecto.Multi{} = multi, _opts) do
       # Simulate what a real Ecto Repo does: step through the Multi
       # using this module as the repo for :run callbacks
-      HexPort.Repo.MultiStepper.run(multi, __MODULE__)
+      DoubleDown.Repo.MultiStepper.run(multi, __MODULE__)
     end
   end
 
@@ -158,7 +158,7 @@ defmodule HexPort.RepoTest do
 
   describe "Ecto Repo delegation" do
     setup do
-      HexPort.Testing.set_handler(Repo.Contract, MockRepo)
+      DoubleDown.Testing.set_handler(Repo.Contract, MockRepo)
       :ok
     end
 
@@ -232,7 +232,7 @@ defmodule HexPort.RepoTest do
 
     test "bang variant raises on {:error, reason}" do
       # Override with an fn handler that returns an error
-      HexPort.Testing.set_fn_handler(Repo.Contract, fn
+      DoubleDown.Testing.set_fn_handler(Repo.Contract, fn
         :insert, [_cs] -> {:error, :validation_failed}
       end)
 

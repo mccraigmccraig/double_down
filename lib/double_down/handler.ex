@@ -1,4 +1,4 @@
-defmodule HexPort.Handler do
+defmodule DoubleDown.Handler do
   @moduledoc """
   Mox-style expect/stub handler declarations with immediate effect.
 
@@ -8,20 +8,20 @@ defmodule HexPort.Handler do
 
   ## Basic usage
 
-      HexPort.Handler.expect(MyContract, :get_thing, fn [id] -> %Thing{id: id} end)
-      HexPort.Handler.stub(MyContract, :list, fn [_] -> [] end)
+      DoubleDown.Handler.expect(MyContract, :get_thing, fn [id] -> %Thing{id: id} end)
+      DoubleDown.Handler.stub(MyContract, :list, fn [_] -> [] end)
 
       # ... run code under test ...
 
-      HexPort.Handler.verify!()
+      DoubleDown.Handler.verify!()
 
   ## Piping
 
   All functions return the contract module, so you can pipe:
 
       MyContract
-      |> HexPort.Handler.expect(:get_thing, fn [id] -> %Thing{id: id} end)
-      |> HexPort.Handler.stub(:list, fn [_] -> [] end)
+      |> DoubleDown.Handler.expect(:get_thing, fn [id] -> %Thing{id: id} end)
+      |> DoubleDown.Handler.stub(:list, fn [_] -> [] end)
 
   ## Sequenced expectations
 
@@ -29,8 +29,8 @@ defmodule HexPort.Handler do
   that are consumed in order:
 
       MyContract
-      |> HexPort.Handler.expect(:get_thing, fn [_] -> {:error, :not_found} end)
-      |> HexPort.Handler.expect(:get_thing, fn [id] -> %Thing{id: id} end)
+      |> DoubleDown.Handler.expect(:get_thing, fn [_] -> {:error, :not_found} end)
+      |> DoubleDown.Handler.expect(:get_thing, fn [id] -> %Thing{id: id} end)
 
       # First call returns :not_found, second returns the thing
 
@@ -38,7 +38,7 @@ defmodule HexPort.Handler do
 
   Use `times: n` when the same function should handle multiple calls:
 
-      HexPort.Handler.expect(MyContract, :check, fn [_] -> :ok end, times: 3)
+      DoubleDown.Handler.expect(MyContract, :check, fn [_] -> :ok end, times: 3)
 
   ## Expects + stubs
 
@@ -46,8 +46,8 @@ defmodule HexPort.Handler do
   first; once exhausted, the stub handles all subsequent calls:
 
       MyContract
-      |> HexPort.Handler.expect(:get, fn [_] -> :first end)
-      |> HexPort.Handler.stub(:get, fn [_] -> :default end)
+      |> DoubleDown.Handler.expect(:get, fn [_] -> :first end)
+      |> DoubleDown.Handler.stub(:get, fn [_] -> :default end)
 
   ## Contract-wide fallback
 
@@ -60,8 +60,8 @@ defmodule HexPort.Handler do
   as `set_fn_handler`:
 
       MyContract
-      |> HexPort.Handler.expect(:get, fn [id] -> %Thing{id: id} end)
-      |> HexPort.Handler.stub(fn
+      |> DoubleDown.Handler.expect(:get, fn [id] -> %Thing{id: id} end)
+      |> DoubleDown.Handler.stub(fn
         :list, [_] -> []
         :count, [] -> 0
       end)
@@ -75,8 +75,8 @@ defmodule HexPort.Handler do
 
       # First insert fails, rest go through the stateful handler
       RepoContract
-      |> HexPort.Handler.stub(&Repo.InMemory.handler/3, %{})
-      |> HexPort.Handler.expect(:insert, fn [changeset] ->
+      |> DoubleDown.Handler.stub(&Repo.InMemory.handler/3, %{})
+      |> DoubleDown.Handler.expect(:insert, fn [changeset] ->
         {:error, Ecto.Changeset.add_error(changeset, :email, "taken")}
       end)
 
@@ -106,8 +106,8 @@ defmodule HexPort.Handler do
   delegate to the module via `apply(module, operation, args)`:
 
       MyContract
-      |> HexPort.Handler.expect(:get, fn [_] -> {:error, :not_found} end)
-      |> HexPort.Handler.stub(MyApp.Impl)
+      |> DoubleDown.Handler.expect(:get, fn [_] -> {:error, :not_found} end)
+      |> DoubleDown.Handler.stub(MyApp.Impl)
 
   The module is validated at stub time — all contract operations
   must be exported.
@@ -128,21 +128,21 @@ defmodule HexPort.Handler do
   expect for `verify!` counting:
 
       MyContract
-      |> HexPort.Handler.stub(MyApp.Impl)
-      |> HexPort.Handler.expect(:get, :passthrough, times: 2)
+      |> DoubleDown.Handler.stub(MyApp.Impl)
+      |> DoubleDown.Handler.expect(:get, :passthrough, times: 2)
 
   ## Multi-contract
 
       RepoContract
-      |> HexPort.Handler.stub(&Repo.InMemory.handler/3, %{})
-      |> HexPort.Handler.expect(:insert, fn [cs] -> {:error, :taken} end)
+      |> DoubleDown.Handler.stub(&Repo.InMemory.handler/3, %{})
+      |> DoubleDown.Handler.expect(:insert, fn [cs] -> {:error, :taken} end)
 
       QueriesContract
-      |> HexPort.Handler.expect(:get_record, fn [id] -> %Record{id: id} end)
+      |> DoubleDown.Handler.expect(:get_record, fn [id] -> %Record{id: id} end)
 
   ## Relationship to Mox
 
-  | Mox | HexPort.Handler |
+  | Mox | DoubleDown.Handler |
   |-----|-----------------|
   | `expect(Mock, :fn, n, fun)` | `expect(Contract, :fn, fun, times: n)` |
   | `stub(Mock, :fn, fun)` | `stub(Contract, :fn, fun)` — per-operation |
@@ -161,8 +161,8 @@ defmodule HexPort.Handler do
   those remain for cases that don't fit the expect/stub pattern.
   """
 
-  @ownership_server HexPort.Dispatch.Ownership
-  @contracts_key HexPort.Handler.Contracts
+  @ownership_server DoubleDown.Dispatch.Ownership
+  @contracts_key DoubleDown.Handler.Contracts
 
   # -- Public API: expect --
 
@@ -229,7 +229,7 @@ defmodule HexPort.Handler do
   for an operation are consumed. Setting a stub twice for the same
   operation replaces the previous one.
 
-      HexPort.Handler.stub(MyContract, :list, fn [_] -> [] end)
+      DoubleDown.Handler.stub(MyContract, :list, fn [_] -> [] end)
 
   ## Function fallback (2-arity function)
 
@@ -238,7 +238,7 @@ defmodule HexPort.Handler do
   no per-operation expect or stub. This is the same signature as
   `set_fn_handler`, so existing handler functions can be reused:
 
-      HexPort.Handler.stub(MyContract, fn
+      DoubleDown.Handler.stub(MyContract, fn
         :list, [_] -> []
         :count, [] -> 0
       end)
@@ -250,7 +250,7 @@ defmodule HexPort.Handler do
   This is the same signature as `set_stateful_handler`, allowing
   stateful fakes like `Repo.InMemory` to be integrated:
 
-      HexPort.Handler.stub(RepoContract, &Repo.InMemory.handler/3, %{})
+      DoubleDown.Handler.stub(RepoContract, &Repo.InMemory.handler/3, %{})
 
   The fallback's state is threaded through calls automatically.
   When an expect short-circuits (e.g. returning an error), the
@@ -262,7 +262,7 @@ defmodule HexPort.Handler do
   delegate to the module via `apply(module, operation, args)`. The
   module must implement the contract's `@behaviour`:
 
-      HexPort.Handler.stub(MyContract, MyApp.Impl)
+      DoubleDown.Handler.stub(MyContract, MyApp.Impl)
 
   The module is validated immediately.
 
@@ -362,7 +362,7 @@ defmodule HexPort.Handler do
   Or equivalently:
 
       setup do
-        HexPort.Handler.verify_on_exit!()
+        DoubleDown.Handler.verify_on_exit!()
       end
 
   The verification runs in the on_exit callback (a separate process),
@@ -376,7 +376,7 @@ defmodule HexPort.Handler do
     # exits — the data must survive until the on_exit callback runs.
     NimbleOwnership.set_owner_to_manual_cleanup(@ownership_server, pid)
 
-    ExUnit.Callbacks.on_exit(HexPort.Handler, fn ->
+    ExUnit.Callbacks.on_exit(DoubleDown.Handler, fn ->
       try do
         verify!(pid)
       after
@@ -393,7 +393,7 @@ defmodule HexPort.Handler do
   @initial_state %{expects: %{}, stubs: %{}, fallback: nil, fallback_state: nil}
 
   defp ensure_handler_installed(contract) do
-    state_key = Module.concat(HexPort.State, contract)
+    state_key = Module.concat(DoubleDown.State, contract)
 
     # Check if we've already installed the handler for this contract
     case NimbleOwnership.get_owned(@ownership_server, self()) do
@@ -402,7 +402,7 @@ defmodule HexPort.Handler do
 
       _ ->
         # First touch — install the canonical handler fn
-        HexPort.Testing.set_stateful_handler(
+        DoubleDown.Testing.set_stateful_handler(
           contract,
           &canonical_handler/3,
           @initial_state
@@ -420,7 +420,7 @@ defmodule HexPort.Handler do
   end
 
   defp update_handler_state(contract, update_fn) do
-    state_key = Module.concat(HexPort.State, contract)
+    state_key = Module.concat(DoubleDown.State, contract)
 
     NimbleOwnership.get_and_update(@ownership_server, self(), state_key, fn state ->
       {:ok, update_fn.(state)}
@@ -542,12 +542,12 @@ defmodule HexPort.Handler do
           contracts
 
         _ ->
-          raise "HexPort.Handler.verify!/0 called but no handlers were installed"
+          raise "DoubleDown.Handler.verify!/0 called but no handlers were installed"
       end
 
     unconsumed =
       Enum.flat_map(contracts, fn contract ->
-        state_key = Module.concat(HexPort.State, contract)
+        state_key = Module.concat(DoubleDown.State, contract)
 
         case owned do
           %{^state_key => %{expects: expects}} ->
@@ -567,7 +567,7 @@ defmodule HexPort.Handler do
         end)
 
       raise """
-      HexPort.Handler expectations not fulfilled:
+      DoubleDown.Handler expectations not fulfilled:
 
       #{details}
       """

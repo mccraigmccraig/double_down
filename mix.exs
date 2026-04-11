@@ -1,11 +1,11 @@
-defmodule HexPort.MixProject do
+defmodule DoubleDown.MixProject do
   use Mix.Project
 
   @version File.read!("VERSION") |> String.trim()
 
   def project do
     [
-      app: :hex_port,
+      app: :double_down,
       version: @version,
       elixir: "~> 1.19",
       elixirc_paths: elixirc_paths(Mix.env()),
@@ -13,8 +13,8 @@ defmodule HexPort.MixProject do
       deps: deps(),
       description: description(),
       package: package(),
-      source_url: "https://github.com/mccraigmccraig/hex_port",
-      homepage_url: "https://github.com/mccraigmccraig/hex_port",
+      source_url: "https://github.com/mccraigmccraig/double_down",
+      homepage_url: "https://github.com/mccraigmccraig/double_down",
       dialyzer: [plt_add_apps: [:mix, :ex_unit]],
       docs: [
         main: "readme",
@@ -42,20 +42,20 @@ defmodule HexPort.MixProject do
         ],
         groups_for_modules: [
           Core: [
-            HexPort.Contract,
-            HexPort.Facade,
-            HexPort.Dispatch
+            DoubleDown.Contract,
+            DoubleDown.Facade,
+            DoubleDown.Dispatch
           ],
           Testing: [
-            HexPort.Testing,
-            HexPort.Handler,
-            HexPort.Log
+            DoubleDown.Testing,
+            DoubleDown.Handler,
+            DoubleDown.Log
           ],
           Repo: [
-            HexPort.Repo.Contract,
-            HexPort.Repo.Test,
-            HexPort.Repo.InMemory,
-            HexPort.Repo.MultiStepper
+            DoubleDown.Repo.Contract,
+            DoubleDown.Repo.Test,
+            DoubleDown.Repo.InMemory,
+            DoubleDown.Repo.MultiStepper
           ]
         ]
       ]
@@ -83,7 +83,7 @@ defmodule HexPort.MixProject do
 
   defp description do
     """
-    HexPort: Hexagonal architecture ports for Elixir.
+    DoubleDown: Hexagonal architecture ports for Elixir.
 
     Typed port contracts with async-safe test doubles, dispatch logging,
     and stateful test handlers. Define boundaries with `defport`, swap
@@ -93,11 +93,11 @@ defmodule HexPort.MixProject do
 
   defp package do
     [
-      name: "hex_port",
+      name: "double_down",
       files: ~w(lib docs .formatter.exs mix.exs README.md CHANGELOG.md LICENSE VERSION),
       licenses: ["MIT"],
       links: %{
-        "GitHub" => "https://github.com/mccraigmccraig/hex_port"
+        "GitHub" => "https://github.com/mccraigmccraig/double_down"
       }
     ]
   end

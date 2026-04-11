@@ -1,20 +1,20 @@
-defmodule HexPort.Log do
+defmodule DoubleDown.Log do
   @moduledoc """
-  Log-based expectation matcher for HexPort dispatch logs.
+  Log-based expectation matcher for DoubleDown dispatch logs.
 
   Declares expectations against the dispatch log after execution.
   Matches on the full `{contract, operation, args, result}` tuple —
-  including results, which is meaningful because HexPort handlers
+  including results, which is meaningful because DoubleDown handlers
   (especially `Repo.Test`) do real computation (changeset validation,
   PK autogeneration, timestamps).
 
   ## Basic usage
 
-      HexPort.Log.match(MyContract, :insert, fn
+      DoubleDown.Log.match(MyContract, :insert, fn
         {_, _, [%Changeset{data: %Thing{}}], {:ok, %Thing{}}} -> true
       end)
-      |> HexPort.Log.reject(MyContract, :delete)
-      |> HexPort.Log.verify!()
+      |> DoubleDown.Log.reject(MyContract, :delete)
+      |> DoubleDown.Log.verify!()
 
   Matcher functions only need the positive matching clauses —
   `FunctionClauseError` is caught and interpreted as "didn't match".
@@ -23,27 +23,27 @@ defmodule HexPort.Log do
   ## Matching on results
 
   Unlike Mox/Mimic where asserting on return values would be
-  circular (you wrote the stub), HexPort handlers do real
+  circular (you wrote the stub), DoubleDown handlers do real
   computation. Matching on results is a meaningful assertion:
 
-      HexPort.Log.match(RepoContract, :insert, fn
+      DoubleDown.Log.match(RepoContract, :insert, fn
         {_, _, [%Changeset{data: %Thing{}}],
          {:ok, %Thing{id: id}}} when is_binary(id) -> true
       end)
-      |> HexPort.Log.verify!()
+      |> DoubleDown.Log.verify!()
 
   ## Counting occurrences
 
-      HexPort.Log.match(RepoContract, :insert, fn
+      DoubleDown.Log.match(RepoContract, :insert, fn
         {_, _, [%Changeset{data: %Discrepancy{}}], {:ok, _}} -> true
       end, times: 3)
-      |> HexPort.Log.verify!()
+      |> DoubleDown.Log.verify!()
 
   ## Multi-contract
 
-      HexPort.Log.match(QueriesContract, :get_record, fn {_, _, _, %Record{}} -> true end)
-      |> HexPort.Log.match(RepoContract, :insert, fn {_, _, _, {:ok, _}} -> true end)
-      |> HexPort.Log.verify!()
+      DoubleDown.Log.match(QueriesContract, :get_record, fn {_, _, _, %Record{}} -> true end)
+      |> DoubleDown.Log.match(RepoContract, :insert, fn {_, _, _, {:ok, _}} -> true end)
+      |> DoubleDown.Log.verify!()
 
   ## Matching modes
 
@@ -53,9 +53,9 @@ defmodule HexPort.Log do
   other log entries are allowed between them. Different operations
   are matched independently (no cross-operation ordering):
 
-      HexPort.Log.match(Contract, :insert, matcher)
-      |> HexPort.Log.match(Contract, :update, matcher)
-      |> HexPort.Log.verify!()
+      DoubleDown.Log.match(Contract, :insert, matcher)
+      |> DoubleDown.Log.match(Contract, :update, matcher)
+      |> DoubleDown.Log.verify!()
       # Passes if log contains an insert and an update for this
       # contract, regardless of other entries or relative order
       # of insert vs update.
@@ -65,17 +65,17 @@ defmodule HexPort.Log do
   Every log entry for each referenced contract must be matched.
   No unmatched entries allowed:
 
-      HexPort.Log.match(Contract, :insert, matcher)
-      |> HexPort.Log.match(Contract, :update, matcher)
-      |> HexPort.Log.verify!(strict: true)
+      DoubleDown.Log.match(Contract, :insert, matcher)
+      |> DoubleDown.Log.match(Contract, :update, matcher)
+      |> DoubleDown.Log.verify!(strict: true)
 
   ## Relationship to existing APIs
 
-  Built on `HexPort.Testing.get_log/1`. Completely decoupled from
+  Built on `DoubleDown.Testing.get_log/1`. Completely decoupled from
   handler choice — works with `Repo.Test`, `Repo.InMemory`,
-  `set_fn_handler`, `set_stateful_handler`, or `HexPort.Handler`.
+  `set_fn_handler`, `set_stateful_handler`, or `DoubleDown.Handler`.
 
-  Can be used alongside `HexPort.Handler` — Handler for fail-fast
+  Can be used alongside `DoubleDown.Handler` — Handler for fail-fast
   validation and producing return values, Log for after-the-fact
   result inspection.
   """
@@ -200,7 +200,7 @@ defmodule HexPort.Log do
       |> Enum.uniq()
 
     # Read logs per contract
-    logs = Map.new(contracts, fn contract -> {contract, HexPort.Testing.get_log(contract)} end)
+    logs = Map.new(contracts, fn contract -> {contract, DoubleDown.Testing.get_log(contract)} end)
 
     # Separate match and reject expectations
     {matches, rejects} =
@@ -261,7 +261,7 @@ defmodule HexPort.Log do
 
         :not_found ->
           raise """
-          HexPort.Log expectation not satisfied:
+          DoubleDown.Log expectation not satisfied:
 
             #{inspect(contract)}.#{operation} — match #{n} of #{times} not found.
 
@@ -308,7 +308,7 @@ defmodule HexPort.Log do
         {_, _, args, result} = found
 
         raise """
-        HexPort.Log reject expectation violated:
+        DoubleDown.Log reject expectation violated:
 
           #{inspect(contract)}.#{operation} was called but should not have been.
 
@@ -338,7 +338,7 @@ defmodule HexPort.Log do
           end)
 
         raise """
-        HexPort.Log strict verification failed — unmatched log entries:
+        DoubleDown.Log strict verification failed — unmatched log entries:
 
         #{details}
         """

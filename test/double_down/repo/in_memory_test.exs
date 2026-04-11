@@ -1,7 +1,7 @@
-defmodule HexPort.Repo.InMemoryTest do
+defmodule DoubleDown.Repo.InMemoryTest do
   use ExUnit.Case, async: true
 
-  alias HexPort.Repo
+  alias DoubleDown.Repo
 
   # -------------------------------------------------------------------
   # Test Schemas
@@ -238,7 +238,7 @@ defmodule HexPort.Repo.InMemoryTest do
 
   describe "write operations" do
     setup do
-      HexPort.Testing.set_stateful_handler(
+      DoubleDown.Testing.set_stateful_handler(
         Repo.Contract,
         &Repo.InMemory.dispatch/3,
         Repo.InMemory.new()
@@ -265,7 +265,7 @@ defmodule HexPort.Repo.InMemoryTest do
     test "insert auto-id increments based on existing records" do
       initial = Repo.InMemory.new(seed: [%User{id: 5, name: "Existing"}])
 
-      HexPort.Testing.set_stateful_handler(
+      DoubleDown.Testing.set_stateful_handler(
         Repo.Contract,
         &Repo.InMemory.dispatch/3,
         initial
@@ -386,7 +386,7 @@ defmodule HexPort.Repo.InMemoryTest do
 
   describe "PK autogeneration" do
     setup do
-      HexPort.Testing.set_stateful_handler(
+      DoubleDown.Testing.set_stateful_handler(
         Repo.Contract,
         &Repo.InMemory.dispatch/3,
         Repo.InMemory.new()
@@ -476,7 +476,7 @@ defmodule HexPort.Repo.InMemoryTest do
           ]
         )
 
-      HexPort.Testing.set_stateful_handler(
+      DoubleDown.Testing.set_stateful_handler(
         Repo.Contract,
         &Repo.InMemory.dispatch/3,
         initial
@@ -504,7 +504,7 @@ defmodule HexPort.Repo.InMemoryTest do
           fallback_fn: fn :get, [User, 99], _state -> bob end
         )
 
-      HexPort.Testing.set_stateful_handler(Repo.Contract, &Repo.InMemory.dispatch/3, state)
+      DoubleDown.Testing.set_stateful_handler(Repo.Contract, &Repo.InMemory.dispatch/3, state)
 
       # Found in state
       assert %User{id: 1, name: "Alice"} = Repo.Port.get(User, 1)
@@ -516,7 +516,7 @@ defmodule HexPort.Repo.InMemoryTest do
       state =
         Repo.InMemory.new(fallback_fn: fn :get, [User, 42], _state -> nil end)
 
-      HexPort.Testing.set_stateful_handler(Repo.Contract, &Repo.InMemory.dispatch/3, state)
+      DoubleDown.Testing.set_stateful_handler(Repo.Contract, &Repo.InMemory.dispatch/3, state)
 
       assert_raise ArgumentError, ~r/InMemory cannot service :get/, fn ->
         Repo.Port.get(User, 999)
@@ -542,7 +542,7 @@ defmodule HexPort.Repo.InMemoryTest do
           fallback_fn: fn :get!, [User, 99], _state -> bob end
         )
 
-      HexPort.Testing.set_stateful_handler(Repo.Contract, &Repo.InMemory.dispatch/3, state)
+      DoubleDown.Testing.set_stateful_handler(Repo.Contract, &Repo.InMemory.dispatch/3, state)
 
       assert %User{id: 1, name: "Alice"} = Repo.Port.get!(User, 1)
       assert ^bob = Repo.Port.get!(User, 99)
@@ -568,7 +568,7 @@ defmodule HexPort.Repo.InMemoryTest do
           end
         )
 
-      HexPort.Testing.set_stateful_handler(Repo.Contract, &Repo.InMemory.dispatch/3, state)
+      DoubleDown.Testing.set_stateful_handler(Repo.Contract, &Repo.InMemory.dispatch/3, state)
 
       assert %User{name: "Alice"} = Repo.Port.get_by(User, name: "Alice")
 
@@ -580,7 +580,7 @@ defmodule HexPort.Repo.InMemoryTest do
     end
 
     test "get_by raises without fallback" do
-      HexPort.Testing.set_stateful_handler(
+      DoubleDown.Testing.set_stateful_handler(
         Repo.Contract,
         &Repo.InMemory.dispatch/3,
         Repo.InMemory.new()
@@ -597,7 +597,7 @@ defmodule HexPort.Repo.InMemoryTest do
       state =
         Repo.InMemory.new(fallback_fn: fn :get_by!, [User, [name: "Bob"]], _state -> bob end)
 
-      HexPort.Testing.set_stateful_handler(Repo.Contract, &Repo.InMemory.dispatch/3, state)
+      DoubleDown.Testing.set_stateful_handler(Repo.Contract, &Repo.InMemory.dispatch/3, state)
       assert %User{name: "Bob"} = Repo.Port.get_by!(User, name: "Bob")
     end
 
@@ -607,12 +607,12 @@ defmodule HexPort.Repo.InMemoryTest do
       state =
         Repo.InMemory.new(fallback_fn: fn :one, [User], _state -> alice end)
 
-      HexPort.Testing.set_stateful_handler(Repo.Contract, &Repo.InMemory.dispatch/3, state)
+      DoubleDown.Testing.set_stateful_handler(Repo.Contract, &Repo.InMemory.dispatch/3, state)
       assert %User{name: "Alice"} = Repo.Port.one(User)
     end
 
     test "one raises without fallback" do
-      HexPort.Testing.set_stateful_handler(
+      DoubleDown.Testing.set_stateful_handler(
         Repo.Contract,
         &Repo.InMemory.dispatch/3,
         Repo.InMemory.new()
@@ -629,7 +629,7 @@ defmodule HexPort.Repo.InMemoryTest do
       state =
         Repo.InMemory.new(fallback_fn: fn :one!, [User], _state -> alice end)
 
-      HexPort.Testing.set_stateful_handler(Repo.Contract, &Repo.InMemory.dispatch/3, state)
+      DoubleDown.Testing.set_stateful_handler(Repo.Contract, &Repo.InMemory.dispatch/3, state)
       assert %User{name: "Alice"} = Repo.Port.one!(User)
     end
 
@@ -639,7 +639,7 @@ defmodule HexPort.Repo.InMemoryTest do
       state =
         Repo.InMemory.new(fallback_fn: fn :all, [User], _state -> users end)
 
-      HexPort.Testing.set_stateful_handler(Repo.Contract, &Repo.InMemory.dispatch/3, state)
+      DoubleDown.Testing.set_stateful_handler(Repo.Contract, &Repo.InMemory.dispatch/3, state)
 
       result = Repo.Port.all(User)
       assert length(result) == 2
@@ -647,7 +647,7 @@ defmodule HexPort.Repo.InMemoryTest do
     end
 
     test "all raises without fallback" do
-      HexPort.Testing.set_stateful_handler(
+      DoubleDown.Testing.set_stateful_handler(
         Repo.Contract,
         &Repo.InMemory.dispatch/3,
         Repo.InMemory.new()
@@ -666,12 +666,12 @@ defmodule HexPort.Repo.InMemoryTest do
           end
         )
 
-      HexPort.Testing.set_stateful_handler(Repo.Contract, &Repo.InMemory.dispatch/3, state)
+      DoubleDown.Testing.set_stateful_handler(Repo.Contract, &Repo.InMemory.dispatch/3, state)
       assert Repo.Port.exists?(User) == true
     end
 
     test "exists? raises without fallback" do
-      HexPort.Testing.set_stateful_handler(
+      DoubleDown.Testing.set_stateful_handler(
         Repo.Contract,
         &Repo.InMemory.dispatch/3,
         Repo.InMemory.new()
@@ -699,7 +699,7 @@ defmodule HexPort.Repo.InMemoryTest do
           end
         )
 
-      HexPort.Testing.set_stateful_handler(Repo.Contract, &Repo.InMemory.dispatch/3, state)
+      DoubleDown.Testing.set_stateful_handler(Repo.Contract, &Repo.InMemory.dispatch/3, state)
 
       assert 3 = Repo.Port.aggregate(User, :count, :id)
       assert 55 = Repo.Port.aggregate(User, :sum, :age)
@@ -708,7 +708,7 @@ defmodule HexPort.Repo.InMemoryTest do
     end
 
     test "aggregate raises without fallback" do
-      HexPort.Testing.set_stateful_handler(
+      DoubleDown.Testing.set_stateful_handler(
         Repo.Contract,
         &Repo.InMemory.dispatch/3,
         Repo.InMemory.new()
@@ -733,12 +733,12 @@ defmodule HexPort.Repo.InMemoryTest do
           fallback_fn: fn :insert_all, [User, ^entries, []], _state -> {2, nil} end
         )
 
-      HexPort.Testing.set_stateful_handler(Repo.Contract, &Repo.InMemory.dispatch/3, state)
+      DoubleDown.Testing.set_stateful_handler(Repo.Contract, &Repo.InMemory.dispatch/3, state)
       assert {2, nil} = Repo.Port.insert_all(User, entries, [])
     end
 
     test "insert_all raises without fallback" do
-      HexPort.Testing.set_stateful_handler(
+      DoubleDown.Testing.set_stateful_handler(
         Repo.Contract,
         &Repo.InMemory.dispatch/3,
         Repo.InMemory.new()
@@ -753,12 +753,12 @@ defmodule HexPort.Repo.InMemoryTest do
       state =
         Repo.InMemory.new(fallback_fn: fn :delete_all, [User, []], _state -> {2, nil} end)
 
-      HexPort.Testing.set_stateful_handler(Repo.Contract, &Repo.InMemory.dispatch/3, state)
+      DoubleDown.Testing.set_stateful_handler(Repo.Contract, &Repo.InMemory.dispatch/3, state)
       assert {2, nil} = Repo.Port.delete_all(User, [])
     end
 
     test "delete_all raises without fallback" do
-      HexPort.Testing.set_stateful_handler(
+      DoubleDown.Testing.set_stateful_handler(
         Repo.Contract,
         &Repo.InMemory.dispatch/3,
         Repo.InMemory.new()
@@ -775,12 +775,12 @@ defmodule HexPort.Repo.InMemoryTest do
           fallback_fn: fn :update_all, [User, [set: [name: "bulk"]], []], _state -> {3, nil} end
         )
 
-      HexPort.Testing.set_stateful_handler(Repo.Contract, &Repo.InMemory.dispatch/3, state)
+      DoubleDown.Testing.set_stateful_handler(Repo.Contract, &Repo.InMemory.dispatch/3, state)
       assert {3, nil} = Repo.Port.update_all(User, [set: [name: "bulk"]], [])
     end
 
     test "update_all raises without fallback" do
-      HexPort.Testing.set_stateful_handler(
+      DoubleDown.Testing.set_stateful_handler(
         Repo.Contract,
         &Repo.InMemory.dispatch/3,
         Repo.InMemory.new()
@@ -798,7 +798,7 @@ defmodule HexPort.Repo.InMemoryTest do
 
   describe "transact" do
     setup do
-      HexPort.Testing.set_stateful_handler(
+      DoubleDown.Testing.set_stateful_handler(
         Repo.Contract,
         &Repo.InMemory.dispatch/3,
         Repo.InMemory.new()
@@ -941,7 +941,7 @@ defmodule HexPort.Repo.InMemoryTest do
 
   describe "read-after-write consistency (PK reads)" do
     setup do
-      HexPort.Testing.set_stateful_handler(
+      DoubleDown.Testing.set_stateful_handler(
         Repo.Contract,
         &Repo.InMemory.dispatch/3,
         Repo.InMemory.new()
@@ -984,7 +984,7 @@ defmodule HexPort.Repo.InMemoryTest do
 
   describe "multiple schema types" do
     test "different schemas are stored independently (PK reads)" do
-      HexPort.Testing.set_stateful_handler(
+      DoubleDown.Testing.set_stateful_handler(
         Repo.Contract,
         &Repo.InMemory.dispatch/3,
         Repo.InMemory.new()
@@ -1008,7 +1008,7 @@ defmodule HexPort.Repo.InMemoryTest do
       bob = %User{id: 2, name: "Bob"}
       state = Repo.InMemory.new(seed: [alice, bob])
 
-      HexPort.Testing.set_stateful_handler(Repo.Contract, &Repo.InMemory.dispatch/3, state)
+      DoubleDown.Testing.set_stateful_handler(Repo.Contract, &Repo.InMemory.dispatch/3, state)
 
       assert ^alice = Repo.Port.get(User, 1)
       assert ^bob = Repo.Port.get(User, 2)
@@ -1016,7 +1016,7 @@ defmodule HexPort.Repo.InMemoryTest do
 
     test "can add to seeded state and read back by PK" do
       state = Repo.InMemory.new(seed: [%User{id: 1, name: "Alice"}])
-      HexPort.Testing.set_stateful_handler(Repo.Contract, &Repo.InMemory.dispatch/3, state)
+      DoubleDown.Testing.set_stateful_handler(Repo.Contract, &Repo.InMemory.dispatch/3, state)
 
       {:ok, bob} = Repo.Port.insert(User.changeset(%{name: "Bob"}))
       assert ^bob = Repo.Port.get(User, bob.id)
@@ -1030,19 +1030,19 @@ defmodule HexPort.Repo.InMemoryTest do
 
   describe "dispatch logging" do
     test "logs write and PK read operations" do
-      HexPort.Testing.set_stateful_handler(
+      DoubleDown.Testing.set_stateful_handler(
         Repo.Contract,
         &Repo.InMemory.dispatch/3,
         Repo.InMemory.new()
       )
 
-      HexPort.Testing.enable_log(Repo.Contract)
+      DoubleDown.Testing.enable_log(Repo.Contract)
 
       cs = User.changeset(%{name: "Alice"})
       {:ok, user} = Repo.Port.insert(cs)
       Repo.Port.get(User, user.id)
 
-      log = HexPort.Testing.get_log(Repo.Contract)
+      log = DoubleDown.Testing.get_log(Repo.Contract)
       assert length(log) == 2
 
       assert [
@@ -1054,29 +1054,29 @@ defmodule HexPort.Repo.InMemoryTest do
     test "logs fallback-dispatched operations" do
       users = [%User{id: 1, name: "Alice"}]
 
-      HexPort.Testing.set_stateful_handler(
+      DoubleDown.Testing.set_stateful_handler(
         Repo.Contract,
         &Repo.InMemory.dispatch/3,
         Repo.InMemory.new(fallback_fn: fn :all, [User], _state -> users end)
       )
 
-      HexPort.Testing.enable_log(Repo.Contract)
+      DoubleDown.Testing.enable_log(Repo.Contract)
 
       Repo.Port.all(User)
 
-      log = HexPort.Testing.get_log(Repo.Contract)
+      log = DoubleDown.Testing.get_log(Repo.Contract)
       assert length(log) == 1
       assert [{Repo.Contract, :all, [User], [%User{id: 1, name: "Alice"}]}] = log
     end
 
     test "1-arity transact logs inner facade calls made from the transaction function" do
-      HexPort.Testing.set_stateful_handler(
+      DoubleDown.Testing.set_stateful_handler(
         Repo.Contract,
         &Repo.InMemory.dispatch/3,
         Repo.InMemory.new()
       )
 
-      HexPort.Testing.enable_log(Repo.Contract)
+      DoubleDown.Testing.enable_log(Repo.Contract)
 
       cs = User.changeset(%{name: "Alice"})
 
@@ -1089,7 +1089,7 @@ defmodule HexPort.Repo.InMemoryTest do
         []
       )
 
-      log = HexPort.Testing.get_log(Repo.Contract)
+      log = DoubleDown.Testing.get_log(Repo.Contract)
 
       # Inner calls are logged first (during deferred fn execution), then
       # the outer transact call is logged when it completes.
@@ -1116,7 +1116,7 @@ defmodule HexPort.Repo.InMemoryTest do
           end
         )
 
-      HexPort.Testing.set_stateful_handler(Repo.Contract, &Repo.InMemory.dispatch/3, state)
+      DoubleDown.Testing.set_stateful_handler(Repo.Contract, &Repo.InMemory.dispatch/3, state)
 
       # The RuntimeError is re-raised in the calling process, not in the GenServer
       assert_raise RuntimeError, ~r/boom from fallback/, fn ->
@@ -1135,7 +1135,7 @@ defmodule HexPort.Repo.InMemoryTest do
           end
         )
 
-      HexPort.Testing.set_stateful_handler(Repo.Contract, &Repo.InMemory.dispatch/3, state)
+      DoubleDown.Testing.set_stateful_handler(Repo.Contract, &Repo.InMemory.dispatch/3, state)
 
       assert_raise ArgumentError, ~r/bad argument in fallback/, fn ->
         Repo.Port.get_by(User, name: "Alice")
@@ -1151,7 +1151,7 @@ defmodule HexPort.Repo.InMemoryTest do
           fallback_fn: fn :all, [User], _state -> [%User{id: 1, name: "Alice"}] end
         )
 
-      HexPort.Testing.set_stateful_handler(Repo.Contract, &Repo.InMemory.dispatch/3, state)
+      DoubleDown.Testing.set_stateful_handler(Repo.Contract, &Repo.InMemory.dispatch/3, state)
 
       # Matching clause works
       assert [%User{name: "Alice"}] = Repo.Port.all(User)

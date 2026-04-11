@@ -1,5 +1,5 @@
-defmodule HexPort.Test.Greeter do
-  use HexPort.Contract
+defmodule DoubleDown.Test.Greeter do
+  use DoubleDown.Contract
 
   defport greet(name :: String.t()) :: String.t()
 
@@ -7,8 +7,8 @@ defmodule HexPort.Test.Greeter do
             {:ok, String.t()} | {:error, term()}
 end
 
-defmodule HexPort.Test.Greeter.Impl do
-  @behaviour HexPort.Test.Greeter
+defmodule DoubleDown.Test.Greeter.Impl do
+  @behaviour DoubleDown.Test.Greeter
 
   @impl true
   def greet(name), do: "Hello, #{name}!"
@@ -17,8 +17,8 @@ defmodule HexPort.Test.Greeter.Impl do
   def fetch_greeting(name), do: {:ok, "Hello, #{name}!"}
 end
 
-defmodule HexPort.Test.Counter do
-  use HexPort.Contract
+defmodule DoubleDown.Test.Counter do
+  use DoubleDown.Contract
 
   defport increment(amount :: integer()) :: integer()
   defport get_count() :: integer()
@@ -26,8 +26,8 @@ end
 
 # -- Contract for bang variant testing --
 
-defmodule HexPort.Test.BangVariants do
-  use HexPort.Contract
+defmodule DoubleDown.Test.BangVariants do
+  use DoubleDown.Contract
 
   # Auto-detected bang (return type has {:ok, T})
   defport auto_bang(id :: String.t()) ::
@@ -55,8 +55,8 @@ end
 
 # -- Contract for zero-arg testing --
 
-defmodule HexPort.Test.ZeroArg do
-  use HexPort.Contract
+defmodule DoubleDown.Test.ZeroArg do
+  use DoubleDown.Contract
 
   defport health_check() :: :ok
   defport get_version() :: {:ok, String.t()} | {:error, term()}
@@ -64,8 +64,8 @@ end
 
 # -- Contract for @doc propagation testing --
 
-defmodule HexPort.Test.Documented do
-  use HexPort.Contract
+defmodule DoubleDown.Test.Documented do
+  use DoubleDown.Contract
 
   @doc "Fetches a user by their ID."
   defport get_user(id :: String.t()) :: {:ok, map()} | {:error, term()}
@@ -75,8 +75,8 @@ end
 
 # -- Contract with multi-param for key helper testing --
 
-defmodule HexPort.Test.MultiParam do
-  use HexPort.Contract
+defmodule DoubleDown.Test.MultiParam do
+  use DoubleDown.Contract
 
   defport find(tenant :: String.t(), type :: atom(), id :: String.t()) ::
             {:ok, map()} | {:error, term()}
@@ -84,7 +84,7 @@ end
 
 # -- Module used as an aliased type in contracts --
 
-defmodule HexPort.Test.Deep.Nested.Widget do
+defmodule DoubleDown.Test.Deep.Nested.Widget do
   @type t :: %__MODULE__{id: String.t(), label: String.t()}
   defstruct [:id, :label]
 end
@@ -93,10 +93,10 @@ end
 # Verifies that defport expands aliases to fully-qualified names
 # so generated @spec annotations resolve in Port modules.
 
-defmodule HexPort.Test.AliasedTypes do
-  use HexPort.Contract
+defmodule DoubleDown.Test.AliasedTypes do
+  use DoubleDown.Contract
 
-  alias HexPort.Test.Deep.Nested.Widget
+  alias DoubleDown.Test.Deep.Nested.Widget
 
   defport get_widget(id :: String.t()) ::
             {:ok, Widget.t()} | {:error, term()}

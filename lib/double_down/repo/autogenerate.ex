@@ -3,7 +3,7 @@
 # Handles timestamps, parameterized-type PKs (Ecto.UUID, Uniq.UUID, etc.),
 # and :id/:binary_id PKs via Ecto schema metadata.
 if Code.ensure_loaded?(Ecto) do
-  defmodule HexPort.Repo.Autogenerate do
+  defmodule DoubleDown.Repo.Autogenerate do
     @moduledoc false
 
     # -----------------------------------------------------------------

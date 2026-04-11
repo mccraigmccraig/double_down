@@ -1,19 +1,19 @@
-defmodule HexPort.Facade do
+defmodule DoubleDown.Facade do
   @moduledoc """
-  Generates a dispatch facade for a `HexPort.Contract`.
+  Generates a dispatch facade for a `DoubleDown.Contract`.
 
-  `use HexPort.Facade` reads a contract's `__port_operations__/0` metadata
+  `use DoubleDown.Facade` reads a contract's `__port_operations__/0` metadata
   and generates facade functions, bang variants, and key helpers that
-  dispatch via `HexPort.Dispatch`.
+  dispatch via `DoubleDown.Dispatch`.
 
   ## Combined contract + facade (simplest)
 
   When `:contract` is omitted, it defaults to `__MODULE__` and
-  `use HexPort.Contract` is issued implicitly. This gives a single-module
+  `use DoubleDown.Contract` is issued implicitly. This gives a single-module
   contract + facade:
 
       defmodule MyApp.Todos do
-        use HexPort.Facade, otp_app: :my_app
+        use DoubleDown.Facade, otp_app: :my_app
 
         defport get_todo(id :: String.t()) :: {:ok, Todo.t()} | {:error, term()}
         defport list_todos() :: [Todo.t()]
@@ -27,13 +27,13 @@ defmodule HexPort.Facade do
   For cases where you want the contract in a different module:
 
       defmodule MyApp.Todos do
-        use HexPort.Facade, contract: MyApp.Todos.Contract, otp_app: :my_app
+        use DoubleDown.Facade, contract: MyApp.Todos.Contract, otp_app: :my_app
       end
 
   ## Options
 
     * `:contract` — the contract module that defines port operations via
-      `use HexPort.Contract` and `defport` declarations. Defaults to
+      `use DoubleDown.Contract` and `defport` declarations. Defaults to
       `__MODULE__` (combined contract + facade).
     * `:otp_app` (required) — the OTP application name for config-based dispatch.
       Implementations are resolved from `Application.get_env(otp_app, contract)[:impl]`.
@@ -52,11 +52,11 @@ defmodule HexPort.Facade do
   ## Testing
 
       # test/test_helper.exs
-      HexPort.Testing.start()
+      DoubleDown.Testing.start()
 
       # test/my_test.exs
       setup do
-        HexPort.Testing.set_fn_handler(MyApp.Todos, fn
+        DoubleDown.Testing.set_fn_handler(MyApp.Todos, fn
           :get_todo, [id] -> {:ok, %Todo{id: id}}
           :list_todos, [] -> []
         end)
@@ -102,31 +102,31 @@ defmodule HexPort.Facade do
 
     if self_ref? do
       quote do
-        # When the contract is this module, implicitly use HexPort.Contract
+        # When the contract is this module, implicitly use DoubleDown.Contract
         # if it hasn't been used already (idempotent, so safe either way).
-        use HexPort.Contract
+        use DoubleDown.Contract
 
-        @hex_port_contract unquote(contract)
-        @hex_port_otp_app unquote(otp_app)
-        @hex_port_test_dispatch unquote(test_dispatch?)
-        @before_compile {HexPort.Facade, :__before_compile__}
+        @double_down_contract unquote(contract)
+        @double_down_otp_app unquote(otp_app)
+        @double_down_test_dispatch unquote(test_dispatch?)
+        @before_compile {DoubleDown.Facade, :__before_compile__}
       end
     else
       quote do
         require unquote(contract)
-        @hex_port_contract unquote(contract)
-        @hex_port_otp_app unquote(otp_app)
-        @hex_port_test_dispatch unquote(test_dispatch?)
-        @before_compile {HexPort.Facade, :__before_compile__}
+        @double_down_contract unquote(contract)
+        @double_down_otp_app unquote(otp_app)
+        @double_down_test_dispatch unquote(test_dispatch?)
+        @before_compile {DoubleDown.Facade, :__before_compile__}
       end
     end
   end
 
   @doc false
   defmacro __before_compile__(env) do
-    contract = Module.get_attribute(env.module, :hex_port_contract)
-    otp_app = Module.get_attribute(env.module, :hex_port_otp_app)
-    test_dispatch? = Module.get_attribute(env.module, :hex_port_test_dispatch)
+    contract = Module.get_attribute(env.module, :double_down_contract)
+    otp_app = Module.get_attribute(env.module, :double_down_otp_app)
+    test_dispatch? = Module.get_attribute(env.module, :double_down_test_dispatch)
 
     operations = fetch_operations!(contract, env)
 
@@ -144,9 +144,9 @@ defmodule HexPort.Facade do
       Dispatch facade for `#{inspect(unquote(contract))}`.
 
       Dispatches calls to the configured implementation via
-      `HexPort.Dispatch`. In production, resolves from application
+      `DoubleDown.Dispatch`. In production, resolves from application
       config (`#{inspect(unquote(otp_app))}`). In tests, resolves
-      from `HexPort.Testing` handlers.
+      from `DoubleDown.Testing` handlers.
       """
 
       unquote_splicing(facades)
@@ -185,7 +185,7 @@ defmodule HexPort.Facade do
         end
       else
         doc_string =
-          "Port operation: `#{name}/#{length(param_names)}`\n\nDispatches to the configured implementation via `HexPort.Dispatch`.\n"
+          "Port operation: `#{name}/#{length(param_names)}`\n\nDispatches to the configured implementation via `DoubleDown.Dispatch`.\n"
 
         quote do
           @doc unquote(doc_string)
@@ -209,9 +209,9 @@ defmodule HexPort.Facade do
         param_vars
       end
 
-    # When test_dispatch? is true, use HexPort.Dispatch.call/4 which checks
+    # When test_dispatch? is true, use DoubleDown.Dispatch.call/4 which checks
     # NimbleOwnership for test handlers before falling back to config.
-    # When false, use HexPort.Dispatch.call_config/4 which goes straight
+    # When false, use DoubleDown.Dispatch.call_config/4 which goes straight
     # to Application config — no NimbleOwnership overhead at all.
     dispatch_fn = if test_dispatch?, do: :call, else: :call_config
 
@@ -219,7 +219,7 @@ defmodule HexPort.Facade do
       unquote(doc_ast)
       @spec unquote(name)(unquote_splicing(param_types)) :: unquote(return_type)
       def unquote(name)(unquote_splicing(param_vars)) do
-        HexPort.Dispatch.unquote(dispatch_fn)(
+        DoubleDown.Dispatch.unquote(dispatch_fn)(
           unquote(otp_app),
           unquote(contract),
           unquote(name),
@@ -240,7 +240,7 @@ defmodule HexPort.Facade do
        }) do
     bang_name = :"#{name}!"
     param_vars = Enum.map(param_names, fn pname -> {pname, [], nil} end)
-    unwrapped = HexPort.Contract.extract_success_type(return_type)
+    unwrapped = DoubleDown.Contract.extract_success_type(return_type)
 
     {doc_string, body_ast} =
       case bang_mode do
@@ -296,7 +296,7 @@ defmodule HexPort.Facade do
     quote do
       @doc unquote(doc_string)
       def __key__(unquote(name), unquote_splicing(param_vars)) do
-        HexPort.Dispatch.key(unquote(contract), unquote(name), unquote(param_vars))
+        DoubleDown.Dispatch.key(unquote(contract), unquote(name), unquote(param_vars))
       end
     end
   end
@@ -315,7 +315,7 @@ defmodule HexPort.Facade do
         raise CompileError,
           description:
             "#{inspect(contract)} does not define __port_operations__/0. " <>
-              "Ensure `use HexPort.Contract` appears before `use HexPort.Facade` " <>
+              "Ensure `use DoubleDown.Contract` appears before `use DoubleDown.Facade` " <>
               "and add `defport` declarations.",
           file: env.file,
           line: 0
@@ -342,7 +342,7 @@ defmodule HexPort.Facade do
         raise CompileError,
           description:
             "#{inspect(contract)} does not define __port_operations__/0. " <>
-              "Did you `use HexPort.Contract` and add `defport` declarations?",
+              "Did you `use DoubleDown.Contract` and add `defport` declarations?",
           file: env.file,
           line: 0
       end
@@ -353,7 +353,7 @@ defmodule HexPort.Facade do
 
   # Convert the raw @port_operations attribute format to the public
   # __port_operations__/0 format (matching what generate_introspection
-  # in HexPort.Contract produces).
+  # in DoubleDown.Contract produces).
   defp operation_to_introspection(%{
          name: name,
          param_names: param_names,

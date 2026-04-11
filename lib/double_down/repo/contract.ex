@@ -1,36 +1,36 @@
 # Repo contract for common Ecto Repo operations.
 #
 # Provides a built-in set of defport declarations so that every domain
-# using HexPort for DB operations doesn't need to redeclare insert/update/
+# using DoubleDown for DB operations doesn't need to redeclare insert/update/
 # delete/get/all etc. with identical boilerplate.
 #
 # ## Usage
 #
 #     # Define a facade in your app:
 #     defmodule MyApp.Repo do
-#       use HexPort.Facade, contract: HexPort.Repo.Contract, otp_app: :my_app
+#       use DoubleDown.Facade, contract: DoubleDown.Repo.Contract, otp_app: :my_app
 #     end
 #
 #     MyApp.Repo.insert!(changeset)
 #
 # ## Configuration
 #
-#     config :my_app, HexPort.Repo.Contract, impl: MyApp.EctoRepo
+#     config :my_app, DoubleDown.Repo.Contract, impl: MyApp.EctoRepo
 #
 if Code.ensure_loaded?(Ecto) do
-  defmodule HexPort.Repo.Contract do
+  defmodule DoubleDown.Repo.Contract do
     @moduledoc """
     Repo contract for common Ecto Repo operations.
 
     Provides `defport` declarations for the standard write and read operations
-    from `Ecto.Repo`, so that code using `HexPort` for database access doesn't
+    from `Ecto.Repo`, so that code using `DoubleDown` for database access doesn't
     need to redeclare these with identical boilerplate.
 
     ## Usage
 
         # Define a facade in your app:
         defmodule MyApp.Repo do
-          use HexPort.Facade, contract: HexPort.Repo.Contract, otp_app: :my_app
+          use DoubleDown.Facade, contract: DoubleDown.Repo.Contract, otp_app: :my_app
         end
 
         changeset = User.changeset(%User{}, attrs)
@@ -58,7 +58,7 @@ if Code.ensure_loaded?(Ecto) do
     separate port operations that mirror Ecto's raise-on-not-found semantics.
     """
 
-    use HexPort.Contract
+    use DoubleDown.Contract
 
     # -----------------------------------------------------------------
     # Write Operations
@@ -178,8 +178,8 @@ if Code.ensure_loaded?(Ecto) do
     operation names to their results. On failure, returns
     `{:error, failed_operation, failed_value, changes_so_far}`.
 
-    The facade module is injected into opts under the `HexPort.Repo.Facade`
-    key so that test adapters can pass it to `HexPort.Repo.MultiStepper`
+    The facade module is injected into opts under the `DoubleDown.Repo.Facade`
+    key so that test adapters can pass it to `DoubleDown.Repo.MultiStepper`
     for `:run` callbacks.
     """
     defport transact(fun_or_multi :: term(), opts :: keyword()) ::
@@ -195,7 +195,7 @@ if Code.ensure_loaded?(Ecto) do
                 [%Ecto.Multi{} = _multi, opts] ->
                   # Multi stays as-is. Inject facade into opts so test adapters
                   # can extract it for MultiStepper.
-                  [Enum.at(args, 0), Keyword.put(opts, HexPort.Repo.Facade, facade_mod)]
+                  [Enum.at(args, 0), Keyword.put(opts, DoubleDown.Repo.Facade, facade_mod)]
 
                 [fun, _opts] when is_function(fun, 0) ->
                   # 0-arity fn: pass through unchanged

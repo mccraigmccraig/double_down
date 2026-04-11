@@ -1,18 +1,18 @@
-defmodule HexPort.TestingTest do
+defmodule DoubleDown.TestingTest do
   use ExUnit.Case, async: true
 
-  alias HexPort.Test.Greeter
-  alias HexPort.Test.Counter
+  alias DoubleDown.Test.Greeter
+  alias DoubleDown.Test.Counter
 
   # ── Handler registration API ──────────────────────────────
 
   describe "set_handler/2" do
     test "returns :ok" do
-      assert :ok = HexPort.Testing.set_handler(Greeter, Greeter.Impl)
+      assert :ok = DoubleDown.Testing.set_handler(Greeter, Greeter.Impl)
     end
 
     test "registered module handler is used by dispatch" do
-      HexPort.Testing.set_handler(Greeter, Greeter.Impl)
+      DoubleDown.Testing.set_handler(Greeter, Greeter.Impl)
       assert "Hello, Alice!" = Greeter.Port.greet("Alice")
     end
   end
@@ -20,13 +20,13 @@ defmodule HexPort.TestingTest do
   describe "set_fn_handler/2" do
     test "returns :ok" do
       assert :ok =
-               HexPort.Testing.set_fn_handler(Greeter, fn
+               DoubleDown.Testing.set_fn_handler(Greeter, fn
                  :greet, [name] -> "fn: #{name}"
                end)
     end
 
     test "registered fn handler is used by dispatch" do
-      HexPort.Testing.set_fn_handler(Greeter, fn
+      DoubleDown.Testing.set_fn_handler(Greeter, fn
         :greet, [name] -> "fn: #{name}"
       end)
 
@@ -35,7 +35,7 @@ defmodule HexPort.TestingTest do
 
     test "rejects non-arity-2 function" do
       assert_raise FunctionClauseError, fn ->
-        HexPort.Testing.set_fn_handler(Greeter, fn _ -> :bad end)
+        DoubleDown.Testing.set_fn_handler(Greeter, fn _ -> :bad end)
       end
     end
   end
@@ -43,7 +43,7 @@ defmodule HexPort.TestingTest do
   describe "set_stateful_handler/3" do
     test "returns :ok" do
       assert :ok =
-               HexPort.Testing.set_stateful_handler(
+               DoubleDown.Testing.set_stateful_handler(
                  Counter,
                  fn :increment, [n], state -> {state + n, state + n} end,
                  0
@@ -51,7 +51,7 @@ defmodule HexPort.TestingTest do
     end
 
     test "initial state is available on first dispatch" do
-      HexPort.Testing.set_stateful_handler(
+      DoubleDown.Testing.set_stateful_handler(
         Counter,
         fn
           :get_count, [], state -> {state, state}
@@ -63,7 +63,7 @@ defmodule HexPort.TestingTest do
     end
 
     test "state persists across dispatches" do
-      HexPort.Testing.set_stateful_handler(
+      DoubleDown.Testing.set_stateful_handler(
         Counter,
         fn
           :increment, [n], state -> {state + n, state + n}
@@ -79,7 +79,7 @@ defmodule HexPort.TestingTest do
 
     test "rejects non-arity-3 function" do
       assert_raise FunctionClauseError, fn ->
-        HexPort.Testing.set_stateful_handler(Counter, fn _, _ -> {:ok, 0} end, 0)
+        DoubleDown.Testing.set_stateful_handler(Counter, fn _, _ -> {:ok, 0} end, 0)
       end
     end
   end
@@ -88,13 +88,13 @@ defmodule HexPort.TestingTest do
 
   describe "handler replacement" do
     test "setting a new handler overwrites the previous one" do
-      HexPort.Testing.set_fn_handler(Greeter, fn
+      DoubleDown.Testing.set_fn_handler(Greeter, fn
         :greet, [name] -> "first: #{name}"
       end)
 
       assert "first: X" = Greeter.Port.greet("X")
 
-      HexPort.Testing.set_fn_handler(Greeter, fn
+      DoubleDown.Testing.set_fn_handler(Greeter, fn
         :greet, [name] -> "second: #{name}"
       end)
 
@@ -102,20 +102,20 @@ defmodule HexPort.TestingTest do
     end
 
     test "replacing fn handler with module handler" do
-      HexPort.Testing.set_fn_handler(Greeter, fn
+      DoubleDown.Testing.set_fn_handler(Greeter, fn
         :greet, [name] -> "fn: #{name}"
       end)
 
       assert "fn: X" = Greeter.Port.greet("X")
 
-      HexPort.Testing.set_handler(Greeter, Greeter.Impl)
+      DoubleDown.Testing.set_handler(Greeter, Greeter.Impl)
       assert "Hello, X!" = Greeter.Port.greet("X")
     end
 
     test "replacing module handler with stateful handler" do
-      HexPort.Testing.set_handler(Counter, Greeter.Impl)
+      DoubleDown.Testing.set_handler(Counter, Greeter.Impl)
 
-      HexPort.Testing.set_stateful_handler(
+      DoubleDown.Testing.set_stateful_handler(
         Counter,
         fn
           :increment, [n], state -> {state + n, state + n}
@@ -132,15 +132,15 @@ defmodule HexPort.TestingTest do
 
   describe "reset/0" do
     test "returns :ok" do
-      HexPort.Testing.set_fn_handler(Greeter, fn :greet, [_] -> "x" end)
-      assert :ok = HexPort.Testing.reset()
+      DoubleDown.Testing.set_fn_handler(Greeter, fn :greet, [_] -> "x" end)
+      assert :ok = DoubleDown.Testing.reset()
     end
 
     test "clears handlers so dispatch falls through to config" do
-      HexPort.Testing.set_fn_handler(Greeter, fn :greet, [_] -> "test" end)
+      DoubleDown.Testing.set_fn_handler(Greeter, fn :greet, [_] -> "test" end)
       assert "test" = Greeter.Port.greet("X")
 
-      HexPort.Testing.reset()
+      DoubleDown.Testing.reset()
 
       # No handler, no config → raises with test-oriented message
       assert_raise RuntimeError, ~r/No test handler set/, fn ->
@@ -149,17 +149,17 @@ defmodule HexPort.TestingTest do
     end
 
     test "clears log" do
-      HexPort.Testing.set_fn_handler(Greeter, fn :greet, [name] -> name end)
-      HexPort.Testing.enable_log(Greeter)
+      DoubleDown.Testing.set_fn_handler(Greeter, fn :greet, [name] -> name end)
+      DoubleDown.Testing.enable_log(Greeter)
       Greeter.Port.greet("X")
-      assert length(HexPort.Testing.get_log(Greeter)) == 1
+      assert length(DoubleDown.Testing.get_log(Greeter)) == 1
 
-      HexPort.Testing.reset()
-      assert [] = HexPort.Testing.get_log(Greeter)
+      DoubleDown.Testing.reset()
+      assert [] = DoubleDown.Testing.get_log(Greeter)
     end
 
     test "clears stateful handler state" do
-      HexPort.Testing.set_stateful_handler(
+      DoubleDown.Testing.set_stateful_handler(
         Counter,
         fn
           :increment, [n], s -> {s + n, s + n}
@@ -171,10 +171,10 @@ defmodule HexPort.TestingTest do
       Counter.Port.increment(50)
       assert 50 = Counter.Port.get_count()
 
-      HexPort.Testing.reset()
+      DoubleDown.Testing.reset()
 
       # Re-register with fresh state
-      HexPort.Testing.set_stateful_handler(
+      DoubleDown.Testing.set_stateful_handler(
         Counter,
         fn
           :get_count, [], s -> {s, s}
@@ -190,46 +190,46 @@ defmodule HexPort.TestingTest do
 
   describe "enable_log/1" do
     test "returns :ok" do
-      assert :ok = HexPort.Testing.enable_log(Greeter)
+      assert :ok = DoubleDown.Testing.enable_log(Greeter)
     end
 
     test "can be called before or after setting handler" do
       # Enable log first, then set handler
-      HexPort.Testing.enable_log(Greeter)
+      DoubleDown.Testing.enable_log(Greeter)
 
-      HexPort.Testing.set_fn_handler(Greeter, fn
+      DoubleDown.Testing.set_fn_handler(Greeter, fn
         :greet, [name] -> "hi #{name}"
       end)
 
       Greeter.Port.greet("test")
-      log = HexPort.Testing.get_log(Greeter)
+      log = DoubleDown.Testing.get_log(Greeter)
       assert [{Greeter, :greet, ["test"], "hi test"}] = log
     end
   end
 
   describe "get_log/1" do
     test "returns empty list when logging not enabled" do
-      assert [] = HexPort.Testing.get_log(Greeter)
+      assert [] = DoubleDown.Testing.get_log(Greeter)
     end
 
     test "returns empty list when logging enabled but no dispatches" do
-      HexPort.Testing.enable_log(Greeter)
-      assert [] = HexPort.Testing.get_log(Greeter)
+      DoubleDown.Testing.enable_log(Greeter)
+      assert [] = DoubleDown.Testing.get_log(Greeter)
     end
 
     test "returns entries in dispatch order" do
-      HexPort.Testing.set_fn_handler(Greeter, fn
+      DoubleDown.Testing.set_fn_handler(Greeter, fn
         :greet, [name] -> "hi #{name}"
         :fetch_greeting, [name] -> {:ok, "hi #{name}"}
       end)
 
-      HexPort.Testing.enable_log(Greeter)
+      DoubleDown.Testing.enable_log(Greeter)
 
       Greeter.Port.greet("first")
       Greeter.Port.fetch_greeting("second")
       Greeter.Port.greet("third")
 
-      log = HexPort.Testing.get_log(Greeter)
+      log = DoubleDown.Testing.get_log(Greeter)
       assert length(log) == 3
 
       assert [
@@ -240,35 +240,35 @@ defmodule HexPort.TestingTest do
     end
 
     test "log entries include result" do
-      HexPort.Testing.set_fn_handler(Greeter, fn
+      DoubleDown.Testing.set_fn_handler(Greeter, fn
         :greet, [name] -> "result: #{name}"
       end)
 
-      HexPort.Testing.enable_log(Greeter)
+      DoubleDown.Testing.enable_log(Greeter)
       Greeter.Port.greet("check")
 
-      [{_, _, _, result}] = HexPort.Testing.get_log(Greeter)
+      [{_, _, _, result}] = DoubleDown.Testing.get_log(Greeter)
       assert result == "result: check"
     end
 
     test "logs are per-contract" do
-      HexPort.Testing.set_fn_handler(Greeter, fn :greet, [n] -> n end)
+      DoubleDown.Testing.set_fn_handler(Greeter, fn :greet, [n] -> n end)
 
-      HexPort.Testing.set_stateful_handler(
+      DoubleDown.Testing.set_stateful_handler(
         Counter,
         fn :increment, [n], s -> {s + n, s + n} end,
         0
       )
 
-      HexPort.Testing.enable_log(Greeter)
-      HexPort.Testing.enable_log(Counter)
+      DoubleDown.Testing.enable_log(Greeter)
+      DoubleDown.Testing.enable_log(Counter)
 
       Greeter.Port.greet("a")
       Counter.Port.increment(1)
       Greeter.Port.greet("b")
 
-      greeter_log = HexPort.Testing.get_log(Greeter)
-      counter_log = HexPort.Testing.get_log(Counter)
+      greeter_log = DoubleDown.Testing.get_log(Greeter)
+      counter_log = DoubleDown.Testing.get_log(Counter)
 
       assert length(greeter_log) == 2
       assert length(counter_log) == 1
@@ -279,7 +279,7 @@ defmodule HexPort.TestingTest do
 
   describe "async isolation" do
     test "handlers are isolated per process" do
-      HexPort.Testing.set_fn_handler(Greeter, fn
+      DoubleDown.Testing.set_fn_handler(Greeter, fn
         :greet, [name] -> "parent: #{name}"
       end)
 
@@ -304,7 +304,7 @@ defmodule HexPort.TestingTest do
     end
 
     test "different processes can have different handlers for the same contract" do
-      HexPort.Testing.set_fn_handler(Greeter, fn
+      DoubleDown.Testing.set_fn_handler(Greeter, fn
         :greet, [name] -> "process-1: #{name}"
       end)
 
@@ -312,7 +312,7 @@ defmodule HexPort.TestingTest do
       test_pid = self()
 
       spawn(fn ->
-        HexPort.Testing.set_fn_handler(Greeter, fn
+        DoubleDown.Testing.set_fn_handler(Greeter, fn
           :greet, [name] -> "process-2: #{name}"
         end)
 
@@ -326,20 +326,20 @@ defmodule HexPort.TestingTest do
     end
 
     test "logs are isolated per process" do
-      HexPort.Testing.set_fn_handler(Greeter, fn :greet, [n] -> n end)
-      HexPort.Testing.enable_log(Greeter)
+      DoubleDown.Testing.set_fn_handler(Greeter, fn :greet, [n] -> n end)
+      DoubleDown.Testing.enable_log(Greeter)
       Greeter.Port.greet("parent")
 
       test_pid = self()
 
       spawn(fn ->
-        HexPort.Testing.set_fn_handler(Greeter, fn :greet, [n] -> n end)
-        HexPort.Testing.enable_log(Greeter)
+        DoubleDown.Testing.set_fn_handler(Greeter, fn :greet, [n] -> n end)
+        DoubleDown.Testing.enable_log(Greeter)
         Greeter.Port.greet("child")
-        send(test_pid, {:child_log, HexPort.Testing.get_log(Greeter)})
+        send(test_pid, {:child_log, DoubleDown.Testing.get_log(Greeter)})
       end)
 
-      parent_log = HexPort.Testing.get_log(Greeter)
+      parent_log = DoubleDown.Testing.get_log(Greeter)
       assert length(parent_log) == 1
       assert [{_, :greet, ["parent"], _}] = parent_log
 
@@ -353,30 +353,30 @@ defmodule HexPort.TestingTest do
 
   describe "allow/3" do
     test "returns :ok for valid allow" do
-      HexPort.Testing.set_fn_handler(Greeter, fn :greet, [n] -> n end)
+      DoubleDown.Testing.set_fn_handler(Greeter, fn :greet, [n] -> n end)
 
       task = Task.async(fn -> receive do: (:go -> Greeter.Port.greet("x")) end)
 
-      assert :ok = HexPort.Testing.allow(Greeter, self(), task.pid)
+      assert :ok = DoubleDown.Testing.allow(Greeter, self(), task.pid)
 
       send(task.pid, :go)
       assert "x" = Task.await(task)
     end
 
     test "allowed process shares handler with owner" do
-      HexPort.Testing.set_fn_handler(Greeter, fn
+      DoubleDown.Testing.set_fn_handler(Greeter, fn
         :greet, [name] -> "shared: #{name}"
       end)
 
       task = Task.async(fn -> receive do: (:go -> Greeter.Port.greet("child")) end)
-      HexPort.Testing.allow(Greeter, self(), task.pid)
+      DoubleDown.Testing.allow(Greeter, self(), task.pid)
 
       send(task.pid, :go)
       assert "shared: child" = Task.await(task)
     end
 
     test "allowed process shares stateful handler state" do
-      HexPort.Testing.set_stateful_handler(
+      DoubleDown.Testing.set_stateful_handler(
         Counter,
         fn
           :increment, [n], s -> {s + n, s + n}
@@ -394,7 +394,7 @@ defmodule HexPort.TestingTest do
           end
         end)
 
-      HexPort.Testing.allow(Counter, self(), task.pid)
+      DoubleDown.Testing.allow(Counter, self(), task.pid)
       send(task.pid, :go)
       assert 15 = Task.await(task)
 
@@ -403,8 +403,8 @@ defmodule HexPort.TestingTest do
     end
 
     test "allowed process logs are visible to owner" do
-      HexPort.Testing.set_fn_handler(Greeter, fn :greet, [n] -> n end)
-      HexPort.Testing.enable_log(Greeter)
+      DoubleDown.Testing.set_fn_handler(Greeter, fn :greet, [n] -> n end)
+      DoubleDown.Testing.enable_log(Greeter)
 
       Greeter.Port.greet("parent")
 
@@ -415,11 +415,11 @@ defmodule HexPort.TestingTest do
           end
         end)
 
-      HexPort.Testing.allow(Greeter, self(), task.pid)
+      DoubleDown.Testing.allow(Greeter, self(), task.pid)
       send(task.pid, :go)
       Task.await(task)
 
-      log = HexPort.Testing.get_log(Greeter)
+      log = DoubleDown.Testing.get_log(Greeter)
       assert length(log) == 2
       operations = Enum.map(log, fn {_, _, args, _} -> args end)
       assert ["parent"] in operations
@@ -427,12 +427,12 @@ defmodule HexPort.TestingTest do
     end
 
     test "allow with lazy pid function" do
-      HexPort.Testing.set_fn_handler(Greeter, fn :greet, [n] -> "lazy: #{n}" end)
+      DoubleDown.Testing.set_fn_handler(Greeter, fn :greet, [n] -> "lazy: #{n}" end)
 
       # Use a lazy function that returns the pid
       {:ok, agent} = Agent.start_link(fn -> nil end)
 
-      HexPort.Testing.allow(Greeter, self(), fn -> agent end)
+      DoubleDown.Testing.allow(Greeter, self(), fn -> agent end)
 
       # Agent should be able to dispatch through the handler via its GenServer process
       result =
@@ -450,9 +450,9 @@ defmodule HexPort.TestingTest do
 
   describe "multiple contracts" do
     test "can register handlers for multiple contracts independently" do
-      HexPort.Testing.set_fn_handler(Greeter, fn :greet, [n] -> "greet: #{n}" end)
+      DoubleDown.Testing.set_fn_handler(Greeter, fn :greet, [n] -> "greet: #{n}" end)
 
-      HexPort.Testing.set_stateful_handler(
+      DoubleDown.Testing.set_stateful_handler(
         Counter,
         fn :get_count, [], s -> {s, s} end,
         99
@@ -463,15 +463,15 @@ defmodule HexPort.TestingTest do
     end
 
     test "resetting clears all contracts for the current process" do
-      HexPort.Testing.set_fn_handler(Greeter, fn :greet, [_] -> "x" end)
+      DoubleDown.Testing.set_fn_handler(Greeter, fn :greet, [_] -> "x" end)
 
-      HexPort.Testing.set_stateful_handler(
+      DoubleDown.Testing.set_stateful_handler(
         Counter,
         fn :get_count, [], s -> {s, s} end,
         0
       )
 
-      HexPort.Testing.reset()
+      DoubleDown.Testing.reset()
 
       assert_raise RuntimeError, ~r/No test handler set/, fn -> Greeter.Port.greet("X") end
       assert_raise RuntimeError, ~r/No test handler set/, fn -> Counter.Port.get_count() end
@@ -481,28 +481,28 @@ end
 
 # Global mode tests must be async: false because they switch the
 # ownership server to shared mode, which affects all processes.
-defmodule HexPort.TestingGlobalModeTest do
+defmodule DoubleDown.TestingGlobalModeTest do
   use ExUnit.Case, async: false
 
-  alias HexPort.Test.Greeter
-  alias HexPort.Test.Counter
+  alias DoubleDown.Test.Greeter
+  alias DoubleDown.Test.Counter
 
   setup do
     on_exit(fn ->
-      HexPort.Testing.set_mode_to_private()
-      HexPort.Testing.reset()
+      DoubleDown.Testing.set_mode_to_private()
+      DoubleDown.Testing.reset()
     end)
   end
 
   describe "set_mode_to_global/0" do
     test "returns :ok" do
-      HexPort.Testing.set_fn_handler(Greeter, fn :greet, [n] -> n end)
-      assert :ok = HexPort.Testing.set_mode_to_global()
+      DoubleDown.Testing.set_fn_handler(Greeter, fn :greet, [n] -> n end)
+      assert :ok = DoubleDown.Testing.set_mode_to_global()
     end
 
     test "makes handlers accessible to spawned processes without allow" do
-      HexPort.Testing.set_fn_handler(Greeter, fn :greet, [name] -> "global: #{name}" end)
-      HexPort.Testing.set_mode_to_global()
+      DoubleDown.Testing.set_fn_handler(Greeter, fn :greet, [name] -> "global: #{name}" end)
+      DoubleDown.Testing.set_mode_to_global()
 
       # Spawn a process that has no $callers link and no allow — only global mode makes this work
       task =
@@ -514,8 +514,8 @@ defmodule HexPort.TestingGlobalModeTest do
     end
 
     test "makes handlers accessible to named GenServer processes" do
-      HexPort.Testing.set_fn_handler(Greeter, fn :greet, [name] -> "global: #{name}" end)
-      HexPort.Testing.set_mode_to_global()
+      DoubleDown.Testing.set_fn_handler(Greeter, fn :greet, [name] -> "global: #{name}" end)
+      DoubleDown.Testing.set_mode_to_global()
 
       {:ok, agent} = Agent.start_link(fn -> nil end)
 
@@ -529,7 +529,7 @@ defmodule HexPort.TestingGlobalModeTest do
     end
 
     test "works with stateful handlers" do
-      HexPort.Testing.set_stateful_handler(
+      DoubleDown.Testing.set_stateful_handler(
         Counter,
         fn
           :increment, [n], s -> {s + n, s + n}
@@ -538,7 +538,7 @@ defmodule HexPort.TestingGlobalModeTest do
         0
       )
 
-      HexPort.Testing.set_mode_to_global()
+      DoubleDown.Testing.set_mode_to_global()
 
       # Increment from a spawned process
       task = Task.async(fn -> Counter.Port.increment(10) end)
@@ -549,8 +549,8 @@ defmodule HexPort.TestingGlobalModeTest do
     end
 
     test "handlers set after set_mode_to_global are also visible" do
-      HexPort.Testing.set_mode_to_global()
-      HexPort.Testing.set_fn_handler(Greeter, fn :greet, [name] -> "late: #{name}" end)
+      DoubleDown.Testing.set_mode_to_global()
+      DoubleDown.Testing.set_fn_handler(Greeter, fn :greet, [name] -> "late: #{name}" end)
 
       task = Task.async(fn -> Greeter.Port.greet("after") end)
       assert "late: after" = Task.await(task)
@@ -559,8 +559,8 @@ defmodule HexPort.TestingGlobalModeTest do
 
   describe "set_mode_to_private/0" do
     test "restores per-process isolation after global mode" do
-      HexPort.Testing.set_fn_handler(Greeter, fn :greet, [name] -> "global: #{name}" end)
-      HexPort.Testing.set_mode_to_global()
+      DoubleDown.Testing.set_fn_handler(Greeter, fn :greet, [name] -> "global: #{name}" end)
+      DoubleDown.Testing.set_mode_to_global()
 
       # Global mode works — use bare spawn (no $callers) to prove it's global, not $callers
       ref = make_ref()
@@ -574,7 +574,7 @@ defmodule HexPort.TestingGlobalModeTest do
       assert_receive {^ref, "global: check"}
 
       # Switch back to private
-      HexPort.Testing.set_mode_to_private()
+      DoubleDown.Testing.set_mode_to_private()
 
       # Now a bare spawned process can't see the handler
       ref2 = make_ref()

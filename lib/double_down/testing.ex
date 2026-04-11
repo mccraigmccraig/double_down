@@ -1,15 +1,15 @@
-defmodule HexPort.Testing do
+defmodule DoubleDown.Testing do
   @moduledoc """
-  Test helpers for HexPort contracts.
+  Test helpers for DoubleDown contracts.
 
   Start the ownership server in `test/test_helper.exs`:
 
-      HexPort.Testing.start()
+      DoubleDown.Testing.start()
 
   Then in your tests, register handlers per-contract:
 
       setup do
-        HexPort.Testing.set_handler(MyApp.Todos, MyApp.Todos.InMemory)
+        DoubleDown.Testing.set_handler(MyApp.Todos, MyApp.Todos.InMemory)
         :ok
       end
 
@@ -17,10 +17,10 @@ defmodule HexPort.Testing do
   tests are isolated. Use `allow/3` to share handlers with child processes.
   """
 
-  @ownership_server HexPort.Dispatch.Ownership
+  @ownership_server DoubleDown.Dispatch.Ownership
 
   @doc """
-  Start the HexPort ownership server.
+  Start the DoubleDown ownership server.
 
   Call this once in `test/test_helper.exs`.
   """
@@ -59,7 +59,7 @@ defmodule HexPort.Testing do
   @spec set_stateful_handler(module(), (atom(), [term()], term() -> {term(), term()}), term()) ::
           :ok
   def set_stateful_handler(contract, fun, initial_state) when is_function(fun, 3) do
-    state_key = Module.concat(HexPort.State, contract)
+    state_key = Module.concat(DoubleDown.State, contract)
 
     # Store the initial state
     NimbleOwnership.get_and_update(@ownership_server, self(), state_key, fn _ ->
@@ -88,7 +88,7 @@ defmodule HexPort.Testing do
   """
   @spec enable_log(module()) :: :ok
   def enable_log(contract) do
-    log_key = Module.concat(HexPort.Log, contract)
+    log_key = Module.concat(DoubleDown.Log, contract)
 
     NimbleOwnership.get_and_update(@ownership_server, self(), log_key, fn _ ->
       {:ok, []}
@@ -105,7 +105,7 @@ defmodule HexPort.Testing do
   """
   @spec get_log(module()) :: [{module(), atom(), [term()], term()}]
   def get_log(contract) do
-    log_key = Module.concat(HexPort.Log, contract)
+    log_key = Module.concat(DoubleDown.Log, contract)
 
     case NimbleOwnership.get_owned(@ownership_server, self()) do
       %{^log_key => log} -> Enum.reverse(log)
@@ -138,9 +138,9 @@ defmodule HexPort.Testing do
   ## Example
 
       setup do
-        HexPort.Testing.set_mode_to_global()
-        HexPort.Testing.set_handler(MyApp.Repo.Contract, MyApp.Repo.InMemory)
-        on_exit(fn -> HexPort.Testing.set_mode_to_private() end)
+        DoubleDown.Testing.set_mode_to_global()
+        DoubleDown.Testing.set_handler(MyApp.Repo.Contract, MyApp.Repo.InMemory)
+        on_exit(fn -> DoubleDown.Testing.set_mode_to_private() end)
         :ok
       end
   """

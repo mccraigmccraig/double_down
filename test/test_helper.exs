@@ -1,2 +1,2 @@
 ExUnit.start()
-{:ok, _} = HexPort.Testing.start()
+{:ok, _} = DoubleDown.Testing.start()

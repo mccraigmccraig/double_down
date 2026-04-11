@@ -4,31 +4,31 @@
 
 ## Terminology
 
-HexPort uses terms from hexagonal architecture and testing theory.
+DoubleDown uses terms from hexagonal architecture and testing theory.
 If you're coming from Mox or standard Elixir, here's the mapping:
 
-| HexPort term | Familiar Elixir equivalent | Nuance |
+| DoubleDown term | Familiar Elixir equivalent | Nuance |
 |---|---|---|
-| **Contract** | Behaviour (`@callback` specs) | The abstract interface an implementation must satisfy. Same sense of "contract" in [Mocks and explicit contracts](https://dashbit.co/blog/mocks-and-explicit-contracts). HexPort generates the `@behaviour` + `@callback` from `defport` — the contract is the source of truth. |
-| **Facade** | The proxy module you write by hand in Mox (`def foo(x), do: impl().foo(x)`) | The module callers use — dispatches to the configured implementation. HexPort generates this; with Mox you write it manually. |
+| **Contract** | Behaviour (`@callback` specs) | The abstract interface an implementation must satisfy. Same sense of "contract" in [Mocks and explicit contracts](https://dashbit.co/blog/mocks-and-explicit-contracts). DoubleDown generates the `@behaviour` + `@callback` from `defport` — the contract is the source of truth. |
+| **Facade** | The proxy module you write by hand in Mox (`def foo(x), do: impl().foo(x)`) | The module callers use — dispatches to the configured implementation. DoubleDown generates this; with Mox you write it manually. |
 | **Port** | (hexagonal architecture term) | A boundary through which I/O operations pass. In practice, a contract + its facade. |
 | **Test double** | Mock (but broader) | Any thing that stands in for a real implementation in tests. See [test double types](https://en.wikipedia.org/wiki/Test_double#Types). |
 
 ### Test double types
 
-HexPort supports several kinds of test double, all built on the same
+DoubleDown supports several kinds of test double, all built on the same
 handler mechanism:
 
-| Type | What it does | HexPort API |
+| Type | What it does | DoubleDown API |
 |---|---|---|
-| **Stub** | Returns canned responses, no verification | `set_fn_handler`, `HexPort.Handler.stub` |
-| **Mock** | Returns canned responses + verifies call counts/order | `HexPort.Handler.expect` + `verify!` |
+| **Stub** | Returns canned responses, no verification | `set_fn_handler`, `DoubleDown.Handler.stub` |
+| **Mock** | Returns canned responses + verifies call counts/order | `DoubleDown.Handler.expect` + `verify!` |
 | **Fake** | Working logic, simpler than production but behaviourally realistic | `set_stateful_handler`, `Repo.Test`, `Repo.InMemory` |
 
 **Stubs** are the simplest — register a function that returns what you
 need, don't bother checking how many times it was called.
 
-**Mocks** (via `HexPort.Handler`) add expectations — the handler is
+**Mocks** (via `DoubleDown.Handler`) add expectations — the handler is
 consumed in order, and `verify!` checks that all expected calls were
 made. This is the Mox model.
 
@@ -41,11 +41,11 @@ behaviour than a stub or mock.
 
 The spectrum from stub to fake is a tradeoff: stubs are easier to
 write but test less; fakes test more but require more upfront work
-(which HexPort provides out of the box for Repo operations).
+(which DoubleDown provides out of the box for Repo operations).
 
 ## Defining a contract
 
-A port contract declares the operations that cross a boundary. HexPort
+A port contract declares the operations that cross a boundary. DoubleDown
 uses `defport` to capture typed signatures with parameter names,
 return types, and optional metadata — all available at compile time via
 `__port_operations__/0`.
@@ -53,12 +53,12 @@ return types, and optional metadata — all available at compile time via
 ### Combined contract + facade (recommended)
 
 The simplest pattern puts the contract and dispatch facade in one
-module. When `HexPort.Facade` is used without a `:contract` option,
+module. When `DoubleDown.Facade` is used without a `:contract` option,
 it implicitly sets up the contract in the same module:
 
 ```elixir
 defmodule MyApp.Todos do
-  use HexPort.Facade, otp_app: :my_app
+  use DoubleDown.Facade, otp_app: :my_app
 
   defport create_todo(params :: map()) ::
     {:ok, Todo.t()} | {:error, Ecto.Changeset.t()}
@@ -84,7 +84,7 @@ across multiple apps with different facades, define them separately:
 
 ```elixir
 defmodule MyApp.Todos.Contract do
-  use HexPort.Contract
+  use DoubleDown.Contract
 
   defport create_todo(params :: map()) ::
     {:ok, Todo.t()} | {:error, Ecto.Changeset.t()}
@@ -97,11 +97,11 @@ end
 ```elixir
 # In a separate file (contract must compile first)
 defmodule MyApp.Todos do
-  use HexPort.Facade, contract: MyApp.Todos.Contract, otp_app: :my_app
+  use DoubleDown.Facade, contract: MyApp.Todos.Contract, otp_app: :my_app
 end
 ```
 
-This is how the built-in `HexPort.Repo.Contract` works — it defines
+This is how the built-in `DoubleDown.Repo.Contract` works — it defines
 the contract, and your app creates a facade that binds it to your
 `otp_app`. See [Repo](repo.md).
 
@@ -154,7 +154,7 @@ spliced as AST into the generated facade function, so it runs at
 call-time in the caller's process.
 
 This is an advanced feature — most contracts don't need it. The
-canonical example is `HexPort.Repo.Contract`, which uses it to wrap
+canonical example is `DoubleDown.Repo.Contract`, which uses it to wrap
 1-arity transaction functions into 0-arity thunks that close over the
 facade module:
 
@@ -238,7 +238,7 @@ time** based on the `:test_dispatch?` option:
 
 ### Non-production (default)
 
-`HexPort.Dispatch.call/4` resolves the handler in order:
+`DoubleDown.Dispatch.call/4` resolves the handler in order:
 
 1. **Test handler** — NimbleOwnership process-scoped lookup
 2. **Application config** — `Application.get_env(otp_app, contract)[:impl]`
@@ -248,7 +248,7 @@ Test handlers always take priority over config.
 
 ### Production
 
-`HexPort.Dispatch.call_config/4` skips NimbleOwnership entirely:
+`DoubleDown.Dispatch.call_config/4` skips NimbleOwnership entirely:
 
 1. **Application config** — `Application.get_env(otp_app, contract)[:impl]`
 2. **Raise** — clear error message if nothing is configured
@@ -259,22 +259,22 @@ the compiled beam — zero overhead.
 ### The `:test_dispatch?` option
 
 The dispatch path is controlled by the `:test_dispatch?` option on
-`use HexPort.Facade`. It accepts `true`, `false`, or a zero-arity
+`use DoubleDown.Facade`. It accepts `true`, `false`, or a zero-arity
 function returning a boolean. The function is evaluated at compile
 time. The default is `fn -> Mix.env() != :prod end`:
 
 ```elixir
 # Default — test dispatch in dev/test, config-only in prod
-use HexPort.Facade, otp_app: :my_app
+use DoubleDown.Facade, otp_app: :my_app
 
 # Always config-only (e.g. a facade that never needs test doubles)
-use HexPort.Facade, otp_app: :my_app, test_dispatch?: false
+use DoubleDown.Facade, otp_app: :my_app, test_dispatch?: false
 
 # Always test-aware
-use HexPort.Facade, otp_app: :my_app, test_dispatch?: true
+use DoubleDown.Facade, otp_app: :my_app, test_dispatch?: true
 
 # Custom compile-time decision
-use HexPort.Facade, otp_app: :my_app, test_dispatch?: fn -> Mix.env() == :test end
+use DoubleDown.Facade, otp_app: :my_app, test_dispatch?: fn -> Mix.env() == :test end
 ```
 
 ## Key helpers
@@ -292,12 +292,12 @@ introspection functions (like `__struct__`, `__schema__`), avoiding
 clashes with user-defined `defport key(...)` operations.
 
 These are used with Skuld's `Port.with_test_handler/2` for effectful
-testing. For plain HexPort testing, use the handler modes described
+testing. For plain DoubleDown testing, use the handler modes described
 in [Testing](testing.md).
 
 ## Why `defport` instead of plain `@callback`?
 
-HexPort could in principle generate a facade from any Elixir behaviour,
+DoubleDown could in principle generate a facade from any Elixir behaviour,
 but there are practical limitations:
 
 - **Parameter names may not be available.** A `@callback` declaration

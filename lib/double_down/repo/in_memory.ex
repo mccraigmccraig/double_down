@@ -6,31 +6,31 @@
 #
 # ## Usage
 #
-#     HexPort.Testing.set_stateful_handler(
-#       HexPort.Repo.Contract,
-#       &HexPort.Repo.InMemory.dispatch/3,
-#       HexPort.Repo.InMemory.new()
+#     DoubleDown.Testing.set_stateful_handler(
+#       DoubleDown.Repo.Contract,
+#       &DoubleDown.Repo.InMemory.dispatch/3,
+#       DoubleDown.Repo.InMemory.new()
 #     )
 #
 #     # With seeded data and a fallback function
-#     initial = HexPort.Repo.InMemory.new(
+#     initial = DoubleDown.Repo.InMemory.new(
 #       seed: [%User{id: 1, name: "Alice"}],
 #       fallback_fn: fn
 #         :all, [User] -> [%User{id: 1, name: "Alice"}]
 #       end
 #     )
-#     HexPort.Testing.set_stateful_handler(
-#       HexPort.Repo.Contract,
-#       &HexPort.Repo.InMemory.dispatch/3,
+#     DoubleDown.Testing.set_stateful_handler(
+#       DoubleDown.Repo.Contract,
+#       &DoubleDown.Repo.InMemory.dispatch/3,
 #       initial
 #     )
 #
 if Code.ensure_loaded?(Ecto) do
-  defmodule HexPort.Repo.InMemory do
+  defmodule DoubleDown.Repo.InMemory do
     @moduledoc """
     Stateful in-memory Repo implementation for tests.
 
-    Provides a stateful handler function for `HexPort.Repo.Contract` operations.
+    Provides a stateful handler function for `DoubleDown.Repo.Contract` operations.
     State is a nested map keyed by `schema_module => %{primary_key => struct}`,
     giving read-after-write consistency for PK-based lookups within a test.
 
@@ -72,14 +72,14 @@ if Code.ensure_loaded?(Ecto) do
     ## Usage
 
         # Basic — PK reads only, no fallback:
-        HexPort.Testing.set_stateful_handler(
-          HexPort.Repo.Contract,
-          &HexPort.Repo.InMemory.dispatch/3,
-          HexPort.Repo.InMemory.new()
+        DoubleDown.Testing.set_stateful_handler(
+          DoubleDown.Repo.Contract,
+          &DoubleDown.Repo.InMemory.dispatch/3,
+          DoubleDown.Repo.InMemory.new()
         )
 
         # With seed data and fallback:
-        state = HexPort.Repo.InMemory.new(
+        state = DoubleDown.Repo.InMemory.new(
           seed: [%User{id: 1, name: "Alice"}],
           fallback_fn: fn
             :all, [User], state ->
@@ -88,9 +88,9 @@ if Code.ensure_loaded?(Ecto) do
               %User{id: 1}
           end
         )
-        HexPort.Testing.set_stateful_handler(
-          HexPort.Repo.Contract,
-          &HexPort.Repo.InMemory.dispatch/3,
+        DoubleDown.Testing.set_stateful_handler(
+          DoubleDown.Repo.Contract,
+          &DoubleDown.Repo.InMemory.dispatch/3,
           state
         )
 
@@ -99,7 +99,7 @@ if Code.ensure_loaded?(Ecto) do
     Use `new/1` with the `:seed` option, or `seed/1` to convert a list of
     structs into the nested state map:
 
-        HexPort.Repo.InMemory.new(seed: [
+        DoubleDown.Repo.InMemory.new(seed: [
           %User{id: 1, name: "Alice"},
           %User{id: 2, name: "Bob"}
         ])
@@ -162,10 +162,10 @@ if Code.ensure_loaded?(Ecto) do
     ## Examples
 
         # Empty state, no fallback
-        HexPort.Repo.InMemory.new()
+        DoubleDown.Repo.InMemory.new()
 
         # Seeded with fallback that uses state
-        HexPort.Repo.InMemory.new(
+        DoubleDown.Repo.InMemory.new(
           seed: [%User{id: 1, name: "Alice"}],
           fallback_fn: fn
             :all, [User], state ->
@@ -192,7 +192,7 @@ if Code.ensure_loaded?(Ecto) do
 
     ## Example
 
-        HexPort.Repo.InMemory.seed([
+        DoubleDown.Repo.InMemory.seed([
           %User{id: 1, name: "Alice"},
           %User{id: 2, name: "Bob"}
         ])
@@ -203,15 +203,15 @@ if Code.ensure_loaded?(Ecto) do
     def seed(records) when is_list(records) do
       Enum.reduce(records, %{}, fn record, store ->
         schema = record.__struct__
-        id = HexPort.Repo.Autogenerate.get_primary_key(record)
+        id = DoubleDown.Repo.Autogenerate.get_primary_key(record)
         put_record(store, schema, id, record)
       end)
     end
 
     @doc """
-    Stateful handler function for use with `HexPort.Testing.set_stateful_handler/3`.
+    Stateful handler function for use with `DoubleDown.Testing.set_stateful_handler/3`.
 
-    Handles all `HexPort.Repo.Contract` operations. The function signature is
+    Handles all `DoubleDown.Repo.Contract` operations. The function signature is
     `(operation, args, store) -> {result, new_store}`.
 
     Write operations are handled directly by the state. PK-based reads check
@@ -230,7 +230,7 @@ if Code.ensure_loaded?(Ecto) do
     end
 
     def dispatch(:insert, [changeset], store) do
-      alias HexPort.Repo.Autogenerate
+      alias DoubleDown.Repo.Autogenerate
 
       record = Autogenerate.apply_changes(changeset, :insert)
       schema = record.__struct__
@@ -254,15 +254,15 @@ if Code.ensure_loaded?(Ecto) do
     end
 
     def dispatch(:update, [changeset], store) do
-      record = HexPort.Repo.Autogenerate.apply_changes(changeset, :update)
+      record = DoubleDown.Repo.Autogenerate.apply_changes(changeset, :update)
       schema = record.__struct__
-      id = HexPort.Repo.Autogenerate.get_primary_key(record)
+      id = DoubleDown.Repo.Autogenerate.get_primary_key(record)
       {{:ok, record}, put_record(store, schema, id, record)}
     end
 
     def dispatch(:delete, [record], store) do
       schema = record.__struct__
-      id = HexPort.Repo.Autogenerate.get_primary_key(record)
+      id = DoubleDown.Repo.Autogenerate.get_primary_key(record)
       {{:ok, record}, delete_record(store, schema, id)}
     end
 
@@ -343,9 +343,9 @@ if Code.ensure_loaded?(Ecto) do
     end
 
     def dispatch(:transact, [%Ecto.Multi{} = multi, opts], _store) do
-      repo_facade = Keyword.get(opts, HexPort.Repo.Facade)
+      repo_facade = Keyword.get(opts, DoubleDown.Repo.Facade)
 
-      {:defer, fn -> HexPort.Repo.MultiStepper.run(multi, repo_facade) end}
+      {:defer, fn -> DoubleDown.Repo.MultiStepper.run(multi, repo_facade) end}
     end
 
     # -----------------------------------------------------------------
@@ -390,7 +390,7 @@ if Code.ensure_loaded?(Ecto) do
       {{:defer,
         fn ->
           raise ArgumentError, """
-          HexPort.Repo.InMemory cannot service :#{operation} with args #{inspect(args)}.
+          DoubleDown.Repo.InMemory cannot service :#{operation} with args #{inspect(args)}.
 
           The InMemory adapter can only answer authoritatively for:
             - Write operations (insert, update, delete)
@@ -398,7 +398,7 @@ if Code.ensure_loaded?(Ecto) do
 
           For all other operations, register a fallback function:
 
-          HexPort.Repo.InMemory.new(
+          DoubleDown.Repo.InMemory.new(
             fallback_fn: fn
               :#{operation}, #{inspect(args)}, _state -> # your result here
             end

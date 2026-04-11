@@ -1,7 +1,7 @@
-defmodule HexPort.Repo.AutogenerateTest do
+defmodule DoubleDown.Repo.AutogenerateTest do
   use ExUnit.Case, async: true
 
-  alias HexPort.Repo.Autogenerate
+  alias DoubleDown.Repo.Autogenerate
 
   # -------------------------------------------------------------------
   # Test schemas covering all PK variants

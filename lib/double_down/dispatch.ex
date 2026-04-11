@@ -1,9 +1,9 @@
-defmodule HexPort.Dispatch do
+defmodule DoubleDown.Dispatch do
   @moduledoc """
-  Dispatch resolution for HexPort contracts.
+  Dispatch resolution for DoubleDown contracts.
 
   Two dispatch paths are available, selected at compile time by the
-  `:test_dispatch?` option on `use HexPort.Facade`:
+  `:test_dispatch?` option on `use DoubleDown.Facade`:
 
   ### `call/4` — test-aware dispatch (default in non-prod)
 
@@ -139,7 +139,7 @@ defmodule HexPort.Dispatch do
   # -- Dispatch logging --
 
   defp maybe_log(owner_pid, contract, operation, args, result) do
-    log_key = Module.concat(HexPort.Log, contract)
+    log_key = Module.concat(DoubleDown.Log, contract)
 
     # Only log if the owner has logging enabled (owns the log key).
     # get_owned returns all keys owned by this pid — check if log_key is present.
@@ -186,19 +186,19 @@ defmodule HexPort.Dispatch do
 
       In your test setup, call one of:
 
-          HexPort.Testing.set_handler(#{inspect(contract)}, MyImpl)
-          HexPort.Testing.set_fn_handler(#{inspect(contract)}, fn operation, args -> ... end)
-          HexPort.Testing.set_stateful_handler(#{inspect(contract)}, handler_fn, initial_state)
+          DoubleDown.Testing.set_handler(#{inspect(contract)}, MyImpl)
+          DoubleDown.Testing.set_fn_handler(#{inspect(contract)}, fn operation, args -> ... end)
+          DoubleDown.Testing.set_stateful_handler(#{inspect(contract)}, handler_fn, initial_state)
 
       If you want to use the production implementation in this test:
-          HexPort.Testing.set_handler(#{inspect(contract)}, MyProductionImpl)
+          DoubleDown.Testing.set_handler(#{inspect(contract)}, MyProductionImpl)
       """
     else
       config_example =
         if otp_app do
           "config #{inspect(otp_app)}, #{inspect(contract)}, impl: MyImpl"
         else
-          ~s'use HexPort.Facade, contract: #{inspect(contract)}, otp_app: :my_app\n' <>
+          ~s'use DoubleDown.Facade, contract: #{inspect(contract)}, otp_app: :my_app\n' <>
             "    then: config :my_app, #{inspect(contract)}, impl: MyImpl"
         end
 

@@ -7,11 +7,11 @@
 # call repo.insert/1, repo.get/2, etc.).
 #
 if Code.ensure_loaded?(Ecto) do
-  defmodule HexPort.Repo.MultiStepper do
+  defmodule DoubleDown.Repo.MultiStepper do
     @moduledoc """
     Steps through an `Ecto.Multi` without a real database transaction.
 
-    Used by `HexPort.Repo.Test` and `HexPort.Repo.InMemory` to execute
+    Used by `DoubleDown.Repo.Test` and `DoubleDown.Repo.InMemory` to execute
     Multi operations in order, accumulating a changes map.
 
     The `repo_facade` argument is passed to `:run` callbacks as the

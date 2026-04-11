@@ -2,7 +2,7 @@
 
 [< Getting Started](getting-started.md) | [Up: README](../README.md) | [Repo >](repo.md)
 
-HexPort's testing system is built on
+DoubleDown's testing system is built on
 [NimbleOwnership](https://hex.pm/packages/nimble_ownership) — the same
 ownership library that Mox uses internally. Each test process gets its
 own handlers, state, and logs, so `async: true` works out of the box.
@@ -12,12 +12,12 @@ own handlers, state, and logs, so `async: true` works out of the box.
 Start the ownership server once in `test/test_helper.exs`:
 
 ```elixir
-{:ok, _} = HexPort.Testing.start()
+{:ok, _} = DoubleDown.Testing.start()
 ```
 
 This starts a `NimbleOwnership` GenServer used for process-scoped test
 handler isolation. In production, facades compiled with the default
-`:test_dispatch?` setting use `HexPort.Dispatch.call_config/4`, which
+`:test_dispatch?` setting use `DoubleDown.Dispatch.call_config/4`, which
 doesn't reference NimbleOwnership at all — the test dispatch code path
 is absent from the compiled beam files. See
 [Dispatch resolution](getting-started.md#dispatch-resolution) for
@@ -25,7 +25,7 @@ details.
 
 ## Handler modes
 
-HexPort provides three ways to register test handlers. All are
+DoubleDown provides three ways to register test handlers. All are
 process-scoped and isolated between concurrent tests.
 
 ### Module handler
@@ -33,7 +33,7 @@ process-scoped and isolated between concurrent tests.
 Register any module that implements the contract's `@behaviour`:
 
 ```elixir
-HexPort.Testing.set_handler(MyApp.Todos, MyApp.Todos.Fake)
+DoubleDown.Testing.set_handler(MyApp.Todos, MyApp.Todos.Fake)
 ```
 
 Dispatch calls `apply(MyApp.Todos.Fake, operation, args)`.
@@ -44,7 +44,7 @@ Register a 2-arity closure `(operation, args) -> result` with pattern
 matching:
 
 ```elixir
-HexPort.Testing.set_fn_handler(MyApp.Todos, fn
+DoubleDown.Testing.set_fn_handler(MyApp.Todos, fn
   :create_todo, [params] -> {:ok, struct!(Todo, params)}
   :get_todo, [id] -> {:ok, %Todo{id: id, title: "Test"}}
   :list_todos, [_tenant] -> [%Todo{id: "1", title: "Test"}]
@@ -60,7 +60,7 @@ Register a 3-arity closure `(operation, args, state) -> {result, new_state}`
 with an initial state value:
 
 ```elixir
-HexPort.Testing.set_stateful_handler(
+DoubleDown.Testing.set_stateful_handler(
   MyApp.Todos,
   fn
     :create_todo, [params], todos ->
@@ -84,12 +84,12 @@ State is stored in NimbleOwnership and updated atomically on each
 dispatch. This gives you a lightweight in-memory store for tests that
 need read-after-write consistency.
 
-For Ecto Repo operations specifically, HexPort ships ready-made
+For Ecto Repo operations specifically, DoubleDown ships ready-made
 stateful test doubles — see [Repo](repo.md).
 
 ## Handler (expect/stub)
 
-`HexPort.Handler` provides a Mox-style expect/stub API for declaring
+`DoubleDown.Handler` provides a Mox-style expect/stub API for declaring
 test handlers. Each call writes directly to NimbleOwnership — no
 builder, no `install!` step. All functions return the contract module
 for piping.
@@ -99,14 +99,14 @@ for piping.
 ```elixir
 setup do
   MyApp.Todos
-  |> HexPort.Handler.expect(:get_todo, fn [id] -> {:ok, %Todo{id: id}} end)
-  |> HexPort.Handler.stub(:list_todos, fn [_] -> [] end)
+  |> DoubleDown.Handler.expect(:get_todo, fn [id] -> {:ok, %Todo{id: id}} end)
+  |> DoubleDown.Handler.stub(:list_todos, fn [_] -> [] end)
   :ok
 end
 
 test "..." do
   # ... run code under test ...
-  HexPort.Handler.verify!()
+  DoubleDown.Handler.verify!()
 end
 ```
 
@@ -118,8 +118,8 @@ with no remaining expectations and no stub raises immediately.
 
 ```elixir
 MyApp.Todos
-|> HexPort.Handler.expect(:get_todo, fn [_] -> {:error, :not_found} end)
-|> HexPort.Handler.expect(:get_todo, fn [id] -> {:ok, %Todo{id: id}} end)
+|> DoubleDown.Handler.expect(:get_todo, fn [_] -> {:error, :not_found} end)
+|> DoubleDown.Handler.expect(:get_todo, fn [id] -> {:ok, %Todo{id: id}} end)
 
 # First call returns :not_found, second returns the todo
 ```
@@ -127,7 +127,7 @@ MyApp.Todos
 ### Repeated expectations
 
 ```elixir
-HexPort.Handler.expect(MyApp.Todos, :get_todo, fn [id] -> {:ok, %Todo{id: id}} end, times: 3)
+DoubleDown.Handler.expect(MyApp.Todos, :get_todo, fn [id] -> {:ok, %Todo{id: id}} end, times: 3)
 ```
 
 ### Contract-wide fallback
@@ -140,11 +140,11 @@ the same signature as `set_fn_handler`:
 
 ```elixir
 MyApp.Todos
-|> HexPort.Handler.stub(fn
+|> DoubleDown.Handler.stub(fn
   :list_todos, [_] -> []
   :get_todo, [id] -> {:ok, %Todo{id: id}}
 end)
-|> HexPort.Handler.expect(:create_todo, fn [p] -> {:ok, struct!(Todo, p)} end)
+|> DoubleDown.Handler.expect(:create_todo, fn [p] -> {:ok, struct!(Todo, p)} end)
 ```
 
 **Stateful fallback** — a 3-arity `fn op, args, state -> {result, state}` with
@@ -155,8 +155,8 @@ operations with expects while the fake handles everything else:
 ```elixir
 # First insert fails with constraint error, rest go through InMemory
 RepoContract
-|> HexPort.Handler.stub(&Repo.InMemory.handler/3, %{})
-|> HexPort.Handler.expect(:insert, fn [changeset] ->
+|> DoubleDown.Handler.stub(&Repo.InMemory.handler/3, %{})
+|> DoubleDown.Handler.expect(:insert, fn [changeset] ->
   {:error, Ecto.Changeset.add_error(changeset, :email, "taken")}
 end)
 ```
@@ -175,8 +175,8 @@ implementation:
 
 ```elixir
 MyApp.Todos
-|> HexPort.Handler.stub(MyApp.Todos.Ecto)
-|> HexPort.Handler.expect(:create_todo, fn [_] -> {:error, :conflict} end)
+|> DoubleDown.Handler.stub(MyApp.Todos.Ecto)
+|> DoubleDown.Handler.expect(:create_todo, fn [_] -> {:error, :conflict} end)
 ```
 
 The module is validated at stub time. Note: if the module's
@@ -194,8 +194,8 @@ expect for `verify!` counting:
 
 ```elixir
 MyApp.Todos
-|> HexPort.Handler.stub(MyApp.Todos.Impl)
-|> HexPort.Handler.expect(:get_todo, :passthrough, times: 2)
+|> DoubleDown.Handler.stub(MyApp.Todos.Impl)
+|> DoubleDown.Handler.expect(:get_todo, :passthrough, times: 2)
 
 # Both calls delegate to MyApp.Todos.Impl
 # verify! checks that get_todo was called exactly twice
@@ -208,9 +208,9 @@ succeeds through the fallback, second call returns an error":
 
 ```elixir
 RepoContract
-|> HexPort.Handler.stub(&Repo.InMemory.handler/3, %{})
-|> HexPort.Handler.expect(:insert, :passthrough)
-|> HexPort.Handler.expect(:insert, fn [changeset] ->
+|> DoubleDown.Handler.stub(&Repo.InMemory.handler/3, %{})
+|> DoubleDown.Handler.expect(:insert, :passthrough)
+|> DoubleDown.Handler.expect(:insert, fn [changeset] ->
   {:error, Ecto.Changeset.add_error(changeset, :email, "taken")}
 end)
 
@@ -222,9 +222,9 @@ end)
 
 ```elixir
 MyApp.Todos
-|> HexPort.Handler.expect(:create_todo, fn [p] -> {:ok, struct!(Todo, p)} end)
+|> DoubleDown.Handler.expect(:create_todo, fn [p] -> {:ok, struct!(Todo, p)} end)
 
-HexPort.Handler.stub(HexPort.Repo.Contract, :one, fn [_] -> nil end)
+DoubleDown.Handler.stub(DoubleDown.Repo.Contract, :one, fn [_] -> nil end)
 ```
 
 ### Verification
@@ -241,7 +241,7 @@ setup :verify_on_exit!
 
 # or equivalently:
 setup do
-  HexPort.Handler.verify_on_exit!()
+  DoubleDown.Handler.verify_on_exit!()
 end
 ```
 
@@ -250,13 +250,13 @@ You can also call `verify!/0` explicitly at the end of a test:
 ```elixir
 test "creates a todo" do
   # ... setup and dispatch ...
-  HexPort.Handler.verify!()
+  DoubleDown.Handler.verify!()
 end
 ```
 
 ### When to use Handler vs raw handlers
 
-Use `HexPort.Handler` when you want Mox-style call counting and
+Use `DoubleDown.Handler` when you want Mox-style call counting and
 ordered expectations. Use `set_fn_handler` for simple canned
 responses. Use `set_stateful_handler` directly when you need custom
 state management (e.g. in-memory stores with complex query logic).
@@ -268,8 +268,8 @@ sequence:
 
 ```elixir
 setup do
-  HexPort.Testing.enable_log(MyApp.Todos)
-  HexPort.Testing.set_fn_handler(MyApp.Todos, fn
+  DoubleDown.Testing.enable_log(MyApp.Todos)
+  DoubleDown.Testing.set_fn_handler(MyApp.Todos, fn
     :get_todo, [id] -> {:ok, %Todo{id: id}}
   end)
   :ok
@@ -279,7 +279,7 @@ test "logs dispatch calls" do
   MyApp.Todos.get_todo("42")
 
   assert [{:get_todo, ["42"], {:ok, %Todo{id: "42"}}}] =
-    HexPort.Testing.get_log(MyApp.Todos)
+    DoubleDown.Testing.get_log(MyApp.Todos)
 end
 ```
 
@@ -289,7 +289,7 @@ returns the full sequence.
 
 ## Log matcher (structured log assertions)
 
-`HexPort.Log` provides structured expectations against the dispatch
+`DoubleDown.Log` provides structured expectations against the dispatch
 log. Unlike `get_log/1` + manual assertions, it supports ordered
 matching, counting, reject expectations, and strict mode.
 
@@ -300,14 +300,14 @@ assertion, not a tautology.
 ### Basic usage
 
 ```elixir
-HexPort.Testing.enable_log(MyApp.Todos)
+DoubleDown.Testing.enable_log(MyApp.Todos)
 # ... set handler and dispatch ...
 
-HexPort.Log.match(MyApp.Todos, :create_todo, fn
+DoubleDown.Log.match(MyApp.Todos, :create_todo, fn
   {_, _, [params], {:ok, %Todo{id: id}}} when is_binary(id) -> true
 end)
-|> HexPort.Log.reject(MyApp.Todos, :delete_todo)
-|> HexPort.Log.verify!()
+|> DoubleDown.Log.reject(MyApp.Todos, :delete_todo)
+|> DoubleDown.Log.verify!()
 ```
 
 Matcher functions only need positive clauses — `FunctionClauseError`
@@ -316,10 +316,10 @@ is caught and treated as "didn't match". No `_ -> false` needed.
 ### Counting occurrences
 
 ```elixir
-HexPort.Log.match(RepoContract, :insert, fn
+DoubleDown.Log.match(RepoContract, :insert, fn
   {_, _, [%Changeset{data: %Discrepancy{}}], {:ok, _}} -> true
 end, times: 3)
-|> HexPort.Log.verify!()
+|> DoubleDown.Log.verify!()
 ```
 
 ### Strict mode
@@ -328,12 +328,12 @@ By default, extra log entries between matchers are ignored (loose
 mode). Strict mode requires every log entry to be matched:
 
 ```elixir
-HexPort.Log.match(Contract, :insert, fn _ -> true end)
-|> HexPort.Log.match(Contract, :update, fn _ -> true end)
-|> HexPort.Log.verify!(strict: true)
+DoubleDown.Log.match(Contract, :insert, fn _ -> true end)
+|> DoubleDown.Log.match(Contract, :update, fn _ -> true end)
+|> DoubleDown.Log.verify!(strict: true)
 ```
 
-### Using with HexPort.Handler
+### Using with DoubleDown.Handler
 
 Handler and Log serve complementary roles — Handler for fail-fast
 validation and producing return values, Log for after-the-fact
@@ -341,21 +341,21 @@ result inspection:
 
 ```elixir
 # Set up handlers
-HexPort.Handler.expect(MyContract, :create, fn [p] -> {:ok, struct!(Thing, p)} end)
+DoubleDown.Handler.expect(MyContract, :create, fn [p] -> {:ok, struct!(Thing, p)} end)
 
-HexPort.Testing.enable_log(MyContract)
+DoubleDown.Testing.enable_log(MyContract)
 
 # Run code under test
 MyModule.do_work(params)
 
 # Verify handler expectations consumed
-HexPort.Handler.verify!()
+DoubleDown.Handler.verify!()
 
 # Verify log entries match expected patterns
-HexPort.Log.match(MyContract, :create, fn
+DoubleDown.Log.match(MyContract, :create, fn
   {_, _, _, {:ok, %Thing{}}} -> true
 end)
-|> HexPort.Log.verify!()
+|> DoubleDown.Log.verify!()
 ```
 
 ## Process sharing and async safety
@@ -370,14 +370,14 @@ via the `$callers` chain. No setup needed.
 sharing:
 
 ```elixir
-HexPort.Testing.allow(MyApp.Todos, self(), agent_pid)
+DoubleDown.Testing.allow(MyApp.Todos, self(), agent_pid)
 ```
 
 `allow/3` also accepts a lazy pid function for processes that don't
 exist yet at setup time:
 
 ```elixir
-HexPort.Testing.allow(MyApp.Todos, self(), fn -> GenServer.whereis(MyWorker) end)
+DoubleDown.Testing.allow(MyApp.Todos, self(), fn -> GenServer.whereis(MyWorker) end)
 ```
 
 ### Global mode
@@ -389,9 +389,9 @@ mode:
 
 ```elixir
 setup do
-  HexPort.Testing.set_mode_to_global()
-  HexPort.Testing.set_handler(MyApp.Todos, MyApp.Todos.InMemory)
-  on_exit(fn -> HexPort.Testing.set_mode_to_private() end)
+  DoubleDown.Testing.set_mode_to_global()
+  DoubleDown.Testing.set_handler(MyApp.Todos, MyApp.Todos.InMemory)
+  on_exit(fn -> DoubleDown.Testing.set_mode_to_private() end)
   :ok
 end
 ```
@@ -422,12 +422,12 @@ defmodule MyApp.WorkerTest do
   use ExUnit.Case, async: true
 
   setup do
-    HexPort.Testing.set_fn_handler(MyApp.Todos, fn
+    DoubleDown.Testing.set_fn_handler(MyApp.Todos, fn
       :get_todo, [id] -> {:ok, %Todo{id: id}}
     end)
 
     {:ok, pid} = MyApp.Worker.start_link([])
-    HexPort.Testing.allow(MyApp.Todos, self(), pid)
+    DoubleDown.Testing.allow(MyApp.Todos, self(), pid)
 
     %{worker: pid}
   end
@@ -448,15 +448,15 @@ defmodule MyApp.PipelineIntegrationTest do
   use ExUnit.Case, async: false
 
   setup do
-    HexPort.Testing.set_mode_to_global()
+    DoubleDown.Testing.set_mode_to_global()
 
-    HexPort.Testing.set_stateful_handler(
-      HexPort.Repo.Contract,
-      &HexPort.Repo.InMemory.dispatch/3,
-      HexPort.Repo.InMemory.new()
+    DoubleDown.Testing.set_stateful_handler(
+      DoubleDown.Repo.Contract,
+      &DoubleDown.Repo.InMemory.dispatch/3,
+      DoubleDown.Repo.InMemory.new()
     )
 
-    on_exit(fn -> HexPort.Testing.set_mode_to_private() end)
+    on_exit(fn -> DoubleDown.Testing.set_mode_to_private() end)
 
     start_supervised!(MyApp.Pipeline)
     :ok
@@ -476,7 +476,7 @@ process:
 
 ```elixir
 setup do
-  HexPort.Testing.reset()
+  DoubleDown.Testing.reset()
   # ... set up fresh handlers ...
 end
 ```
@@ -498,7 +498,7 @@ with a nil implementation:
 ```elixir
 # config/test.exs
 config :my_app, MyApp.Todos, impl: nil
-config :my_app, HexPort.Repo.Contract, impl: nil
+config :my_app, DoubleDown.Repo.Contract, impl: nil
 ```
 
 Now any test that forgets to set a handler gets an immediate error:
@@ -507,9 +507,9 @@ Now any test that forgets to set a handler gets an immediate error:
 
     In your test setup, call one of:
 
-        HexPort.Testing.set_handler(MyApp.Todos, MyImpl)
-        HexPort.Testing.set_fn_handler(MyApp.Todos, fn operation, args -> ... end)
-        HexPort.Testing.set_stateful_handler(MyApp.Todos, handler_fn, initial_state)
+        DoubleDown.Testing.set_handler(MyApp.Todos, MyImpl)
+        DoubleDown.Testing.set_fn_handler(MyApp.Todos, fn operation, args -> ... end)
+        DoubleDown.Testing.set_stateful_handler(MyApp.Todos, handler_fn, initial_state)
 
 Every test must explicitly declare its dependencies via
 `set_handler`, `set_fn_handler`, or `set_stateful_handler`. For
@@ -518,7 +518,7 @@ integration tests that need the real implementation, use
 
 ```elixir
 setup do
-  HexPort.Testing.set_handler(MyApp.Todos, MyApp.Todos.Ecto)
+  DoubleDown.Testing.set_handler(MyApp.Todos, MyApp.Todos.Ecto)
   :ok
 end
 ```
@@ -552,13 +552,13 @@ test "get_todo returns the expected todo" do
 end
 ```
 
-This works because HexPort's dispatch resolution checks test handlers
+This works because DoubleDown's dispatch resolution checks test handlers
 first, then falls back to application config. When using Mox, the
 config points to the mock module, and Mox's own process-scoped
 expectations provide the isolation.
 
-You can use either approach — HexPort's built-in handlers or Mox —
-depending on your preference. HexPort's handlers don't require
+You can use either approach — DoubleDown's built-in handlers or Mox —
+depending on your preference. DoubleDown's handlers don't require
 defining mock modules or changing config, and the stateful handler
 mode has no Mox equivalent.
 

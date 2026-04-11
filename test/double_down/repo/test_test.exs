@@ -1,7 +1,7 @@
-defmodule HexPort.Repo.TestTest do
+defmodule DoubleDown.Repo.TestTest do
   use ExUnit.Case, async: true
 
-  alias HexPort.Repo
+  alias DoubleDown.Repo
 
   # -------------------------------------------------------------------
   # Test Schemas
@@ -112,7 +112,7 @@ defmodule HexPort.Repo.TestTest do
 
   describe "write operations" do
     setup do
-      HexPort.Testing.set_fn_handler(Repo.Contract, Repo.Test.new())
+      DoubleDown.Testing.set_fn_handler(Repo.Contract, Repo.Test.new())
       :ok
     end
 
@@ -249,7 +249,7 @@ defmodule HexPort.Repo.TestTest do
 
   describe "read operations raise without fallback" do
     setup do
-      HexPort.Testing.set_fn_handler(Repo.Contract, Repo.Test.new())
+      DoubleDown.Testing.set_fn_handler(Repo.Contract, Repo.Test.new())
       :ok
     end
 
@@ -342,7 +342,7 @@ defmodule HexPort.Repo.TestTest do
           end
         )
 
-      HexPort.Testing.set_fn_handler(Repo.Contract, handler)
+      DoubleDown.Testing.set_fn_handler(Repo.Contract, handler)
 
       assert ^alice = Repo.Port.get(User, 1)
       assert nil == Repo.Port.get(User, 999)
@@ -354,7 +354,7 @@ defmodule HexPort.Repo.TestTest do
       handler =
         Repo.Test.new(fallback_fn: fn :get!, [User, 1] -> alice end)
 
-      HexPort.Testing.set_fn_handler(Repo.Contract, handler)
+      DoubleDown.Testing.set_fn_handler(Repo.Contract, handler)
       assert ^alice = Repo.Port.get!(User, 1)
     end
 
@@ -364,7 +364,7 @@ defmodule HexPort.Repo.TestTest do
       handler =
         Repo.Test.new(fallback_fn: fn :get_by, [User, [name: "Alice"]] -> alice end)
 
-      HexPort.Testing.set_fn_handler(Repo.Contract, handler)
+      DoubleDown.Testing.set_fn_handler(Repo.Contract, handler)
       assert ^alice = Repo.Port.get_by(User, name: "Alice")
     end
 
@@ -374,7 +374,7 @@ defmodule HexPort.Repo.TestTest do
       handler =
         Repo.Test.new(fallback_fn: fn :all, [User] -> users end)
 
-      HexPort.Testing.set_fn_handler(Repo.Contract, handler)
+      DoubleDown.Testing.set_fn_handler(Repo.Contract, handler)
       assert ^users = Repo.Port.all(User)
     end
 
@@ -382,7 +382,7 @@ defmodule HexPort.Repo.TestTest do
       handler =
         Repo.Test.new(fallback_fn: fn :exists?, [User] -> true end)
 
-      HexPort.Testing.set_fn_handler(Repo.Contract, handler)
+      DoubleDown.Testing.set_fn_handler(Repo.Contract, handler)
       assert Repo.Port.exists?(User) == true
     end
 
@@ -390,7 +390,7 @@ defmodule HexPort.Repo.TestTest do
       handler =
         Repo.Test.new(fallback_fn: fn :aggregate, [User, :count, :id] -> 42 end)
 
-      HexPort.Testing.set_fn_handler(Repo.Contract, handler)
+      DoubleDown.Testing.set_fn_handler(Repo.Contract, handler)
       assert 42 = Repo.Port.aggregate(User, :count, :id)
     end
 
@@ -398,7 +398,7 @@ defmodule HexPort.Repo.TestTest do
       handler =
         Repo.Test.new(fallback_fn: fn :get, [User, 1] -> nil end)
 
-      HexPort.Testing.set_fn_handler(Repo.Contract, handler)
+      DoubleDown.Testing.set_fn_handler(Repo.Contract, handler)
 
       assert_raise ArgumentError, ~r/Repo.Test cannot service :get/, fn ->
         Repo.Port.get(User, 999)
@@ -412,7 +412,7 @@ defmodule HexPort.Repo.TestTest do
 
   describe "transact" do
     setup do
-      HexPort.Testing.set_fn_handler(Repo.Contract, Repo.Test.new())
+      DoubleDown.Testing.set_fn_handler(Repo.Contract, Repo.Test.new())
       :ok
     end
 
@@ -537,13 +537,13 @@ defmodule HexPort.Repo.TestTest do
 
   describe "dispatch logging" do
     test "logs write operations" do
-      HexPort.Testing.set_fn_handler(Repo.Contract, Repo.Test.new())
-      HexPort.Testing.enable_log(Repo.Contract)
+      DoubleDown.Testing.set_fn_handler(Repo.Contract, Repo.Test.new())
+      DoubleDown.Testing.enable_log(Repo.Contract)
       cs = User.changeset(%{name: "Alice"})
 
       Repo.Port.insert(cs)
 
-      log = HexPort.Testing.get_log(Repo.Contract)
+      log = DoubleDown.Testing.get_log(Repo.Contract)
       assert length(log) == 1
       assert [{Repo.Contract, :insert, [^cs], {:ok, %User{name: "Alice"}}}] = log
     end
@@ -551,23 +551,23 @@ defmodule HexPort.Repo.TestTest do
     test "logs fallback-dispatched operations" do
       alice = %User{id: 1, name: "Alice"}
 
-      HexPort.Testing.set_fn_handler(
+      DoubleDown.Testing.set_fn_handler(
         Repo.Contract,
         Repo.Test.new(fallback_fn: fn :get, [User, 1] -> alice end)
       )
 
-      HexPort.Testing.enable_log(Repo.Contract)
+      DoubleDown.Testing.enable_log(Repo.Contract)
 
       Repo.Port.get(User, 1)
 
-      log = HexPort.Testing.get_log(Repo.Contract)
+      log = DoubleDown.Testing.get_log(Repo.Contract)
       assert length(log) == 1
       assert [{Repo.Contract, :get, [User, 1], ^alice}] = log
     end
 
     test "1-arity transact logs inner facade calls made from the transaction function" do
-      HexPort.Testing.set_fn_handler(Repo.Contract, Repo.Test.new())
-      HexPort.Testing.enable_log(Repo.Contract)
+      DoubleDown.Testing.set_fn_handler(Repo.Contract, Repo.Test.new())
+      DoubleDown.Testing.enable_log(Repo.Contract)
 
       cs = User.changeset(%{name: "Alice"})
 
@@ -579,7 +579,7 @@ defmodule HexPort.Repo.TestTest do
         []
       )
 
-      log = HexPort.Testing.get_log(Repo.Contract)
+      log = DoubleDown.Testing.get_log(Repo.Contract)
 
       # Inner calls are logged first (during fn execution), then the outer
       # transact call is logged when it completes.

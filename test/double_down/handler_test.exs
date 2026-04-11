@@ -1,9 +1,9 @@
-defmodule HexPort.HandlerTest do
+defmodule DoubleDown.HandlerTest do
   use ExUnit.Case, async: true
 
-  alias HexPort.Handler
-  alias HexPort.Test.Greeter
-  alias HexPort.Test.Counter
+  alias DoubleDown.Handler
+  alias DoubleDown.Test.Greeter
+  alias DoubleDown.Test.Counter
 
   # ── expect tests ──────────────────────────────────────────
 

@@ -1,15 +1,15 @@
-defmodule HexPort.LogTest do
+defmodule DoubleDown.LogTest do
   use ExUnit.Case, async: true
 
-  alias HexPort.Log
-  alias HexPort.Test.Greeter
-  alias HexPort.Test.Counter
+  alias DoubleDown.Log
+  alias DoubleDown.Test.Greeter
+  alias DoubleDown.Test.Counter
 
   # Helper: set up a handler and enable logging for a contract,
   # then run the given function which dispatches calls.
   defp with_logged_calls(contract, handler_fn, dispatch_fn) do
-    HexPort.Testing.set_fn_handler(contract, handler_fn)
-    HexPort.Testing.enable_log(contract)
+    DoubleDown.Testing.set_fn_handler(contract, handler_fn)
+    DoubleDown.Testing.enable_log(contract)
     dispatch_fn.()
   end
 
@@ -353,12 +353,12 @@ defmodule HexPort.LogTest do
 
   describe "integration" do
     test "full pipeline: set handler, enable log, dispatch, match, verify" do
-      HexPort.Testing.set_fn_handler(Greeter, fn
+      DoubleDown.Testing.set_fn_handler(Greeter, fn
         :greet, [name] -> "Hi, #{name}!"
         :fetch_greeting, [name] -> {:ok, "Hello, #{name}!"}
       end)
 
-      HexPort.Testing.enable_log(Greeter)
+      DoubleDown.Testing.enable_log(Greeter)
 
       Greeter.Port.greet("Alice")
       Greeter.Port.fetch_greeting("Bob")
@@ -370,10 +370,10 @@ defmodule HexPort.LogTest do
     end
 
     test "multi-contract verification" do
-      HexPort.Testing.set_fn_handler(Greeter, fn :greet, [name] -> "Hi, #{name}!" end)
-      HexPort.Testing.enable_log(Greeter)
+      DoubleDown.Testing.set_fn_handler(Greeter, fn :greet, [name] -> "Hi, #{name}!" end)
+      DoubleDown.Testing.enable_log(Greeter)
 
-      HexPort.Testing.set_stateful_handler(
+      DoubleDown.Testing.set_stateful_handler(
         Counter,
         fn
           :increment, [n], count -> {count + n, count + n}
@@ -382,7 +382,7 @@ defmodule HexPort.LogTest do
         0
       )
 
-      HexPort.Testing.enable_log(Counter)
+      DoubleDown.Testing.enable_log(Counter)
 
       Greeter.Port.greet("Alice")
       Counter.Port.increment(5)
@@ -406,20 +406,20 @@ defmodule HexPort.LogTest do
                |> Log.verify!()
     end
 
-    test "used alongside HexPort.Handler" do
+    test "used alongside DoubleDown.Handler" do
       Greeter
-      |> HexPort.Handler.expect(:greet, fn [name] -> "Hi, #{name}!" end)
-      |> HexPort.Handler.expect(:fetch_greeting, fn [name] ->
+      |> DoubleDown.Handler.expect(:greet, fn [name] -> "Hi, #{name}!" end)
+      |> DoubleDown.Handler.expect(:fetch_greeting, fn [name] ->
         {:ok, "Hello, #{name}!"}
       end)
 
-      HexPort.Testing.enable_log(Greeter)
+      DoubleDown.Testing.enable_log(Greeter)
 
       Greeter.Port.greet("Alice")
       Greeter.Port.fetch_greeting("Bob")
 
       # Verify handler expectations
-      HexPort.Handler.verify!()
+      DoubleDown.Handler.verify!()
 
       # Also verify log expectations
       assert :ok =

@@ -1,31 +1,31 @@
-defmodule HexPort.TestDispatchTest do
+defmodule DoubleDown.TestDispatchTest do
   use ExUnit.Case, async: true
 
-  alias HexPort.Test.Greeter
+  alias DoubleDown.Test.Greeter
 
   # ── test_dispatch?: false ─────────────────────────────────
 
   describe "test_dispatch?: false" do
     test "facade uses call_config — bypasses NimbleOwnership test handlers" do
       Code.compile_string("""
-      defmodule HexPort.Test.ConfigOnlyPort do
-        use HexPort.Facade,
-          contract: HexPort.Test.Greeter,
-          otp_app: :hex_port,
+      defmodule DoubleDown.Test.ConfigOnlyPort do
+        use DoubleDown.Facade,
+          contract: DoubleDown.Test.Greeter,
+          otp_app: :double_down,
           test_dispatch?: false
       end
       """)
 
-      mod = HexPort.Test.ConfigOnlyPort
+      mod = DoubleDown.Test.ConfigOnlyPort
 
       # Set a test handler — it should be ignored because test_dispatch? is false
-      HexPort.Testing.set_fn_handler(Greeter, fn
+      DoubleDown.Testing.set_fn_handler(Greeter, fn
         :greet, [name] -> "test-handler: #{name}"
       end)
 
       # Set application config so dispatch resolves
-      Application.put_env(:hex_port, Greeter, impl: Greeter.Impl)
-      on_exit(fn -> Application.delete_env(:hex_port, Greeter) end)
+      Application.put_env(:double_down, Greeter, impl: Greeter.Impl)
+      on_exit(fn -> Application.delete_env(:double_down, Greeter) end)
 
       # Should use config impl (Greeter.Impl), not the test handler
       assert "Hello, Alice!" = apply(mod, :greet, ["Alice"])
@@ -33,15 +33,15 @@ defmodule HexPort.TestDispatchTest do
 
     test "facade raises with production message when no config set" do
       Code.compile_string("""
-      defmodule HexPort.Test.ConfigOnlyNoConfig do
-        use HexPort.Facade,
-          contract: HexPort.Test.Greeter,
-          otp_app: :hex_port_no_config,
+      defmodule DoubleDown.Test.ConfigOnlyNoConfig do
+        use DoubleDown.Facade,
+          contract: DoubleDown.Test.Greeter,
+          otp_app: :double_down_no_config,
           test_dispatch?: false
       end
       """)
 
-      mod = HexPort.Test.ConfigOnlyNoConfig
+      mod = DoubleDown.Test.ConfigOnlyNoConfig
 
       # No config set — should raise
       assert_raise RuntimeError, ~r/No implementation configured|No test handler set/, fn ->
@@ -51,15 +51,15 @@ defmodule HexPort.TestDispatchTest do
 
     test "key helpers are still generated" do
       Code.compile_string("""
-      defmodule HexPort.Test.ConfigOnlyKeys do
-        use HexPort.Facade,
-          contract: HexPort.Test.Greeter,
-          otp_app: :hex_port,
+      defmodule DoubleDown.Test.ConfigOnlyKeys do
+        use DoubleDown.Facade,
+          contract: DoubleDown.Test.Greeter,
+          otp_app: :double_down,
           test_dispatch?: false
       end
       """)
 
-      mod = HexPort.Test.ConfigOnlyKeys
+      mod = DoubleDown.Test.ConfigOnlyKeys
 
       assert function_exported?(mod, :__key__, 2)
 
@@ -69,15 +69,15 @@ defmodule HexPort.TestDispatchTest do
 
     test "bang variants are still generated" do
       Code.compile_string("""
-      defmodule HexPort.Test.ConfigOnlyBang do
-        use HexPort.Facade,
-          contract: HexPort.Test.Greeter,
-          otp_app: :hex_port,
+      defmodule DoubleDown.Test.ConfigOnlyBang do
+        use DoubleDown.Facade,
+          contract: DoubleDown.Test.Greeter,
+          otp_app: :double_down,
           test_dispatch?: false
       end
       """)
 
-      mod = HexPort.Test.ConfigOnlyBang
+      mod = DoubleDown.Test.ConfigOnlyBang
 
       assert function_exported?(mod, :fetch_greeting!, 1)
     end
@@ -88,17 +88,17 @@ defmodule HexPort.TestDispatchTest do
   describe "test_dispatch?: true" do
     test "facade uses call — test handlers work" do
       Code.compile_string("""
-      defmodule HexPort.Test.TestDispatchTrue do
-        use HexPort.Facade,
-          contract: HexPort.Test.Greeter,
-          otp_app: :hex_port,
+      defmodule DoubleDown.Test.TestDispatchTrue do
+        use DoubleDown.Facade,
+          contract: DoubleDown.Test.Greeter,
+          otp_app: :double_down,
           test_dispatch?: true
       end
       """)
 
-      mod = HexPort.Test.TestDispatchTrue
+      mod = DoubleDown.Test.TestDispatchTrue
 
-      HexPort.Testing.set_fn_handler(Greeter, fn
+      DoubleDown.Testing.set_fn_handler(Greeter, fn
         :greet, [name] -> "test-dispatch-true: #{name}"
       end)
 
@@ -111,17 +111,17 @@ defmodule HexPort.TestDispatchTest do
   describe "test_dispatch?: fn" do
     test "function returning true enables test dispatch" do
       Code.compile_string("""
-      defmodule HexPort.Test.TestDispatchFnTrue do
-        use HexPort.Facade,
-          contract: HexPort.Test.Greeter,
-          otp_app: :hex_port,
+      defmodule DoubleDown.Test.TestDispatchFnTrue do
+        use DoubleDown.Facade,
+          contract: DoubleDown.Test.Greeter,
+          otp_app: :double_down,
           test_dispatch?: fn -> true end
       end
       """)
 
-      mod = HexPort.Test.TestDispatchFnTrue
+      mod = DoubleDown.Test.TestDispatchFnTrue
 
-      HexPort.Testing.set_fn_handler(Greeter, fn
+      DoubleDown.Testing.set_fn_handler(Greeter, fn
         :greet, [name] -> "fn-true: #{name}"
       end)
 
@@ -130,24 +130,24 @@ defmodule HexPort.TestDispatchTest do
 
     test "function returning false disables test dispatch" do
       Code.compile_string("""
-      defmodule HexPort.Test.TestDispatchFnFalse do
-        use HexPort.Facade,
-          contract: HexPort.Test.Greeter,
-          otp_app: :hex_port,
+      defmodule DoubleDown.Test.TestDispatchFnFalse do
+        use DoubleDown.Facade,
+          contract: DoubleDown.Test.Greeter,
+          otp_app: :double_down,
           test_dispatch?: fn -> false end
       end
       """)
 
-      mod = HexPort.Test.TestDispatchFnFalse
+      mod = DoubleDown.Test.TestDispatchFnFalse
 
       # Set test handler — should be ignored
-      HexPort.Testing.set_fn_handler(Greeter, fn
+      DoubleDown.Testing.set_fn_handler(Greeter, fn
         :greet, [name] -> "fn-false-handler: #{name}"
       end)
 
       # Set config
-      Application.put_env(:hex_port, Greeter, impl: Greeter.Impl)
-      on_exit(fn -> Application.delete_env(:hex_port, Greeter) end)
+      Application.put_env(:double_down, Greeter, impl: Greeter.Impl)
+      on_exit(fn -> Application.delete_env(:double_down, Greeter) end)
 
       # Should use config impl, not test handler
       assert "Hello, Dave!" = apply(mod, :greet, ["Dave"])
@@ -159,16 +159,16 @@ defmodule HexPort.TestDispatchTest do
   describe "default (no test_dispatch? option)" do
     test "in test env, test dispatch is enabled by default" do
       Code.compile_string("""
-      defmodule HexPort.Test.DefaultDispatch do
-        use HexPort.Facade,
-          contract: HexPort.Test.Greeter,
-          otp_app: :hex_port
+      defmodule DoubleDown.Test.DefaultDispatch do
+        use DoubleDown.Facade,
+          contract: DoubleDown.Test.Greeter,
+          otp_app: :double_down
       end
       """)
 
-      mod = HexPort.Test.DefaultDispatch
+      mod = DoubleDown.Test.DefaultDispatch
 
-      HexPort.Testing.set_fn_handler(Greeter, fn
+      DoubleDown.Testing.set_fn_handler(Greeter, fn
         :greet, [name] -> "default: #{name}"
       end)
 
@@ -182,21 +182,21 @@ defmodule HexPort.TestDispatchTest do
   describe "combined contract + facade with test_dispatch?" do
     test "test_dispatch?: false works with combined module" do
       Code.compile_string("""
-      defmodule HexPort.Test.CombinedConfigOnly do
-        use HexPort.Facade, otp_app: :hex_port_combined, test_dispatch?: false
+      defmodule DoubleDown.Test.CombinedConfigOnly do
+        use DoubleDown.Facade, otp_app: :double_down_combined, test_dispatch?: false
 
         defport greet(name :: String.t()) :: String.t()
       end
       """)
 
-      mod = HexPort.Test.CombinedConfigOnly
+      mod = DoubleDown.Test.CombinedConfigOnly
 
       # Set config
-      Application.put_env(:hex_port_combined, mod, impl: Greeter.Impl)
-      on_exit(fn -> Application.delete_env(:hex_port_combined, mod) end)
+      Application.put_env(:double_down_combined, mod, impl: Greeter.Impl)
+      on_exit(fn -> Application.delete_env(:double_down_combined, mod) end)
 
       # Set test handler — should be ignored
-      HexPort.Testing.set_fn_handler(mod, fn
+      DoubleDown.Testing.set_fn_handler(mod, fn
         :greet, [name] -> "should-not-see: #{name}"
       end)
 
@@ -205,16 +205,16 @@ defmodule HexPort.TestDispatchTest do
 
     test "test_dispatch?: true works with combined module" do
       Code.compile_string("""
-      defmodule HexPort.Test.CombinedTestDispatch do
-        use HexPort.Facade, otp_app: :hex_port_combined, test_dispatch?: true
+      defmodule DoubleDown.Test.CombinedTestDispatch do
+        use DoubleDown.Facade, otp_app: :double_down_combined, test_dispatch?: true
 
         defport greet(name :: String.t()) :: String.t()
       end
       """)
 
-      mod = HexPort.Test.CombinedTestDispatch
+      mod = DoubleDown.Test.CombinedTestDispatch
 
-      HexPort.Testing.set_fn_handler(mod, fn
+      DoubleDown.Testing.set_fn_handler(mod, fn
         :greet, [name] -> "combined-test: #{name}"
       end)
 

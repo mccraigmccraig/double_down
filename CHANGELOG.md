@@ -11,14 +11,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **Breaking:** `HexPort.Handler` API simplified — `expect` and `stub`
+- **Breaking:** `DoubleDown.Handler` API simplified — `expect` and `stub`
   now write directly to NimbleOwnership with immediate effect. Removed
-  `%HexPort.Handler{}` struct, `new/0`, and `install!/1`. All functions
+  `%DoubleDown.Handler{}` struct, `new/0`, and `install!/1`. All functions
   return the contract module atom for Mimic-style piping:
 
       MyContract
-      |> HexPort.Handler.stub(MyImpl)
-      |> HexPort.Handler.expect(:get, fn [id] -> %Thing{id: id} end)
+      |> DoubleDown.Handler.stub(MyImpl)
+      |> DoubleDown.Handler.expect(:get, fn [id] -> %Thing{id: id} end)
 
   A canonical handler function is installed on first touch and reads
   dispatch config from state — no builder assembly step needed.
@@ -27,14 +27,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- `HexPort.Handler.expect/4..5` now accepts `:passthrough` as the
+- `DoubleDown.Handler.expect/4..5` now accepts `:passthrough` as the
   handler argument. A `:passthrough` expect delegates to the
   configured fallback (fn, stateful, or module) while consuming the
   expect for `verify!` counting. Supports `times: n`. Enables
   call-counting without changing behaviour, and can be mixed with
   function expects for patterns like "first insert succeeds through
   InMemory, second fails".
-- Documentation in `docs/repo.md` for using `HexPort.Handler` with
+- Documentation in `docs/repo.md` for using `DoubleDown.Handler` with
   `Repo.Test` and `Repo.InMemory` for failure scenario testing,
   including error simulation, `:passthrough` call counting, and
   combined Handler + Log assertions.
@@ -48,10 +48,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- `HexPort.Handler.stub/3` (with accumulator: `stub/4`) for module
+- `DoubleDown.Handler.stub/3` (with accumulator: `stub/4`) for module
   fallback — delegates unhandled operations to a module implementing
   the contract's `@behaviour`. Validated at `install!` time.
-- `HexPort.Handler.stub/3` (with accumulator: `stub/4`) for stateful
+- `DoubleDown.Handler.stub/3` (with accumulator: `stub/4`) for stateful
   fallback — accepts a 3-arity `fn operation, args, state ->
   {result, new_state} end` with initial state, same signature as
   `set_stateful_handler`. Integrates stateful fakes (e.g.
@@ -66,25 +66,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- `HexPort.Handler.verify_on_exit!/0` — registers an `on_exit`
+- `DoubleDown.Handler.verify_on_exit!/0` — registers an `on_exit`
   callback that automatically verifies all expectations after each
   test. Usable as `setup :verify_on_exit!`. Uses
   `NimbleOwnership.set_owner_to_manual_cleanup/2` to preserve
   ownership data until the on_exit callback runs.
-- `HexPort.Handler.verify!/1` — verifies expectations for a
+- `DoubleDown.Handler.verify!/1` — verifies expectations for a
   specific process pid, used internally by `verify_on_exit!/0`.
 
 ### Fixed
 
 - Added `:ex_unit` to `plt_add_apps` in `mix.exs` so Dialyzer can
   resolve the `ExUnit.Callbacks.on_exit/2` call in
-  `HexPort.Handler.verify_on_exit!/0`.
+  `DoubleDown.Handler.verify_on_exit!/0`.
 
 ## [0.19.0]
 
 ### Added
 
-- `HexPort.Handler.stub/2` and `stub/3` (with accumulator) for
+- `DoubleDown.Handler.stub/2` and `stub/3` (with accumulator) for
   2-arity contract-wide fallback stubs. Accepts
   `fn operation, args -> result end` — the same signature as
   `set_fn_handler` — as a catch-all for operations without a
@@ -95,18 +95,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- `HexPort.Handler` — Mox-style expect/stub handler builder. Builds
+- `DoubleDown.Handler` — Mox-style expect/stub handler builder. Builds
   stateful handler functions from a declarative specification with
   multi-contract chaining and ordered expectations. API:
   `expect/3..5`, `stub/3..4`, `install!/1`, `verify!/0`.
-- `HexPort.Log` — log-based expectation matcher. Declares structured
+- `DoubleDown.Log` — log-based expectation matcher. Declares structured
   expectations against the dispatch log after execution, matching on
   the full `{contract, operation, args, result}` tuple. Supports
   loose (default) and strict matching modes, `times: n` counting,
   and `reject` expectations. API: `match/3..5`, `reject/2..3`,
   `verify!/1..2`.
 - Terminology mapping and glossary in README and getting-started
-  guide, mapping HexPort concepts (contract, facade, test double,
+  guide, mapping DoubleDown concepts (contract, facade, test double,
   port) to familiar Elixir/Mox equivalents with a stub/mock/fake
   breakdown.
 
@@ -122,14 +122,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Added `:mix` to `plt_add_apps` in `mix.exs` so Dialyzer can resolve
-  the compile-time `Mix.env/0` call in `HexPort.Facade.__using__/1`.
+  the compile-time `Mix.env/0` call in `DoubleDown.Facade.__using__/1`.
 
 ## [0.16.1]
 
 ### Fixed
 
 - Added `:mix` to `plt_add_apps` in `mix.exs` so Dialyzer can resolve
-  the compile-time `Mix.env/0` call in `HexPort.Facade.__using__/1`.
+  the compile-time `Mix.env/0` call in `DoubleDown.Facade.__using__/1`.
 
 ### Changed
 
@@ -140,14 +140,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- `:test_dispatch?` option for `use HexPort.Facade` — controls whether
+- `:test_dispatch?` option for `use DoubleDown.Facade` — controls whether
   the generated facade includes the `NimbleOwnership`-based test handler
   resolution step. Accepts `true`, `false`, or a zero-arity function
   returning a boolean, evaluated at compile time. Defaults to
   `fn -> Mix.env() != :prod end`, so production builds get a config-only
   dispatch path with zero `NimbleOwnership` overhead (no
   `GenServer.whereis` ETS lookup).
-- `HexPort.Dispatch.call_config/4` — config-only dispatch function that
+- `DoubleDown.Dispatch.call_config/4` — config-only dispatch function that
   skips test handler resolution entirely. Used by facades compiled with
   `test_dispatch?: false`.
 
@@ -159,7 +159,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   transforming arguments before dispatch. Accepts a function
   `(args, facade_module) -> args` declared at the contract level,
   spliced into the generated facade function as AST.
-- `Repo.Test` tests split into dedicated `test/hex_port/repo/test_test.exs`
+- `Repo.Test` tests split into dedicated `test/double_down/repo/test_test.exs`
   module.
 
 ### Changed
@@ -173,9 +173,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `Repo.Test` and `Repo.InMemory` adapters no longer handle 1-arity
   transaction functions — they always receive 0-arity thunks (from
   `pre_dispatch` wrapping) or `Ecto.Multi` structs.
-- The hardcoded `:transact` special-case in `HexPort.Facade` has been
+- The hardcoded `:transact` special-case in `DoubleDown.Facade` has been
   removed. The Repo-specific facade injection is now declared on the
-  `defport` in `HexPort.Repo.Contract` using the generic
+  `defport` in `DoubleDown.Repo.Contract` using the generic
   `pre_dispatch` mechanism.
 
 ### Fixed
@@ -190,14 +190,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- `HexPort.Repo.Contract.insert_all/3` — standalone bulk insert
+- `DoubleDown.Repo.Contract.insert_all/3` — standalone bulk insert
   operation, dispatched via fallback in both test adapters.
-- `HexPort.Testing.set_mode_to_global/0` and `set_mode_to_private/0`
+- `DoubleDown.Testing.set_mode_to_global/0` and `set_mode_to_private/0`
   — global handler mode for testing through supervision trees,
   Broadway pipelines, and other process trees where individual pids
   are not accessible. Uses NimbleOwnership shared mode. Incompatible
   with `async: true`.
-- `HexPort.Repo.Autogenerate` — shared helper module for
+- `DoubleDown.Repo.Autogenerate` — shared helper module for
   autogenerating primary keys and timestamps in test adapters.
   Handles `:id` (integer auto-increment), `:binary_id` (UUID),
   parameterized types (`Ecto.UUID`, `Uniq.UUID`, etc.), and
@@ -219,14 +219,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 1-arity `transact` functions now receive the facade module instead
   of `nil`, enabling `fn repo -> repo.insert(cs) end` patterns.
 - The internal opts key for threading the facade module through
-  transact was renamed from `:repo_facade` to `HexPort.Repo.Facade`
+  transact was renamed from `:repo_facade` to `DoubleDown.Repo.Facade`
   for proper namespacing.
 - Primary key autogeneration is now metadata-driven — supports
   `:binary_id` (UUID), `Ecto.UUID`, and other parameterized types.
   Raises `ArgumentError` when autogeneration is not configured and
   no PK value is provided.
 - Autogeneration logic extracted from `Repo.Test` and
-  `Repo.InMemory` into shared `HexPort.Repo.Autogenerate` module.
+  `Repo.InMemory` into shared `DoubleDown.Repo.Autogenerate` module.
 - Repo contract now has 16 operations (was 15).
 
 ### Fixed
@@ -272,7 +272,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- `Facade` without implicit `Contract` — `use HexPort.Facade` with
+- `Facade` without implicit `Contract` — `use DoubleDown.Facade` with
   an explicit `:contract` option for separate contract modules.
 - Documentation explaining why `defport` is used instead of standard
   `@callback` declarations.
@@ -281,7 +281,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Single-module `Contract + Facade` — `use HexPort.Facade` without
+- Single-module `Contract + Facade` — `use DoubleDown.Facade` without
   a `:contract` option implicitly sets up the contract in the same
   module.
 
@@ -293,7 +293,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- `HexPort.Repo.Contract` — built-in 15-operation Ecto Repo
+- `DoubleDown.Repo.Contract` — built-in 15-operation Ecto Repo
   contract with `Repo.Test` (stateless) and `Repo.InMemory`
   (stateful) test doubles.
 - `MultiStepper` for stepping through `Ecto.Multi` operations
@@ -317,7 +317,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Made `HexPort.Contract.__using__/1` idempotent — safe to `use`
+- Made `DoubleDown.Contract.__using__/1` idempotent — safe to `use`
   multiple times.
 
 ## [0.5.0]
@@ -354,41 +354,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Split `HexPort` into `HexPort.Contract` and `HexPort.Port`
+- Split `DoubleDown` into `DoubleDown.Contract` and `DoubleDown.Port`
   (later renamed to `Facade`).
 
 ## [0.1.0]
 
 ### Added
 
-- Initial release — `defport` macro, `HexPort.Contract`,
-  `HexPort.Testing` with NimbleOwnership, `Repo.Test` stateless
+- Initial release — `defport` macro, `DoubleDown.Contract`,
+  `DoubleDown.Testing` with NimbleOwnership, `Repo.Test` stateless
   adapter, CI setup, Credo, Dialyzer.
 
-[Unreleased]: https://github.com/mccraigmccraig/hex_port/compare/v0.23.0...HEAD
-[0.23.0]: https://github.com/mccraigmccraig/hex_port/compare/v0.22.0...v0.23.0
-[0.22.0]: https://github.com/mccraigmccraig/hex_port/compare/v0.21.0...v0.22.0
-[0.21.0]: https://github.com/mccraigmccraig/hex_port/compare/v0.20.0...v0.21.0
-[0.20.0]: https://github.com/mccraigmccraig/hex_port/compare/v0.19.0...v0.20.0
-[0.19.0]: https://github.com/mccraigmccraig/hex_port/compare/v0.18.0...v0.19.0
-[0.18.0]: https://github.com/mccraigmccraig/hex_port/compare/v0.17.0...v0.18.0
-[0.17.0]: https://github.com/mccraigmccraig/hex_port/compare/v0.16.1...v0.17.0
-[0.16.1]: https://github.com/mccraigmccraig/hex_port/compare/v0.16.0...v0.16.1
-[0.16.0]: https://github.com/mccraigmccraig/hex_port/compare/v0.15.0...v0.16.0
-[0.15.0]: https://github.com/mccraigmccraig/hex_port/compare/v0.14.0...v0.15.0
-[0.14.0]: https://github.com/mccraigmccraig/hex_port/compare/v0.13.0...v0.14.0
-[0.13.0]: https://github.com/mccraigmccraig/hex_port/compare/v0.12.0...v0.13.0
-[0.12.0]: https://github.com/mccraigmccraig/hex_port/compare/v0.11.1...v0.12.0
-[0.11.1]: https://github.com/mccraigmccraig/hex_port/compare/v0.11.0...v0.11.1
-[0.11.0]: https://github.com/mccraigmccraig/hex_port/compare/v0.10.0...v0.11.0
-[0.10.0]: https://github.com/mccraigmccraig/hex_port/compare/v0.9.0...v0.10.0
-[0.9.0]: https://github.com/mccraigmccraig/hex_port/compare/v0.8.0...v0.9.0
-[0.8.0]: https://github.com/mccraigmccraig/hex_port/compare/v0.7.0...v0.8.0
-[0.7.0]: https://github.com/mccraigmccraig/hex_port/compare/v0.6.0...v0.7.0
-[0.6.0]: https://github.com/mccraigmccraig/hex_port/compare/v0.5.0...v0.6.0
-[0.5.0]: https://github.com/mccraigmccraig/hex_port/compare/v0.4.0...v0.5.0
-[0.4.0]: https://github.com/mccraigmccraig/hex_port/compare/v0.3.1...v0.4.0
-[0.3.1]: https://github.com/mccraigmccraig/hex_port/compare/v0.3.0...v0.3.1
-[0.3.0]: https://github.com/mccraigmccraig/hex_port/compare/v0.2.0...v0.3.0
-[0.2.0]: https://github.com/mccraigmccraig/hex_port/compare/v0.1.0...v0.2.0
-[0.1.0]: https://github.com/mccraigmccraig/hex_port/releases/tag/v0.1.0
+[Unreleased]: https://github.com/mccraigmccraig/double_down/compare/v0.23.0...HEAD
+[0.23.0]: https://github.com/mccraigmccraig/double_down/compare/v0.22.0...v0.23.0
+[0.22.0]: https://github.com/mccraigmccraig/double_down/compare/v0.21.0...v0.22.0
+[0.21.0]: https://github.com/mccraigmccraig/double_down/compare/v0.20.0...v0.21.0
+[0.20.0]: https://github.com/mccraigmccraig/double_down/compare/v0.19.0...v0.20.0
+[0.19.0]: https://github.com/mccraigmccraig/double_down/compare/v0.18.0...v0.19.0
+[0.18.0]: https://github.com/mccraigmccraig/double_down/compare/v0.17.0...v0.18.0
+[0.17.0]: https://github.com/mccraigmccraig/double_down/compare/v0.16.1...v0.17.0
+[0.16.1]: https://github.com/mccraigmccraig/double_down/compare/v0.16.0...v0.16.1
+[0.16.0]: https://github.com/mccraigmccraig/double_down/compare/v0.15.0...v0.16.0
+[0.15.0]: https://github.com/mccraigmccraig/double_down/compare/v0.14.0...v0.15.0
+[0.14.0]: https://github.com/mccraigmccraig/double_down/compare/v0.13.0...v0.14.0
+[0.13.0]: https://github.com/mccraigmccraig/double_down/compare/v0.12.0...v0.13.0
+[0.12.0]: https://github.com/mccraigmccraig/double_down/compare/v0.11.1...v0.12.0
+[0.11.1]: https://github.com/mccraigmccraig/double_down/compare/v0.11.0...v0.11.1
+[0.11.0]: https://github.com/mccraigmccraig/double_down/compare/v0.10.0...v0.11.0
+[0.10.0]: https://github.com/mccraigmccraig/double_down/compare/v0.9.0...v0.10.0
+[0.9.0]: https://github.com/mccraigmccraig/double_down/compare/v0.8.0...v0.9.0
+[0.8.0]: https://github.com/mccraigmccraig/double_down/compare/v0.7.0...v0.8.0
+[0.7.0]: https://github.com/mccraigmccraig/double_down/compare/v0.6.0...v0.7.0
+[0.6.0]: https://github.com/mccraigmccraig/double_down/compare/v0.5.0...v0.6.0
+[0.5.0]: https://github.com/mccraigmccraig/double_down/compare/v0.4.0...v0.5.0
+[0.4.0]: https://github.com/mccraigmccraig/double_down/compare/v0.3.1...v0.4.0
+[0.3.1]: https://github.com/mccraigmccraig/double_down/compare/v0.3.0...v0.3.1
+[0.3.0]: https://github.com/mccraigmccraig/double_down/compare/v0.2.0...v0.3.0
+[0.2.0]: https://github.com/mccraigmccraig/double_down/compare/v0.1.0...v0.2.0
+[0.1.0]: https://github.com/mccraigmccraig/double_down/releases/tag/v0.1.0

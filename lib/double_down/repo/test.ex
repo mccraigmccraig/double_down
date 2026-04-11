@@ -1,4 +1,4 @@
-# Stateless test handler for HexPort.Repo.Contract.
+# Stateless test handler for DoubleDown.Repo.Contract.
 #
 # Provides a function handler for use with set_fn_handler. Write operations
 # apply changeset changes and return {:ok, struct}. Read operations go
@@ -6,12 +6,12 @@
 #
 # ## Usage
 #
-#     HexPort.Testing.set_fn_handler(HexPort.Repo.Contract, HexPort.Repo.Test.new())
+#     DoubleDown.Testing.set_fn_handler(DoubleDown.Repo.Contract, DoubleDown.Repo.Test.new())
 #
 #     # With fallback for reads:
-#     HexPort.Testing.set_fn_handler(
-#       HexPort.Repo,
-#       HexPort.Repo.Test.new(
+#     DoubleDown.Testing.set_fn_handler(
+#       DoubleDown.Repo,
+#       DoubleDown.Repo.Test.new(
 #         fallback_fn: fn
 #           :all, [User] -> [%User{id: 1, name: "Alice"}]
 #           :get, [User, 1] -> %User{id: 1, name: "Alice"}
@@ -20,30 +20,30 @@
 #     )
 #
 if Code.ensure_loaded?(Ecto) do
-  defmodule HexPort.Repo.Test do
+  defmodule DoubleDown.Repo.Test do
     @moduledoc """
-    Stateless test handler for `HexPort.Repo.Contract`.
+    Stateless test handler for `DoubleDown.Repo.Contract`.
 
     Provides a function handler via `new/1` for use with
-    `HexPort.Testing.set_fn_handler/2`. Write operations (`insert`, `update`,
+    `DoubleDown.Testing.set_fn_handler/2`. Write operations (`insert`, `update`,
     `delete`) apply changeset changes and return `{:ok, struct}`. All read
     operations go through an optional fallback function, or raise a clear
     error.
 
     This applies the same "fail when consistency cannot be proven" approach
-    as `HexPort.Repo.InMemory` — reads never silently return `nil` or `[]`
+    as `DoubleDown.Repo.InMemory` — reads never silently return `nil` or `[]`
     because the adapter has no basis for claiming a record does or doesn't
     exist.
 
     ## Usage
 
         # Writes only — reads will raise:
-        HexPort.Testing.set_fn_handler(HexPort.Repo.Contract, HexPort.Repo.Test.new())
+        DoubleDown.Testing.set_fn_handler(DoubleDown.Repo.Contract, DoubleDown.Repo.Test.new())
 
         # With fallback for reads:
-        HexPort.Testing.set_fn_handler(
-          HexPort.Repo.Contract,
-          HexPort.Repo.Test.new(
+        DoubleDown.Testing.set_fn_handler(
+          DoubleDown.Repo.Contract,
+          DoubleDown.Repo.Test.new(
             fallback_fn: fn
               :get, [User, 1] -> %User{id: 1, name: "Alice"}
               :all, [User] -> [%User{id: 1, name: "Alice"}]
@@ -52,8 +52,8 @@ if Code.ensure_loaded?(Ecto) do
         )
 
         # With logging:
-        HexPort.Testing.set_fn_handler(HexPort.Repo, HexPort.Repo.Test.new())
-        HexPort.Testing.enable_log(HexPort.Repo.Contract)
+        DoubleDown.Testing.set_fn_handler(DoubleDown.Repo, DoubleDown.Repo.Test.new())
+        DoubleDown.Testing.enable_log(DoubleDown.Repo.Contract)
 
     ## Differences from Repo.InMemory
 
@@ -69,7 +69,7 @@ if Code.ensure_loaded?(Ecto) do
     Create a new Test handler function.
 
     Returns a 2-arity function `(operation, args) -> result` suitable for
-    use with `HexPort.Testing.set_fn_handler/2`.
+    use with `DoubleDown.Testing.set_fn_handler/2`.
 
     ## Options
 
@@ -81,10 +81,10 @@ if Code.ensure_loaded?(Ecto) do
     ## Examples
 
         # Writes only
-        HexPort.Repo.Test.new()
+        DoubleDown.Repo.Test.new()
 
         # With fallback for specific reads
-        HexPort.Repo.Test.new(
+        DoubleDown.Repo.Test.new(
           fallback_fn: fn
             :get, [User, 1] -> %User{id: 1, name: "Alice"}
             :all, [User] -> [%User{id: 1, name: "Alice"}]
@@ -110,7 +110,7 @@ if Code.ensure_loaded?(Ecto) do
     end
 
     defp dispatch(:insert, [changeset], _fallback_fn) do
-      alias HexPort.Repo.Autogenerate
+      alias DoubleDown.Repo.Autogenerate
 
       record = Autogenerate.apply_changes(changeset, :insert)
       schema = record.__struct__
@@ -132,7 +132,7 @@ if Code.ensure_loaded?(Ecto) do
     end
 
     defp dispatch(:update, [changeset], _fallback_fn) do
-      {:ok, HexPort.Repo.Autogenerate.apply_changes(changeset, :update)}
+      {:ok, DoubleDown.Repo.Autogenerate.apply_changes(changeset, :update)}
     end
 
     defp dispatch(:delete, [record], _fallback_fn) do
@@ -173,8 +173,8 @@ if Code.ensure_loaded?(Ecto) do
     end
 
     defp dispatch(:transact, [%Ecto.Multi{} = multi, opts], _fallback_fn) do
-      repo_facade = Keyword.get(opts, HexPort.Repo.Facade)
-      HexPort.Repo.MultiStepper.run(multi, repo_facade)
+      repo_facade = Keyword.get(opts, DoubleDown.Repo.Facade)
+      DoubleDown.Repo.MultiStepper.run(multi, repo_facade)
     end
 
     # -----------------------------------------------------------------
@@ -193,14 +193,14 @@ if Code.ensure_loaded?(Ecto) do
 
     defp raise_no_fallback(operation, args) do
       raise ArgumentError, """
-      HexPort.Repo.Test cannot service :#{operation} with args #{inspect(args)}.
+      DoubleDown.Repo.Test cannot service :#{operation} with args #{inspect(args)}.
 
       The Test adapter can only answer authoritatively for:
         - Write operations (insert, update, delete)
 
       For all other operations, register a fallback function:
 
-          HexPort.Repo.Test.new(
+          DoubleDown.Repo.Test.new(
             fallback_fn: fn
               :#{operation}, #{inspect(args)} -> # your result here
             end

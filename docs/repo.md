@@ -2,7 +2,7 @@
 
 [< Testing](testing.md) | [Up: README](../README.md) | [Migration >](migration.md)
 
-HexPort ships a ready-made 16-operation Ecto Repo contract with three
+DoubleDown ships a ready-made 16-operation Ecto Repo contract with three
 implementations: one for production and two test doubles. The test
 doubles — especially the stateful in-memory adapter — let you test
 Ecto-heavy domain logic without a database, at speeds suitable for
@@ -10,7 +10,7 @@ property-based testing.
 
 ## The contract
 
-`HexPort.Repo.Contract` defines these operations:
+`DoubleDown.Repo.Contract` defines these operations:
 
 | Category | Operations |
 |----------|-----------|
@@ -32,7 +32,7 @@ Your app creates a facade module that binds the contract to your
 
 ```elixir
 defmodule MyApp.Repo do
-  use HexPort.Facade, contract: HexPort.Repo.Contract, otp_app: :my_app
+  use DoubleDown.Facade, contract: DoubleDown.Repo.Contract, otp_app: :my_app
 end
 ```
 
@@ -50,7 +50,7 @@ calls with:
 
 ```elixir
 # config/config.exs
-config :my_app, HexPort.Repo.Contract, impl: MyApp.EctoRepo
+config :my_app, DoubleDown.Repo.Contract, impl: MyApp.EctoRepo
 ```
 
 All operations pass through to the underlying Ecto Repo with full
@@ -68,15 +68,15 @@ error message.
 
 ```elixir
 # Writes only — reads will raise with a suggestion:
-HexPort.Testing.set_fn_handler(
-  HexPort.Repo.Contract,
-  HexPort.Repo.Test.new()
+DoubleDown.Testing.set_fn_handler(
+  DoubleDown.Repo.Contract,
+  DoubleDown.Repo.Test.new()
 )
 
 # With fallback for reads:
-HexPort.Testing.set_fn_handler(
-  HexPort.Repo.Contract,
-  HexPort.Repo.Test.new(
+DoubleDown.Testing.set_fn_handler(
+  DoubleDown.Repo.Contract,
+  DoubleDown.Repo.Test.new(
     fallback_fn: fn
       :get, [User, 1] -> %User{id: 1, name: "Alice"}
       :all, [User] -> [%User{id: 1, name: "Alice"}]
@@ -127,10 +127,10 @@ needed:
 
 ```elixir
 setup do
-  HexPort.Testing.set_stateful_handler(
-    HexPort.Repo.Contract,
-    &HexPort.Repo.InMemory.dispatch/3,
-    HexPort.Repo.InMemory.new()
+  DoubleDown.Testing.set_stateful_handler(
+    DoubleDown.Repo.Contract,
+    &DoubleDown.Repo.InMemory.dispatch/3,
+    DoubleDown.Repo.InMemory.new()
   )
   :ok
 end
@@ -172,7 +172,7 @@ Explicitly set timestamps are preserved.
 Pre-populate the store with existing records:
 
 ```elixir
-HexPort.Repo.InMemory.new(
+DoubleDown.Repo.InMemory.new(
   seed: [
     %User{id: 1, name: "Alice"},
     %Item{id: 1, sku: "widget"}
@@ -195,7 +195,7 @@ with records inserted during the test:
 setup do
   alice = %User{id: 1, name: "Alice", email: "alice@example.com"}
 
-  state = HexPort.Repo.InMemory.new(
+  state = DoubleDown.Repo.InMemory.new(
     seed: [alice],
     fallback_fn: fn
       :get_by, [User, [email: "alice@example.com"]], _state -> alice
@@ -205,9 +205,9 @@ setup do
     end
   )
 
-  HexPort.Testing.set_stateful_handler(
-    HexPort.Repo.Contract,
-    &HexPort.Repo.InMemory.dispatch/3,
+  DoubleDown.Testing.set_stateful_handler(
+    DoubleDown.Repo.Contract,
+    &DoubleDown.Repo.InMemory.dispatch/3,
     state
   )
   :ok
@@ -231,7 +231,7 @@ When an operation can't be served by either state or fallback,
 exact operation and suggesting how to add a fallback clause:
 
 ```
-** (ArgumentError) HexPort.Repo.InMemory cannot service :get_by
+** (ArgumentError) DoubleDown.Repo.InMemory cannot service :get_by
    with args [User, [name: "Bob"]].
 
     The InMemory adapter can only answer authoritatively for:
@@ -240,7 +240,7 @@ exact operation and suggesting how to add a fallback clause:
 
     For all other operations, register a fallback function:
 
-        HexPort.Repo.InMemory.new(
+        DoubleDown.Repo.InMemory.new(
           fallback_fn: fn
             :get_by, [User, [name: "Bob"]], _state -> # your result here
           end
@@ -327,7 +327,7 @@ Ecto's sandbox.
 
 ## Testing failure scenarios with Handler
 
-`HexPort.Handler` integrates with both Repo test doubles, letting you
+`DoubleDown.Handler` integrates with both Repo test doubles, letting you
 override specific operations to simulate failures while the rest of
 the Repo behaves normally.
 
@@ -339,9 +339,9 @@ should fail:
 
 ```elixir
 setup do
-  HexPort.Repo.Contract
-  |> HexPort.Handler.stub(HexPort.Repo.Test.new())
-  |> HexPort.Handler.expect(:insert, fn [changeset] ->
+  DoubleDown.Repo.Contract
+  |> DoubleDown.Handler.stub(DoubleDown.Repo.Test.new())
+  |> DoubleDown.Handler.expect(:insert, fn [changeset] ->
     {:error, Ecto.Changeset.add_error(changeset, :email, "has already been taken")}
   end)
   :ok
@@ -357,7 +357,7 @@ test "handles duplicate email gracefully" do
   # Second insert succeeds (falls through to Repo.Test)
   assert {:ok, %User{}} = MyApp.Repo.insert(changeset)
 
-  HexPort.Handler.verify!()
+  DoubleDown.Handler.verify!()
 end
 ```
 
@@ -368,9 +368,9 @@ need read-after-write consistency alongside failure simulation:
 
 ```elixir
 setup do
-  HexPort.Repo.Contract
-  |> HexPort.Handler.stub(&HexPort.Repo.InMemory.dispatch/3, HexPort.Repo.InMemory.new())
-  |> HexPort.Handler.expect(:insert, fn [changeset] ->
+  DoubleDown.Repo.Contract
+  |> DoubleDown.Handler.stub(&DoubleDown.Repo.InMemory.dispatch/3, DoubleDown.Repo.InMemory.new())
+  |> DoubleDown.Handler.expect(:insert, fn [changeset] ->
     {:error, Ecto.Changeset.add_error(changeset, :email, "has already been taken")}
   end)
   :ok
@@ -388,7 +388,7 @@ test "retries after constraint violation" do
   # Read-after-write: InMemory serves from store
   assert ^user = MyApp.Repo.get(User, user.id)
 
-  HexPort.Handler.verify!()
+  DoubleDown.Handler.verify!()
 end
 ```
 
@@ -400,15 +400,15 @@ expect is consumed for `verify!` counting:
 
 ```elixir
 setup do
-  HexPort.Repo.Contract
-  |> HexPort.Handler.stub(&HexPort.Repo.InMemory.dispatch/3, HexPort.Repo.InMemory.new())
-  |> HexPort.Handler.expect(:insert, :passthrough, times: 2)
+  DoubleDown.Repo.Contract
+  |> DoubleDown.Handler.stub(&DoubleDown.Repo.InMemory.dispatch/3, DoubleDown.Repo.InMemory.new())
+  |> DoubleDown.Handler.expect(:insert, :passthrough, times: 2)
   :ok
 end
 
 test "creates exactly two records" do
   # ... code under test that should insert twice ...
-  HexPort.Handler.verify!()  # fails if insert wasn't called exactly twice
+  DoubleDown.Handler.verify!()  # fails if insert wasn't called exactly twice
 end
 ```
 
@@ -416,15 +416,15 @@ You can mix `:passthrough` and function expects — for example,
 "first insert succeeds through InMemory, second fails":
 
 ```elixir
-HexPort.Repo.Contract
-|> HexPort.Handler.stub(&HexPort.Repo.InMemory.dispatch/3, HexPort.Repo.InMemory.new())
-|> HexPort.Handler.expect(:insert, :passthrough)
-|> HexPort.Handler.expect(:insert, fn [changeset] ->
+DoubleDown.Repo.Contract
+|> DoubleDown.Handler.stub(&DoubleDown.Repo.InMemory.dispatch/3, DoubleDown.Repo.InMemory.new())
+|> DoubleDown.Handler.expect(:insert, :passthrough)
+|> DoubleDown.Handler.expect(:insert, fn [changeset] ->
   {:error, Ecto.Changeset.add_error(changeset, :email, "taken")}
 end)
 ```
 
-### Combining with `HexPort.Log`
+### Combining with `DoubleDown.Log`
 
 Handler and Log complement each other — Handler for controlling return
 values and counting calls, Log for asserting on what actually happened
@@ -432,13 +432,13 @@ including computed results:
 
 ```elixir
 setup do
-  HexPort.Repo.Contract
-  |> HexPort.Handler.stub(&HexPort.Repo.InMemory.dispatch/3, HexPort.Repo.InMemory.new())
-  |> HexPort.Handler.expect(:insert, fn [changeset] ->
+  DoubleDown.Repo.Contract
+  |> DoubleDown.Handler.stub(&DoubleDown.Repo.InMemory.dispatch/3, DoubleDown.Repo.InMemory.new())
+  |> DoubleDown.Handler.expect(:insert, fn [changeset] ->
     {:error, Ecto.Changeset.add_error(changeset, :email, "taken")}
   end)
 
-  HexPort.Testing.enable_log(HexPort.Repo.Contract)
+  DoubleDown.Testing.enable_log(DoubleDown.Repo.Contract)
   :ok
 end
 
@@ -448,15 +448,15 @@ test "logs the failure then the success" do
   assert {:error, _} = MyApp.Repo.insert(changeset)
   assert {:ok, %User{}} = MyApp.Repo.insert(changeset)
 
-  HexPort.Handler.verify!()
+  DoubleDown.Handler.verify!()
 
-  HexPort.Log.match(HexPort.Repo.Contract, :insert, fn
+  DoubleDown.Log.match(DoubleDown.Repo.Contract, :insert, fn
     {_, _, _, {:error, _}} -> true
   end)
-  |> HexPort.Log.match(HexPort.Repo.Contract, :insert, fn
+  |> DoubleDown.Log.match(DoubleDown.Repo.Contract, :insert, fn
     {_, _, _, {:ok, %User{id: id}}} when is_binary(id) -> true
   end)
-  |> HexPort.Log.verify!()
+  |> DoubleDown.Log.verify!()
 end
 ```
 

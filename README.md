@@ -1,8 +1,8 @@
-# HexPort
+# DoubleDown
 
-[![Test](https://github.com/mccraigmccraig/hex_port/actions/workflows/test.yml/badge.svg)](https://github.com/mccraigmccraig/hex_port/actions/workflows/test.yml)
-[![Hex.pm](https://img.shields.io/hexpm/v/hex_port.svg)](https://hex.pm/packages/hex_port)
-[![Documentation](https://img.shields.io/badge/documentation-gray)](https://hexdocs.pm/hex_port/)
+[![Test](https://github.com/mccraigmccraig/double_down/actions/workflows/test.yml/badge.svg)](https://github.com/mccraigmccraig/double_down/actions/workflows/test.yml)
+[![Hex.pm](https://img.shields.io/hexpm/v/double_down.svg)](https://hex.pm/packages/double_down)
+[![Documentation](https://img.shields.io/badge/documentation-gray)](https://hexdocs.pm/double_down/)
 
 Hexagonal architecture ports for Elixir — typed contracts, async-safe
 stateful test doubles, and a built-in in-memory Repo that makes database-free
@@ -17,13 +17,13 @@ in sync, and unit-testing with complex dependencies like Ecto is hard enough
 that most projects never do it - they just hit the database for every test
 and accept the speed penalty and the inability to adopt property-based testing.
 
-## What HexPort does
+## What DoubleDown does
 
 | Feature                       | Description                                                      |
 |-------------------------------|------------------------------------------------------------------|
 | Typed contracts               | `defport` declarations with full typespecs                       |
 | Contract behaviour generation | Standard `@behaviour` + `@callback` — Mox-compatible             |
-| Dispatch facades              | `HexPort.Facade` generates config-dispatched caller functions    |
+| Dispatch facades              | `DoubleDown.Facade` generates config-dispatched caller functions    |
 | LSP-friendly docs             | `@doc` tags on facade functions with types and parameter names   |
 | Async-safe test doubles       | Process-scoped handlers via NimbleOwnership                      |
 | Stateful test handlers        | In-memory state with atomic updates and fallback dispatch        |
@@ -33,12 +33,12 @@ and accept the speed penalty and the inability to adopt property-based testing.
 ## Terminology
 
 If you're coming from Mox or standard Elixir testing, here's how
-HexPort's terms map to what you already know:
+DoubleDown's terms map to what you already know:
 
-| HexPort term | Familiar Elixir equivalent |
+| DoubleDown term | Familiar Elixir equivalent |
 |---|---|
 | **Contract** | Behaviour (`@callback` specs) — the interface an implementation must satisfy |
-| **Facade** | The dispatch module (`def foo(x), do: impl().foo(x)`) — HexPort generates this |
+| **Facade** | The dispatch module (`def foo(x), do: impl().foo(x)`) — DoubleDown generates this |
 | **Test double** | Mock/stub/fake — anything standing in for a real implementation in tests |
 | **Port** | A contract + its facade — the boundary through which I/O operations pass |
 
@@ -51,7 +51,7 @@ Define a port contract and facade in one module:
 
 ```elixir
 defmodule MyApp.Todos do
-  use HexPort.Facade, otp_app: :my_app
+  use DoubleDown.Facade, otp_app: :my_app
 
   defport create_todo(params :: map()) ::
     {:ok, Todo.t()} | {:error, Ecto.Changeset.t()}
@@ -95,14 +95,14 @@ Test with an in-memory test double — no database, full async isolation:
 
 ```elixir
 # test/test_helper.exs
-HexPort.Testing.start()
+DoubleDown.Testing.start()
 
 # test/my_app/todos_test.exs
 defmodule MyApp.TodosTest do
   use ExUnit.Case, async: true
 
   setup do
-    HexPort.Testing.set_stateful_handler(
+    DoubleDown.Testing.set_stateful_handler(
       MyApp.Todos,
       fn
         :create_todo, [params], todos ->
@@ -138,7 +138,7 @@ No Mox modules, no database, no sandbox — just a function that
 maintains state. Each test process gets its own isolated state via
 NimbleOwnership.
 
-For Ecto-heavy code, HexPort also ships `Repo.InMemory` — a
+For Ecto-heavy code, DoubleDown also ships `Repo.InMemory` — a
 ready-made stateful test double for the built-in Repo contract with
 read-after-write consistency, `Ecto.Multi` support, and speeds suitable
 for property-based testing. See [Repo](docs/repo.md).
@@ -157,28 +157,28 @@ for property-based testing. See [Repo](docs/repo.md).
 
 ## Installation
 
-Add `hex_port` to your dependencies in `mix.exs`:
+Add `double_down` to your dependencies in `mix.exs`:
 
 ```elixir
 def deps do
   [
-    {:hex_port, "~> x.y"}
+    {:double_down, "~> x.y"}
   ]
 end
 ```
 
-Check [hex.pm/packages/hex_port](https://hex.pm/packages/hex_port) for the latest version.
+Check [hex.pm/packages/double_down](https://hex.pm/packages/double_down) for the latest version.
 
 Ecto is an optional dependency. If you want the built-in Repo contract,
 add Ecto to your own deps.
 
 ## Relationship to Skuld
 
-HexPort extracts the port system from
+DoubleDown extracts the port system from
 [Skuld](https://github.com/mccraigmccraig/skuld) (algebraic effects
 for Elixir) into a standalone library. You get typed contracts,
 async-safe test doubles, and dispatch logging without needing Skuld's
-effect system. Skuld depends on HexPort and layers effectful dispatch
+effect system. Skuld depends on DoubleDown and layers effectful dispatch
 on top.
 
 ## License

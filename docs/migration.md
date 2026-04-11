@@ -2,7 +2,7 @@
 
 [< Repo](repo.md) | [Up: README](../README.md)
 
-This guide covers adopting HexPort into an existing Elixir/Phoenix
+This guide covers adopting DoubleDown into an existing Elixir/Phoenix
 codebase alongside direct Ecto.Repo calls. You don't need to migrate
 everything at once — the two styles coexist cleanly.
 
@@ -31,9 +31,9 @@ Most domain logic interacts with the database in two ways:
    invoices", "get the latest shift for this employee". These are
    unique to each feature.
 
-HexPort handles these with two contracts:
+DoubleDown handles these with two contracts:
 
-- **`HexPort.Repo.Contract`** — ships with HexPort, covers all
+- **`DoubleDown.Repo.Contract`** — ships with DoubleDown, covers all
   generic Repo operations. One facade per app, shared by all features.
 - **A per-feature Queries contract** — you define this with `defport`
   for each feature's domain-specific reads.
@@ -51,23 +51,23 @@ Suppose you have a `Billing.create_invoice/1` function that:
 
 ```elixir
 defmodule MyApp.Repo do
-  use HexPort.Facade, contract: HexPort.Repo.Contract, otp_app: :my_app
+  use DoubleDown.Facade, contract: DoubleDown.Repo.Contract, otp_app: :my_app
 end
 ```
 
 ```elixir
 # config/config.exs
-config :my_app, HexPort.Repo.Contract, impl: MyApp.EctoRepo
+config :my_app, DoubleDown.Repo.Contract, impl: MyApp.EctoRepo
 
 # config/test.exs
-config :my_app, HexPort.Repo.Contract, impl: nil
+config :my_app, DoubleDown.Repo.Contract, impl: nil
 ```
 
 **Step 2: Define a Queries contract** for the domain reads
 
 ```elixir
 defmodule MyApp.Billing.Queries do
-  use HexPort.Facade, otp_app: :my_app
+  use DoubleDown.Facade, otp_app: :my_app
 
   defport get_payment_method(customer_id :: integer()) ::
     {:ok, PaymentMethod.t()} | {:error, :not_found}
@@ -133,27 +133,27 @@ defmodule MyApp.BillingTest do
   use ExUnit.Case, async: true
 
   alias MyApp.Repo
-  alias HexPort.Repo.Contract, as: RepoContract
+  alias DoubleDown.Repo.Contract, as: RepoContract
   alias MyApp.Billing.Queries
 
   setup do
     # Queries — stub domain-specific reads
-    HexPort.Testing.set_fn_handler(Queries, fn
+    DoubleDown.Testing.set_fn_handler(Queries, fn
       :get_payment_method, [_customer_id] ->
         {:ok, %PaymentMethod{id: 1, type: :card}}
     end)
 
     # Repo — stateless writes + fallback for any reads
-    HexPort.Testing.set_fn_handler(
+    DoubleDown.Testing.set_fn_handler(
       RepoContract,
-      HexPort.Repo.Test.new()
+      DoubleDown.Repo.Test.new()
     )
 
     :ok
   end
 
   test "create_invoice inserts invoice and line items" do
-    HexPort.Testing.enable_log(RepoContract)
+    DoubleDown.Testing.enable_log(RepoContract)
 
     assert {:ok, %Invoice{}} =
       MyApp.Billing.create_invoice(%{
@@ -161,7 +161,7 @@ defmodule MyApp.BillingTest do
         items: [%{description: "Widget", amount: 100}]
       })
 
-    log = HexPort.Testing.get_log(RepoContract)
+    log = DoubleDown.Testing.get_log(RepoContract)
     operations = Enum.map(log, fn {_, op, _, _} -> op end)
     assert :insert in operations
   end
@@ -178,7 +178,7 @@ facade). Both work in the same application — there's no conflict.
 
 In tests:
 
-- **Migrated code** uses `HexPort.Testing.set_fn_handler` /
+- **Migrated code** uses `DoubleDown.Testing.set_fn_handler` /
   `set_stateful_handler` — no DB needed, `async: true`
 - **Unmigrated code** uses `Ecto.Adapters.SQL.Sandbox` as before
 
@@ -192,7 +192,7 @@ Set `impl: nil` in `config/test.exs` for every contract:
 
 ```elixir
 # config/test.exs
-config :my_app, HexPort.Repo.Contract, impl: nil
+config :my_app, DoubleDown.Repo.Contract, impl: nil
 config :my_app, MyApp.Billing.Queries, impl: nil
 ```
 
@@ -202,7 +202,7 @@ For integration tests that intentionally use the real DB, set the
 handler explicitly:
 
 ```elixir
-HexPort.Testing.set_handler(HexPort.Repo.Contract, MyApp.EctoRepo)
+DoubleDown.Testing.set_handler(DoubleDown.Repo.Contract, MyApp.EctoRepo)
 ```
 
 ## When to use InMemory vs Test
