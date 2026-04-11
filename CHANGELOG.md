@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.26.0]
+
+### Changed
+
+- **Breaking:** `DoubleDown.Handler` renamed to `DoubleDown.Double`.
+  `stub` for module and stateful fallbacks split out into `fake`:
+  - `Double.stub(contract, :op, fun)` — per-operation stub (canned value)
+  - `Double.stub(contract, fun)` — 2-arity function fallback
+  - `Double.fake(contract, module)` — module fake
+  - `Double.fake(contract, fun, init_state)` — stateful fake
+- **Breaking:** `DoubleDown.Log` API simplified — `match` and `reject`
+  no longer take a contract parameter. The contract is specified once
+  at `verify!` time. `verify!` now returns `{:ok, log}` on success.
+- Handler error messages now include the contract name and args.
+- `.formatter.exs` updated for `defcallback` rename.
+
+### Added
+
+- `DoubleDown.Log.verify!` returns `{:ok, log}` on success and
+  includes the full dispatch log in all error messages — useful for
+  REPL debugging.
+- `:static_dispatch?` option on `use DoubleDown.Facade` — resolves
+  the implementation module at compile time and generates direct
+  function calls, eliminating `Application.get_env` overhead entirely.
+  Defaults to `fn -> Mix.env() == :prod end`.
+- Comprehensive docs review: restructured testing.md with `Double` as
+  primary API, updated all examples to use `Double.expect`/`stub`/`fake`
+  instead of raw `set_*_handler` APIs, consistent terminology throughout.
+
 ## [0.25.0]
 
 ### Changed
@@ -401,7 +430,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `DoubleDown.Testing` with NimbleOwnership, `Repo.Test` stateless
   adapter, CI setup, Credo, Dialyzer.
 
-[Unreleased]: https://github.com/mccraigmccraig/double_down/compare/v0.25.0...HEAD
+[Unreleased]: https://github.com/mccraigmccraig/double_down/compare/v0.26.0...HEAD
+[0.26.0]: https://github.com/mccraigmccraig/double_down/compare/v0.25.0...v0.26.0
 [0.25.0]: https://github.com/mccraigmccraig/double_down/compare/v0.24.0...v0.25.0
 [0.24.0]: https://github.com/mccraigmccraig/double_down/compare/v0.23.0...v0.24.0
 [0.23.0]: https://github.com/mccraigmccraig/double_down/compare/v0.22.0...v0.23.0
