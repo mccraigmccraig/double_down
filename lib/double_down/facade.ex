@@ -43,6 +43,13 @@ defmodule DoubleDown.Facade do
       evaluated at compile time. Defaults to `fn -> Mix.env() != :prod end`,
       so production builds get a config-only dispatch path with zero
       `NimbleOwnership` overhead.
+    * `:static_dispatch?` — when `true` and `:test_dispatch?` is `false`,
+      reads the implementation module from config at compile time via
+      `Application.compile_env/3` and generates direct function calls —
+      eliminating the `Application.get_env` lookup at runtime entirely.
+      Falls back to runtime config dispatch if the config is not available
+      at compile time. Accepts `true`, `false`, or a zero-arity function.
+      Defaults to `fn -> Mix.env() == :prod end`.
 
   ## Configuration
 
@@ -98,6 +105,22 @@ defmodule DoubleDown.Facade do
           fun.()
       end
 
+    static_dispatch? =
+      case Keyword.get(opts, :static_dispatch?) do
+        nil ->
+          Mix.env() == :prod
+
+        bool when is_boolean(bool) ->
+          bool
+
+        fun when is_function(fun, 0) ->
+          fun.()
+
+        ast ->
+          {fun, _binding} = Code.eval_quoted(ast, [], __CALLER__)
+          fun.()
+      end
+
     self_ref? = contract == __CALLER__.module
 
     if self_ref? do
@@ -109,6 +132,7 @@ defmodule DoubleDown.Facade do
         @double_down_contract unquote(contract)
         @double_down_otp_app unquote(otp_app)
         @double_down_test_dispatch unquote(test_dispatch?)
+        @double_down_static_dispatch unquote(static_dispatch?)
         @before_compile {DoubleDown.Facade, :__before_compile__}
       end
     else
@@ -117,6 +141,7 @@ defmodule DoubleDown.Facade do
         @double_down_contract unquote(contract)
         @double_down_otp_app unquote(otp_app)
         @double_down_test_dispatch unquote(test_dispatch?)
+        @double_down_static_dispatch unquote(static_dispatch?)
         @before_compile {DoubleDown.Facade, :__before_compile__}
       end
     end
@@ -127,10 +152,37 @@ defmodule DoubleDown.Facade do
     contract = Module.get_attribute(env.module, :double_down_contract)
     otp_app = Module.get_attribute(env.module, :double_down_otp_app)
     test_dispatch? = Module.get_attribute(env.module, :double_down_test_dispatch)
+    static_dispatch? = Module.get_attribute(env.module, :double_down_static_dispatch)
+
+    # When static dispatch is enabled and test dispatch is disabled,
+    # try to resolve the implementation module at compile time.
+    # Application.compile_env is a macro that must be called in the
+    # module body (i.e. inside the quote block returned by __before_compile__),
+    # not in a helper function. So we generate the compile_env call as AST
+    # and evaluate it here in the macro context.
+    static_impl =
+      if !test_dispatch? and static_dispatch? do
+        case Application.get_env(otp_app, contract) do
+          nil ->
+            nil
+
+          config when is_list(config) ->
+            Keyword.get(config, :impl)
+
+          impl when is_atom(impl) ->
+            impl
+        end
+      else
+        nil
+      end
 
     operations = fetch_operations!(contract, env)
 
-    facades = Enum.map(operations, &generate_facade(&1, contract, otp_app, test_dispatch?))
+    facades =
+      Enum.map(
+        operations,
+        &generate_facade(&1, contract, otp_app, test_dispatch?, static_impl)
+      )
 
     bangs =
       operations
@@ -172,7 +224,8 @@ defmodule DoubleDown.Facade do
          },
          contract,
          otp_app,
-         test_dispatch?
+         test_dispatch?,
+         static_impl
        ) do
     param_vars = Enum.map(param_names, fn pname -> {pname, [], nil} end)
 
@@ -209,23 +262,53 @@ defmodule DoubleDown.Facade do
         param_vars
       end
 
-    # When test_dispatch? is true, use DoubleDown.Dispatch.call/4 which checks
-    # NimbleOwnership for test handlers before falling back to config.
-    # When false, use DoubleDown.Dispatch.call_config/4 which goes straight
-    # to Application config — no NimbleOwnership overhead at all.
-    dispatch_fn = if test_dispatch?, do: :call, else: :call_config
+    # Three dispatch paths, selected at compile time:
+    #
+    # 1. test_dispatch? true → DoubleDown.Dispatch.call/4
+    #    (NimbleOwnership test handlers + config fallback)
+    #
+    # 2. static_impl set → apply(impl, operation, args)
+    #    (direct call, zero overhead — impl resolved at compile time)
+    #
+    # 3. otherwise → DoubleDown.Dispatch.call_config/4
+    #    (runtime Application.get_env lookup)
+    cond do
+      test_dispatch? ->
+        quote do
+          unquote(doc_ast)
+          @spec unquote(name)(unquote_splicing(param_types)) :: unquote(return_type)
+          def unquote(name)(unquote_splicing(param_vars)) do
+            DoubleDown.Dispatch.call(
+              unquote(otp_app),
+              unquote(contract),
+              unquote(name),
+              unquote(dispatch_args)
+            )
+          end
+        end
 
-    quote do
-      unquote(doc_ast)
-      @spec unquote(name)(unquote_splicing(param_types)) :: unquote(return_type)
-      def unquote(name)(unquote_splicing(param_vars)) do
-        DoubleDown.Dispatch.unquote(dispatch_fn)(
-          unquote(otp_app),
-          unquote(contract),
-          unquote(name),
-          unquote(dispatch_args)
-        )
-      end
+      static_impl != nil ->
+        quote do
+          unquote(doc_ast)
+          @spec unquote(name)(unquote_splicing(param_types)) :: unquote(return_type)
+          def unquote(name)(unquote_splicing(param_vars)) do
+            apply(unquote(static_impl), unquote(name), unquote(dispatch_args))
+          end
+        end
+
+      true ->
+        quote do
+          unquote(doc_ast)
+          @spec unquote(name)(unquote_splicing(param_types)) :: unquote(return_type)
+          def unquote(name)(unquote_splicing(param_vars)) do
+            DoubleDown.Dispatch.call_config(
+              unquote(otp_app),
+              unquote(contract),
+              unquote(name),
+              unquote(dispatch_args)
+            )
+          end
+        end
     end
   end
 

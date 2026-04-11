@@ -2,8 +2,9 @@ defmodule DoubleDown.Dispatch do
   @moduledoc """
   Dispatch resolution for DoubleDown contracts.
 
-  Two dispatch paths are available, selected at compile time by the
-  `:test_dispatch?` option on `use DoubleDown.Facade`:
+  Three dispatch paths are available, selected at compile time by the
+  `:test_dispatch?` and `:static_dispatch?` options on
+  `use DoubleDown.Facade`:
 
   ### `call/4` — test-aware dispatch (default in non-prod)
 
@@ -12,13 +13,20 @@ defmodule DoubleDown.Dispatch do
   2. **Application config** — `Application.get_env(otp_app, contract)[:impl]`
   3. **Raise** — no handler configured
 
-  ### `call_config/4` — config-only dispatch (default in prod)
+  ### `call_config/4` — config-only dispatch
 
   1. **Application config** — `Application.get_env(otp_app, contract)[:impl]`
   2. **Raise** — no handler configured
 
   No `NimbleOwnership` code is referenced in the generated facade
   functions, eliminating the `GenServer.whereis` lookup entirely.
+
+  ### Static dispatch (default in prod when config available)
+
+  The implementation module is resolved at compile time and the
+  generated facade calls it directly — no `NimbleOwnership`, no
+  `Application.get_env`. Zero dispatch overhead. Falls back to
+  `call_config/4` if the config is not available at compile time.
   """
 
   @ownership_server __MODULE__.Ownership

@@ -246,35 +246,49 @@ time** based on the `:test_dispatch?` option:
 
 Test handlers always take priority over config.
 
-### Production
+### Production (default)
 
-`DoubleDown.Dispatch.call_config/4` skips NimbleOwnership entirely:
+Two levels of optimisation are available:
+
+**Config dispatch** — `DoubleDown.Dispatch.call_config/4` skips
+NimbleOwnership entirely but still reads `Application.get_env` at
+runtime:
 
 1. **Application config** — `Application.get_env(otp_app, contract)[:impl]`
 2. **Raise** — clear error message if nothing is configured
 
-No `GenServer.whereis` lookup, no NimbleOwnership code referenced in
-the compiled beam — zero overhead.
+**Static dispatch** — when the implementation is available in config
+at compile time, the facade generates direct function calls to the
+implementation module. No NimbleOwnership, no `Application.get_env`
+— zero dispatch overhead:
 
-### The `:test_dispatch?` option
+1. **Direct call** — `apply(MyApp.Todos.Ecto, :get_todo, [id])`
 
-The dispatch path is controlled by the `:test_dispatch?` option on
-`use DoubleDown.Facade`. It accepts `true`, `false`, or a zero-arity
-function returning a boolean. The function is evaluated at compile
-time. The default is `fn -> Mix.env() != :prod end`:
+Static dispatch is enabled by default in production (when
+`:static_dispatch?` is true and the config is available at compile
+time). If the config isn't available at compile time, it falls back
+to config dispatch automatically.
+
+### The `:test_dispatch?` and `:static_dispatch?` options
+
+Both options accept `true`, `false`, or a zero-arity function
+returning a boolean, evaluated at compile time.
+
+`:test_dispatch?` defaults to `fn -> Mix.env() != :prod end`.
+`:static_dispatch?` defaults to `fn -> Mix.env() == :prod end`.
+
+`:test_dispatch?` takes precedence — when true, `:static_dispatch?`
+is ignored.
 
 ```elixir
-# Default — test dispatch in dev/test, config-only in prod
+# Default — test dispatch in dev/test, static dispatch in prod
 use DoubleDown.Facade, otp_app: :my_app
 
-# Always config-only (e.g. a facade that never needs test doubles)
-use DoubleDown.Facade, otp_app: :my_app, test_dispatch?: false
+# Always config-only (no test dispatch, no static dispatch)
+use DoubleDown.Facade, otp_app: :my_app, test_dispatch?: false, static_dispatch?: false
 
-# Always test-aware
-use DoubleDown.Facade, otp_app: :my_app, test_dispatch?: true
-
-# Custom compile-time decision
-use DoubleDown.Facade, otp_app: :my_app, test_dispatch?: fn -> Mix.env() == :test end
+# Force static even in dev (e.g. for benchmarks)
+use DoubleDown.Facade, otp_app: :my_app, test_dispatch?: false, static_dispatch?: true
 ```
 
 ## Key helpers
