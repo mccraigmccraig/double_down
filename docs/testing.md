@@ -5,7 +5,7 @@
 DoubleDown's testing system is built on
 [NimbleOwnership](https://hex.pm/packages/nimble_ownership) — the same
 ownership library that Mox uses internally. Each test process gets its
-own handlers, state, and logs, so `async: true` works out of the box.
+own doubles, state, and logs, so `async: true` works out of the box.
 
 ## Setup
 
