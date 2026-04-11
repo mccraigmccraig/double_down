@@ -12,13 +12,13 @@ property-based testing.
 
 `DoubleDown.Repo` defines these operations:
 
-| Category | Operations |
-|----------|-----------|
-| **Writes** | `insert/1`, `update/1`, `delete/1` |
-| **Bulk** | `insert_all/3`, `update_all/3`, `delete_all/2` |
-| **PK reads** | `get/2`, `get!/2` |
+| Category         | Operations                                                                      |
+|------------------|---------------------------------------------------------------------------------|
+| **Writes**       | `insert/1`, `update/1`, `delete/1`                                              |
+| **Bulk**         | `insert_all/3`, `update_all/3`, `delete_all/2`                                  |
+| **PK reads**     | `get/2`, `get!/2`                                                               |
 | **Non-PK reads** | `get_by/2`, `get_by!/2`, `one/1`, `one!/1`, `all/1`, `exists?/1`, `aggregate/3` |
-| **Transactions** | `transact/2` |
+| **Transactions** | `transact/2`                                                                    |
 
 Write operations return `{:ok, struct} | {:error, changeset}` and
 auto-generate bang variants. Bang read variants (`get!`, `get_by!`,
@@ -37,8 +37,8 @@ end
 ```
 
 This generates dispatch functions (`MyApp.Repo.insert/1`,
-`MyApp.Repo.get/2`, etc.) that resolve to the configured
-implementation at runtime.
+`MyApp.Repo.get/2`, etc.) that dispatch to the configured
+implementation.
 
 ## Implementations
 
@@ -285,7 +285,7 @@ On success, returns `{:ok, changes}` where `changes` is a map of
 operation names to results. On failure, returns
 `{:error, failed_op, failed_value, changes_so_far}`.
 
-Multi `:run` callbacks receive the Port facade as the `repo` argument
+Multi `:run` callbacks receive the facade module as the `repo` argument
 in test adapters, or the underlying Ecto Repo module in the Ecto
 adapter — so `repo.insert(cs)` dispatches correctly in both cases.
 
@@ -474,7 +474,7 @@ You get:
 - **Property-based testing speed** — thousands of test cases per second
 
 This is particularly valuable for domain logic that interleaves Ecto
-operations. The hexagonal boundary lets you swap the real Repo for
+operations. The contract boundary lets you swap the real Repo for
 `Repo.InMemory` and verify business rules without database overhead —
 then use the Ecto adapter in integration tests for the full stack.
 
