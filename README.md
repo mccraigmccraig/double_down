@@ -50,7 +50,7 @@ DoubleDown extends the Mox pattern:
 | Feature                | Description                                                     |
 |------------------------|-----------------------------------------------------------------|
 | `defcallback` declarations | Typed function signatures with parameter names and return types |
-| Behaviour generation   | Standard `@behaviour` + `@callback` — fully Mox-compatible            |
+| Contract behaviour generation   | Standard `@behaviour` + `@callback` — fully Mox-compatible            |
 | Dispatch facades       | Config-dispatched caller functions, generated automatically     |
 | LSP-friendly           | `@doc` and `@spec` on every generated function                  |
 
