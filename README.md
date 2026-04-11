@@ -4,50 +4,61 @@
 [![Hex.pm](https://img.shields.io/hexpm/v/double_down.svg)](https://hex.pm/packages/double_down)
 [![Documentation](https://img.shields.io/badge/documentation-gray)](https://hexdocs.pm/double_down/)
 
-Hexagonal architecture ports for Elixir — typed contracts, async-safe
-stateful test doubles, and a built-in in-memory Repo that makes database-free
-testing practical.
+Builds on the Mox pattern — generates behaviours and dispatch facades
+from `defport` declarations — and adds stateful test doubles powerful
+enough to test Ecto.Repo operations without a database.
 
-## The problem
+## Why not just Mox?
 
-Clean Architecture tells you to put domain logic behind port boundaries,
-but in practice a couple of things get in the way: maintaining contract
-behaviours and dispatch facades involves boilerplate that's tedious to keep
-in sync, and unit-testing with complex dependencies like Ecto is hard enough
-that most projects never do it - they just hit the database for every test
-and accept the speed penalty and the inability to adopt property-based testing.
+Mox is great for simple mocks: define a behaviour, `defmock`, set
+expectations. But the pattern has friction points as your system grows:
 
-## What DoubleDown does
+- **Boilerplate** — for each boundary you hand-write a behaviour
+  module, a dispatch facade, and config wiring. DoubleDown's `defport`
+  generates all three from a single declaration.
+- **Stubs only** — Mox mocks return canned values. They can't model
+  stateful dependencies like a database, so you end up hitting the real
+  DB in every test. DoubleDown's stateful handlers maintain in-memory
+  state with atomic updates, giving you read-after-write consistency
+  without a database.
+- **No fakes** — testing "what happens when the second insert fails
+  with a constraint violation?" requires a real DB with Mox. DoubleDown
+  lets you layer expects over a stateful fake, so the first insert
+  writes to an in-memory store and the second returns an error — all
+  without a database connection.
+- **No dispatch logging** — Mox tells you what was called (via
+  `verify!`), but not what was returned. DoubleDown logs the full
+  `{contract, operation, args, result}` tuple, including results
+  computed by stateful handlers.
 
-| Feature                       | Description                                                      |
-|-------------------------------|------------------------------------------------------------------|
-| Typed contracts               | `defport` declarations with full typespecs                       |
-| Contract behaviour generation | Standard `@behaviour` + `@callback` — Mox-compatible             |
-| Dispatch facades              | `DoubleDown.Facade` generates config-dispatched caller functions    |
-| LSP-friendly docs             | `@doc` tags on facade functions with types and parameter names   |
-| Async-safe test doubles       | Process-scoped handlers via NimbleOwnership                      |
-| Stateful test handlers        | In-memory state with atomic updates and fallback dispatch        |
-| Dispatch logging              | Record every call that crosses a port boundary                   |
-| Built-in Repo contract        | 15-operation Ecto Repo contract with stateless + in-memory impls |
+## What DoubleDown provides
 
-## Terminology
+### System boundaries (the Mox pattern, automated)
 
-If you're coming from Mox or standard Elixir testing, here's how
-DoubleDown's terms map to what you already know:
+| Feature                | Description                                                     |
+|------------------------|-----------------------------------------------------------------|
+| `defport` declarations | Typed function signatures with parameter names and return types |
+| Behaviour generation   | Standard `@behaviour` + `@callback` — Mox-compatible            |
+| Dispatch facades       | Config-dispatched caller functions, generated automatically     |
+| LSP-friendly           | `@doc` and `@spec` on every generated function                  |
 
-| DoubleDown term | Familiar Elixir equivalent |
-|---|---|
-| **Contract** | Behaviour (`@callback` specs) — the interface an implementation must satisfy |
-| **Facade** | The dispatch module (`def foo(x), do: impl().foo(x)`) — DoubleDown generates this |
-| **Test double** | Mock/stub/fake — anything standing in for a real implementation in tests |
-| **Port** | A contract + its facade — the boundary through which I/O operations pass |
+### Test doubles (beyond Mox)
 
-See [Getting Started](docs/getting-started.md#terminology) for the
-expanded version with test double types (mocks, stubs, fakes).
+| Feature                            | Description                                                                |
+|------------------------------------|----------------------------------------------------------------------------|
+| Mox-style expect/stub              | `DoubleDown.Handler` — ordered expectations, call counting, `verify!`      |
+| Stateful fakes                     | In-memory state with atomic updates via NimbleOwnership                    |
+| Expect + fake composition          | Layer expects over a stateful fake for failure simulation                  |
+| `:passthrough` expects             | Count calls without changing behaviour                                     |
+| Module/function/stateful fallbacks | Dispatch priority chain: expects > stubs > fallback > raise                |
+| Dispatch logging                   | Record `{contract, op, args, result}` for every call                       |
+| Structured log matching            | `DoubleDown.Log` — pattern-match on logged results                         |
+| Built-in Ecto Repo                 | 16-operation contract with `Repo.Test` and `Repo.InMemory` fakes           |
+| Async-safe                         | Process-scoped isolation via NimbleOwnership, `async: true` out of the box |
 
 ## Quick example
 
-Define a port contract and facade in one module:
+Define a contract and facade in one module:
 
 ```elixir
 defmodule MyApp.Todos do
@@ -63,27 +74,6 @@ defmodule MyApp.Todos do
 end
 ```
 
-Implement the behaviour:
-
-```elixir
-defmodule MyApp.Todos.Ecto do
-  @behaviour MyApp.Todos
-
-  @impl true
-  def create_todo(params), do: MyApp.Repo.insert(Todo.changeset(params))
-
-  @impl true
-  def get_todo(id) do
-    case MyApp.Repo.get(Todo, id) do
-      nil -> {:error, :not_found}
-      todo -> {:ok, todo}
-    end
-  end
-
-  # ...
-end
-```
-
 Wire it up:
 
 ```elixir
@@ -91,69 +81,67 @@ Wire it up:
 config :my_app, MyApp.Todos, impl: MyApp.Todos.Ecto
 ```
 
-Test with an in-memory test double — no database, full async isolation:
+Test with expects and stubs — no database, full async isolation:
 
 ```elixir
-# test/test_helper.exs
-DoubleDown.Testing.start()
+setup do
+  MyApp.Todos
+  |> DoubleDown.Handler.expect(:create_todo, fn [params] ->
+    {:ok, struct!(Todo, Map.put(params, :id, "123"))}
+  end)
+  |> DoubleDown.Handler.stub(:get_todo, fn [id] -> {:ok, %Todo{id: id}} end)
+  |> DoubleDown.Handler.stub(:list_todos, fn [_] -> [] end)
+  :ok
+end
 
-# test/my_app/todos_test.exs
-defmodule MyApp.TodosTest do
-  use ExUnit.Case, async: true
-
-  setup do
-    DoubleDown.Testing.set_stateful_handler(
-      MyApp.Todos,
-      fn
-        :create_todo, [params], todos ->
-          todo = struct!(Todo, Map.put(params, :id, System.unique_integer()))
-          {{:ok, todo}, Map.put(todos, todo.id, todo)}
-
-        :get_todo, [id], todos ->
-          case Map.get(todos, id) do
-            nil -> {{:error, :not_found}, todos}
-            todo -> {{:ok, todo}, todos}
-          end
-
-        :list_todos, [_tenant], todos ->
-          {Map.values(todos), todos}
-      end,
-      %{}  # initial state — empty store
-    )
-    :ok
-  end
-
-  test "create then get" do
-    {:ok, todo} = MyApp.Todos.create_todo(%{title: "Ship it"})
-    assert {:ok, ^todo} = MyApp.Todos.get_todo(todo.id)
-  end
-
-  test "get non-existent returns error" do
-    assert {:error, :not_found} = MyApp.Todos.get_todo(-1)
-  end
+test "create then get" do
+  {:ok, todo} = MyApp.Todos.create_todo(%{title: "Ship it"})
+  assert {:ok, _} = MyApp.Todos.get_todo(todo.id)
+  DoubleDown.Handler.verify!()
 end
 ```
 
-No Mox modules, no database, no sandbox — just a function that
-maintains state. Each test process gets its own isolated state via
-NimbleOwnership.
+### Testing failure scenarios
 
-For Ecto-heavy code, DoubleDown also ships `Repo.InMemory` — a
-ready-made stateful test double for the built-in Repo contract with
-read-after-write consistency, `Ecto.Multi` support, and speeds suitable
-for property-based testing. See [Repo](docs/repo.md).
+Layer expects over a stateful fake to simulate specific failures:
+
+```elixir
+setup do
+  # InMemory Repo as the baseline — real state, read-after-write
+  DoubleDown.Repo.Contract
+  |> DoubleDown.Handler.stub(&DoubleDown.Repo.InMemory.dispatch/3,
+    DoubleDown.Repo.InMemory.new())
+  # First insert fails with constraint error
+  |> DoubleDown.Handler.expect(:insert, fn [changeset] ->
+    {:error, Ecto.Changeset.add_error(changeset, :email, "taken")}
+  end)
+  :ok
+end
+
+test "retries after constraint violation" do
+  changeset = User.changeset(%User{}, %{email: "alice@example.com"})
+
+  # First insert: expect fires, returns error
+  assert {:error, _} = MyApp.Repo.insert(changeset)
+
+  # Second insert: falls through to InMemory, writes to store
+  assert {:ok, user} = MyApp.Repo.insert(changeset)
+
+  # Read-after-write: InMemory serves from store
+  assert ^user = MyApp.Repo.get(User, user.id)
+end
+```
 
 ## Documentation
 
 - **[Getting Started](docs/getting-started.md)** — contracts, facades,
-  behaviours, config, dispatch resolution
-- **[Testing](docs/testing.md)** — handler modes, dispatch logging,
-  async safety, process sharing, Mox compatibility
-- **[Repo](docs/repo.md)** — built-in Ecto Repo contract, production
-  adapter, stateless and in-memory test doubles
-- **[Migration](docs/migration.md)** — incremental adoption into
-  existing codebases, the two-contract pattern, coexisting with
-  direct Ecto.Repo calls
+  dispatch resolution, terminology
+- **[Testing](docs/testing.md)** — Handler expect/stub, dispatch
+  logging, Log matchers, async safety, process sharing
+- **[Repo](docs/repo.md)** — built-in Ecto Repo contract, `Repo.Test`,
+  `Repo.InMemory`, failure scenario testing
+- **[Migration](docs/migration.md)** — incremental adoption, coexisting
+  with direct Ecto.Repo calls
 
 ## Installation
 
@@ -162,15 +150,13 @@ Add `double_down` to your dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:double_down, "~> x.y"}
+    {:double_down, "~> 0.24"}
   ]
 end
 ```
 
-Check [hex.pm/packages/double_down](https://hex.pm/packages/double_down) for the latest version.
-
-Ecto is an optional dependency. If you want the built-in Repo contract,
-add Ecto to your own deps.
+Ecto is an optional dependency — add it to your own deps if you want
+the built-in Repo contract.
 
 ## Relationship to Skuld
 
