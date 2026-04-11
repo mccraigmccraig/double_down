@@ -3,11 +3,13 @@
 [< Testing](testing.md) | [Up: README](../README.md) | [Migration >](migration.md)
 
 DoubleDown ships a ready-made 16-operation Ecto Repo contract behaviour
-with three implementations: one for production and two test doubles.
-The test doubles are sophisticated enough to support `Ecto.Multi`
-transactions and read-after-write consistency — making it realistic to
-test Ecto-heavy domain logic, including multi-step transaction code,
-without a database and at speeds suitable for property-based testing.
+with two test double implementations (`Repo.Test` and `Repo.InMemory`).
+In production, the dispatch facade passes through to your existing Ecto
+Repo with zero overhead (via static dispatch). The test doubles are
+sophisticated enough to support `Ecto.Multi` transactions and
+read-after-write consistency — making it realistic to test Ecto-heavy
+domain logic, including multi-step transaction code, without a database
+and at speeds suitable for property-based testing.
 
 ## The contract
 
@@ -43,19 +45,21 @@ implementation.
 
 ## Implementations
 
-### Production — your Ecto Repo directly
+### Production — zero-cost passthrough to your Ecto Repo
 
-Point the facade config at your Ecto Repo module. No wrapper needed —
-Ecto.Repo modules already export functions at the arities the contract
-calls with:
+There is no production "implementation" to write — just point the
+config at your existing Ecto Repo module. Ecto.Repo modules already
+export functions at the arities the contract expects, so all operations
+pass straight through with full ACID transaction support:
 
 ```elixir
 # config/config.exs
 config :my_app, DoubleDown.Repo, impl: MyApp.EctoRepo
 ```
 
-All operations pass through to the underlying Ecto Repo with full
-ACID transaction support.
+With the default `:static_dispatch?` setting, the facade resolves
+`MyApp.EctoRepo` at compile time and generates direct function calls
+— no `Application.get_env` lookup at runtime, zero dispatch overhead.
 
 ### `Repo.Test` — stateless test double
 
