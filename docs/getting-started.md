@@ -108,6 +108,20 @@ the contract, and your app creates a facade that binds it to your
 
 ## `defcallback` syntax
 
+`defcallback` uses the same syntax as `@callback` — if your existing
+`@callback` declarations include parameter names, you can replace
+`@callback` with `defcallback` and you're done:
+
+```elixir
+# Standard @callback — already works as a defcallback
+@callback get_todo(id :: String.t()) :: {:ok, Todo.t()} | {:error, :not_found}
+
+# Equivalent defcallback
+defcallback get_todo(id :: String.t()) :: {:ok, Todo.t()} | {:error, :not_found}
+```
+
+Optional metadata can be appended as keyword options:
+
 ```elixir
 defcallback function_name(param :: type(), ...) :: return_type(), opts
 ```
