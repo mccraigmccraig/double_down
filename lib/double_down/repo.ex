@@ -202,5 +202,16 @@ if Code.ensure_loaded?(Ecto) do
                       args
                   end
                 end
+
+    @doc """
+    Roll back the current transaction.
+
+    Throws `{:rollback, value}`, which is caught by `transact` and
+    returned as `{:error, value}`. Mirrors `Ecto.Repo.rollback/1`.
+
+    Must be called from within a `transact` callback. Calling outside
+    a transaction raises.
+    """
+    defcallback rollback(value :: term()) :: no_return(), bang: false
   end
 end

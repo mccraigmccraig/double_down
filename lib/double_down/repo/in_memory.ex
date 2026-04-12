@@ -339,14 +339,27 @@ if Code.ensure_loaded?(Ecto) do
     # The facade's pre_dispatch wraps 1-arity fns into 0-arity thunks,
     # so implementations always receive a 0-arity fn or an Ecto.Multi.
     def dispatch(:transact, [fun, _opts], store) when is_function(fun, 0) do
-      {%DoubleDown.Defer{fn: fun}, store}
+      {%DoubleDown.Defer{fn: fn -> run_in_transaction(fun) end}, store}
     end
 
     def dispatch(:transact, [%Ecto.Multi{} = multi, opts], store) do
       repo_facade = Keyword.get(opts, DoubleDown.Repo.Facade)
 
-      {%DoubleDown.Defer{fn: fn -> DoubleDown.Repo.MultiStepper.run(multi, repo_facade) end},
-       store}
+      {%DoubleDown.Defer{
+         fn: fn ->
+           run_in_transaction(fn -> DoubleDown.Repo.MultiStepper.run(multi, repo_facade) end)
+         end
+       }, store}
+    end
+
+    def dispatch(:rollback, [value], store) do
+      {%DoubleDown.Defer{fn: fn -> throw({:rollback, value}) end}, store}
+    end
+
+    defp run_in_transaction(fun) do
+      fun.()
+    catch
+      {:rollback, value} -> {:error, value}
     end
 
     # -----------------------------------------------------------------

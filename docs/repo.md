@@ -2,7 +2,7 @@
 
 [< Testing](testing.md) | [Up: README](../README.md) | [Migration >](migration.md)
 
-DoubleDown ships a ready-made 16-operation Ecto Repo contract behaviour
+DoubleDown ships a ready-made 17-operation Ecto Repo contract behaviour
 with two test double implementations (`Repo.Test` and `Repo.InMemory`).
 In production, the dispatch facade passes through to your existing Ecto
 Repo with zero overhead (via static dispatch). The test doubles are
@@ -21,7 +21,7 @@ and at speeds suitable for property-based testing.
 | **Bulk**         | `insert_all/3`, `update_all/3`, `delete_all/2`                                  |
 | **PK reads**     | `get/2`, `get!/2`                                                               |
 | **Non-PK reads** | `get_by/2`, `get_by!/2`, `one/1`, `one!/1`, `all/1`, `exists?/1`, `aggregate/3` |
-| **Transactions** | `transact/2`                                                                    |
+| **Transactions** | `transact/2`, `rollback/1`                                                      |
 
 Write operations return `{:ok, struct} | {:error, changeset}` and
 auto-generate bang variants. Bang read variants (`get!`, `get_by!`,

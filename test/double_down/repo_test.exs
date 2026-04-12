@@ -92,10 +92,10 @@ defmodule DoubleDown.RepoTest do
       assert :one! in ops
     end
 
-    test "__callbacks__ lists all 16 operations" do
+    test "__callbacks__ lists all 17 operations" do
       ops = Repo.__callbacks__()
 
-      assert length(ops) == 16
+      assert length(ops) == 17
 
       op_names = Enum.map(ops, & &1.name) |> Enum.sort()
 
@@ -113,6 +113,7 @@ defmodule DoubleDown.RepoTest do
                :insert_all,
                :one,
                :one!,
+               :rollback,
                :transact,
                :update,
                :update_all

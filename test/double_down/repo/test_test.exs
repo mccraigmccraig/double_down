@@ -710,4 +710,72 @@ defmodule DoubleDown.Repo.TestTest do
       assert {:ok, %{val: 42}} = result
     end
   end
+
+  # -------------------------------------------------------------------
+  # Rollback
+  # -------------------------------------------------------------------
+
+  describe "rollback" do
+    setup do
+      DoubleDown.Testing.set_fn_handler(Repo, Repo.Test.new())
+      :ok
+    end
+
+    test "rollback inside transact returns {:error, value}" do
+      result =
+        Repo.Port.transact(
+          fn repo ->
+            repo.rollback(:something_went_wrong)
+          end,
+          []
+        )
+
+      assert {:error, :something_went_wrong} = result
+    end
+
+    test "rollback stops execution — code after rollback is not reached" do
+      test_pid = self()
+
+      result =
+        Repo.Port.transact(
+          fn repo ->
+            repo.rollback(:early_exit)
+            send(test_pid, :should_not_reach)
+            {:ok, :unreachable}
+          end,
+          []
+        )
+
+      assert {:error, :early_exit} = result
+      refute_received :should_not_reach
+    end
+
+    test "rollback with arbitrary value" do
+      result =
+        Repo.Port.transact(
+          fn repo ->
+            repo.rollback(%{reason: :conflict, details: "duplicate key"})
+          end,
+          []
+        )
+
+      assert {:error, %{reason: :conflict, details: "duplicate key"}} = result
+    end
+  end
+
+  describe "rollback via Double.stub" do
+    test "rollback works via Double.stub" do
+      DoubleDown.Double.stub(Repo, Repo.Test.new())
+
+      result =
+        Repo.Port.transact(
+          fn repo ->
+            repo.rollback(:stub_rollback)
+          end,
+          []
+        )
+
+      assert {:error, :stub_rollback} = result
+    end
+  end
 end

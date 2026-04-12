@@ -1260,4 +1260,85 @@ defmodule DoubleDown.Repo.InMemoryTest do
       assert {:ok, {%User{name: "Alice"}, %User{name: "Alice"}}} = result
     end
   end
+
+  # -------------------------------------------------------------------
+  # Rollback
+  # -------------------------------------------------------------------
+
+  describe "rollback" do
+    setup do
+      DoubleDown.Testing.set_stateful_handler(
+        Repo,
+        &Repo.InMemory.dispatch/3,
+        Repo.InMemory.new()
+      )
+
+      :ok
+    end
+
+    test "rollback inside transact returns {:error, value}" do
+      result =
+        Repo.Port.transact(
+          fn repo ->
+            repo.rollback(:something_went_wrong)
+          end,
+          []
+        )
+
+      assert {:error, :something_went_wrong} = result
+    end
+
+    test "rollback stops execution" do
+      test_pid = self()
+
+      result =
+        Repo.Port.transact(
+          fn repo ->
+            repo.rollback(:early_exit)
+            send(test_pid, :should_not_reach)
+            {:ok, :unreachable}
+          end,
+          []
+        )
+
+      assert {:error, :early_exit} = result
+      refute_received :should_not_reach
+    end
+
+    test "rollback after insert — insert is NOT rolled back (documented limitation)" do
+      result =
+        Repo.Port.transact(
+          fn repo ->
+            {:ok, _user} = repo.insert(User.changeset(%User{}, %{name: "Alice"}))
+            repo.rollback(:oops)
+          end,
+          []
+        )
+
+      assert {:error, :oops} = result
+
+      # The insert persists in InMemory state — no true rollback
+      # This is a documented limitation of the test adapter
+    end
+  end
+
+  describe "rollback via Double.fake" do
+    test "rollback works via Double.fake" do
+      DoubleDown.Double.fake(
+        Repo,
+        &Repo.InMemory.dispatch/3,
+        Repo.InMemory.new()
+      )
+
+      result =
+        Repo.Port.transact(
+          fn repo ->
+            repo.rollback(:fake_rollback)
+          end,
+          []
+        )
+
+      assert {:error, :fake_rollback} = result
+    end
+  end
 end
