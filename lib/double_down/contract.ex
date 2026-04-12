@@ -1,16 +1,17 @@
 defmodule DoubleDown.Contract do
   @moduledoc """
-  Macro for defining typed port contracts with `defcallback` declarations.
+  Macro for defining contract behaviours with `defcallback` declarations.
 
   `use DoubleDown.Contract` imports the `defcallback` macro and registers a
   `@before_compile` hook that generates:
 
     * `@callback` declarations on the contract module itself — the
       contract module *is* the behaviour
-    * `__callbacks__/0` — introspection metadata
+    * `__callbacks__/0` — introspection metadata used by `DoubleDown.Facade`
+      to generate dispatch functions
 
   Contracts are purely static interface definitions. They do **not**
-  generate a dispatch facade (`.Port` module) — that is the concern of
+  generate a dispatch facade — that is the concern of
   `DoubleDown.Facade`, which the consuming application uses separately to
   bind a contract to an OTP application's config.
 
@@ -65,27 +66,69 @@ defmodule DoubleDown.Contract do
   end
 
   @doc """
-  Define a typed port operation.
+  Define a typed callback operation.
+
+  `defcallback` uses a superset of the standard `@callback` syntax,
+  with mandatory parameter names and optional metadata. If your
+  existing `@callback` declarations include parameter names, you can
+  replace `@callback` with `defcallback` and you're done:
+
+      # Standard @callback — already valid as a defcallback
+      @callback get_todo(id :: String.t()) :: {:ok, Todo.t()} | {:error, term()}
+
+      # Equivalent defcallback
+      defcallback get_todo(id :: String.t()) :: {:ok, Todo.t()} | {:error, term()}
+
+  ## Why `defcallback` instead of plain `@callback`?
+
+    * **Parameter names are mandatory.** Plain `@callback` allows
+      unnamed parameters like `@callback get(term(), term()) :: term()`.
+      `defcallback` requires `name :: type()` for every parameter — these
+      are used to generate meaningful `@spec` and `@doc` on the facade.
+
+    * **Combined contract + facade.** `Code.Typespec.fetch_callbacks/1`
+      only works on pre-compiled modules with beam files on disk, ruling
+      out the combined contract + facade pattern entirely. `defcallback`
+      captures metadata at macro expansion time via `__callbacks__/0`,
+      so the contract and facade can live in the same module.
+
+    * **LSP-friendly docs.** Plain `@callback` declarations don't
+      support `@doc` — the best you can do is `#` comments that won't
+      appear in hover docs. With `defcallback`, `@doc` placed above the
+      declaration resolves on both the declaration and on any call site
+      that goes through the facade.
+
+    * **Additional metadata.** `defcallback` supports options like
+      `bang:` (bang variant generation) and `pre_dispatch:` (argument
+      transforms before dispatch). Plain `@callback` has no mechanism
+      for this.
+
+  See [Why `defcallback` instead of plain `@callback`?](docs/getting-started.md#why-defcallback-instead-of-plain-callback)
+  in the Getting Started guide for the full rationale.
 
   ## Syntax
 
       defcallback function_name(param :: type(), ...) :: return_type()
-      defcallback function_name(param :: type(), ...) :: return_type(), bang: option
+      defcallback function_name(param :: type(), ...) :: return_type(), opts
 
-  ## Bang Options
+  ## Options
+
+  ### Bang variants (`:bang`)
 
     * **omitted** — auto-detect: generate bang only if return type contains `{:ok, T}`
     * **`true`** — force standard `{:ok, v}` / `{:error, r}` unwrapping
     * **`false`** — suppress bang generation
     * **`unwrap_fn`** — generate bang using custom unwrap function
 
-  ## Pre-dispatch Transform
+  ### Pre-dispatch transform (`:pre_dispatch`)
 
     * **`:pre_dispatch`** — a function `(args, facade_module) -> args` that
       transforms the argument list before dispatch. The function receives the
       args as a list and the facade module atom, and must return the
       (possibly modified) args list. This is useful for injecting
       facade-specific context into arguments at the dispatch boundary.
+      Most contracts don't need this — the canonical example is
+      `DoubleDown.Repo`'s `transact` operation.
   """
   defmacro defcallback(spec, opts \\ [])
 
