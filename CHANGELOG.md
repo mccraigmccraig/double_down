@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.28.1]
+
+### Changed
+
+- `defcallback` macro `@doc` now includes full rationale for why
+  `defcallback` is used instead of plain `@callback` (parameter names,
+  combined contract+facade, LSP docs, additional metadata).
+- `repo.md`: rollback section, operation dispatch table updated,
+  `{:defer, fn}` references updated to `%DoubleDown.Defer{}`.
+- `DoubleDown.Contract` `@moduledoc`: "typed port contracts" →
+  "contract behaviours".
+
 ## [0.28.0]
 
 ### Added
@@ -475,7 +487,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `DoubleDown.Testing` with NimbleOwnership, `Repo.Test` stateless
   adapter, CI setup, Credo, Dialyzer.
 
-[Unreleased]: https://github.com/mccraigmccraig/double_down/compare/v0.28.0...HEAD
+[Unreleased]: https://github.com/mccraigmccraig/double_down/compare/v0.28.1...HEAD
+[0.28.1]: https://github.com/mccraigmccraig/double_down/compare/v0.28.0...v0.28.1
 [0.28.0]: https://github.com/mccraigmccraig/double_down/compare/v0.27.0...v0.28.0
 [0.27.0]: https://github.com/mccraigmccraig/double_down/compare/v0.26.0...v0.27.0
 [0.26.0]: https://github.com/mccraigmccraig/double_down/compare/v0.25.0...v0.26.0
