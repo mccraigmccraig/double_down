@@ -238,7 +238,7 @@ if Code.ensure_loaded?(Ecto) do
     for `:run` callbacks.
     """
     defcallback transact(fun_or_multi :: term(), opts :: keyword()) ::
-                  {:ok, term()} | {:error, term()},
+                  {:ok, term()} | {:error, term()} | {:error, term(), term(), term()},
                 bang: false,
                 pre_dispatch: fn args, facade_mod ->
                   case args do

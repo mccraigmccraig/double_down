@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.30.1]
+
+### Fixed
+
+- `transact` return type spec now includes the `Ecto.Multi` 4-tuple
+  error shape: `{:error, term(), term(), term()}`. Previously the
+  spec only declared `{:ok, term()} | {:error, term()}`, causing
+  Dialyzer to conclude that code handling Multi's
+  `{:error, failed_op, failed_value, changes_so_far}` return was
+  unreachable.
+
 ## [0.30.0]
 
 ### Added
