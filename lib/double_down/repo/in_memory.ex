@@ -304,6 +304,49 @@ if Code.ensure_loaded?(Ecto) do
     end
 
     # -----------------------------------------------------------------
+    # Opts-accepting variants — strip opts, delegate to base arity.
+    # Ecto.Repo operations all accept an optional opts keyword list as
+    # the last argument. These are called by Ecto.Multi's internal :run
+    # callbacks and by user code passing opts through the facade.
+    # -----------------------------------------------------------------
+
+    def dispatch(:insert, [changeset, _opts], store),
+      do: dispatch(:insert, [changeset], store)
+
+    def dispatch(:update, [changeset, _opts], store),
+      do: dispatch(:update, [changeset], store)
+
+    def dispatch(:delete, [record, _opts], store),
+      do: dispatch(:delete, [record], store)
+
+    def dispatch(:get, [queryable, id, _opts], store),
+      do: dispatch(:get, [queryable, id], store)
+
+    def dispatch(:get!, [queryable, id, _opts], store),
+      do: dispatch(:get!, [queryable, id], store)
+
+    def dispatch(:get_by, [queryable, clauses, _opts], store),
+      do: dispatch(:get_by, [queryable, clauses], store)
+
+    def dispatch(:get_by!, [queryable, clauses, _opts], store),
+      do: dispatch(:get_by!, [queryable, clauses], store)
+
+    def dispatch(:one, [queryable, _opts], store),
+      do: dispatch(:one, [queryable], store)
+
+    def dispatch(:one!, [queryable, _opts], store),
+      do: dispatch(:one!, [queryable], store)
+
+    def dispatch(:all, [queryable, _opts], store),
+      do: dispatch(:all, [queryable], store)
+
+    def dispatch(:exists?, [queryable, _opts], store),
+      do: dispatch(:exists?, [queryable], store)
+
+    def dispatch(:aggregate, [queryable, aggregate, field, _opts], store),
+      do: dispatch(:aggregate, [queryable, aggregate, field], store)
+
+    # -----------------------------------------------------------------
     # get_by / get_by! — 3-stage when clauses include PK, else fallback
     #
     # When the queryable is a bare schema (atom) and the clauses contain

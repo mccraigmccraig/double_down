@@ -68,12 +68,24 @@ if Code.ensure_loaded?(Ecto) do
     defcallback insert(changeset :: Ecto.Changeset.t()) ::
                   {:ok, struct()} | {:error, Ecto.Changeset.t()}
 
+    @doc "Insert a new record from a changeset with options."
+    defcallback insert(changeset :: Ecto.Changeset.t(), opts :: keyword()) ::
+                  {:ok, struct()} | {:error, Ecto.Changeset.t()}
+
     @doc "Update an existing record from a changeset."
     defcallback update(changeset :: Ecto.Changeset.t()) ::
                   {:ok, struct()} | {:error, Ecto.Changeset.t()}
 
+    @doc "Update an existing record from a changeset with options."
+    defcallback update(changeset :: Ecto.Changeset.t(), opts :: keyword()) ::
+                  {:ok, struct()} | {:error, Ecto.Changeset.t()}
+
     @doc "Delete a record."
     defcallback delete(record :: struct()) ::
+                  {:ok, struct()} | {:error, Ecto.Changeset.t()}
+
+    @doc "Delete a record with options."
+    defcallback delete(record :: struct(), opts :: keyword()) ::
                   {:ok, struct()} | {:error, Ecto.Changeset.t()}
 
     # -----------------------------------------------------------------
@@ -105,6 +117,10 @@ if Code.ensure_loaded?(Ecto) do
     @doc "Fetch a single record by primary key. Returns `nil` if not found."
     defcallback get(queryable :: Ecto.Queryable.t(), id :: term()) :: struct() | nil
 
+    @doc "Fetch a single record by primary key with options."
+    defcallback get(queryable :: Ecto.Queryable.t(), id :: term(), opts :: keyword()) ::
+                  struct() | nil
+
     @doc """
     Fetch a single record by primary key, or raise if not found.
 
@@ -112,9 +128,20 @@ if Code.ensure_loaded?(Ecto) do
     """
     defcallback get!(queryable :: Ecto.Queryable.t(), id :: term()) :: struct(), bang: false
 
+    @doc "Fetch a single record by primary key with options, or raise if not found."
+    defcallback get!(queryable :: Ecto.Queryable.t(), id :: term(), opts :: keyword()) :: struct(),
+      bang: false
+
     @doc "Fetch a single record by the given clauses. Returns `nil` if not found."
     defcallback get_by(queryable :: Ecto.Queryable.t(), clauses :: keyword() | map()) ::
                   struct() | nil
+
+    @doc "Fetch a single record by the given clauses with options."
+    defcallback get_by(
+                  queryable :: Ecto.Queryable.t(),
+                  clauses :: keyword() | map(),
+                  opts :: keyword()
+                ) :: struct() | nil
 
     @doc """
     Fetch a single record by the given clauses, or raise if not found.
@@ -124,8 +151,19 @@ if Code.ensure_loaded?(Ecto) do
     defcallback get_by!(queryable :: Ecto.Queryable.t(), clauses :: keyword() | map()) :: struct(),
       bang: false
 
+    @doc "Fetch a single record by the given clauses with options, or raise if not found."
+    defcallback get_by!(
+                  queryable :: Ecto.Queryable.t(),
+                  clauses :: keyword() | map(),
+                  opts :: keyword()
+                ) :: struct(),
+                bang: false
+
     @doc "Fetch a single result from a query. Returns `nil` if no result."
     defcallback one(queryable :: Ecto.Queryable.t()) :: struct() | nil
+
+    @doc "Fetch a single result from a query with options."
+    defcallback one(queryable :: Ecto.Queryable.t(), opts :: keyword()) :: struct() | nil
 
     @doc """
     Fetch a single result from a query, or raise if no result.
@@ -134,15 +172,32 @@ if Code.ensure_loaded?(Ecto) do
     """
     defcallback one!(queryable :: Ecto.Queryable.t()) :: struct(), bang: false
 
+    @doc "Fetch a single result from a query with options, or raise if not found."
+    defcallback one!(queryable :: Ecto.Queryable.t(), opts :: keyword()) :: struct(), bang: false
+
     @doc "Fetch all records matching a queryable."
     defcallback all(queryable :: Ecto.Queryable.t()) :: list(struct())
+
+    @doc "Fetch all records matching a queryable with options."
+    defcallback all(queryable :: Ecto.Queryable.t(), opts :: keyword()) :: list(struct())
 
     @doc "Check whether any record matching the queryable exists."
     defcallback exists?(queryable :: Ecto.Queryable.t()) :: boolean()
 
+    @doc "Check whether any record matching the queryable exists, with options."
+    defcallback exists?(queryable :: Ecto.Queryable.t(), opts :: keyword()) :: boolean()
+
     @doc "Calculate an aggregate over the given field."
     defcallback aggregate(queryable :: Ecto.Queryable.t(), aggregate :: atom(), field :: atom()) ::
                   term()
+
+    @doc "Calculate an aggregate over the given field with options."
+    defcallback aggregate(
+                  queryable :: Ecto.Queryable.t(),
+                  aggregate :: atom(),
+                  field :: atom(),
+                  opts :: keyword()
+                ) :: term()
 
     # -----------------------------------------------------------------
     # Transaction Operations

@@ -66,12 +66,35 @@ defmodule DoubleDown.RepoTest do
     test "Facade (defined via use DoubleDown.Facade) has all operations" do
       {:module, _} = Code.ensure_loaded(Repo.Port)
 
+      # Base arities
       assert function_exported?(Repo.Port, :insert, 1)
       assert function_exported?(Repo.Port, :update, 1)
       assert function_exported?(Repo.Port, :delete, 1)
       assert function_exported?(Repo.Port, :get, 2)
+      assert function_exported?(Repo.Port, :get!, 2)
+      assert function_exported?(Repo.Port, :get_by, 2)
+      assert function_exported?(Repo.Port, :get_by!, 2)
+      assert function_exported?(Repo.Port, :one, 1)
+      assert function_exported?(Repo.Port, :one!, 1)
       assert function_exported?(Repo.Port, :all, 1)
+      assert function_exported?(Repo.Port, :exists?, 1)
+      assert function_exported?(Repo.Port, :aggregate, 3)
       assert function_exported?(Repo.Port, :transact, 2)
+      assert function_exported?(Repo.Port, :rollback, 1)
+
+      # Opts-accepting arities
+      assert function_exported?(Repo.Port, :insert, 2)
+      assert function_exported?(Repo.Port, :update, 2)
+      assert function_exported?(Repo.Port, :delete, 2)
+      assert function_exported?(Repo.Port, :get, 3)
+      assert function_exported?(Repo.Port, :get!, 3)
+      assert function_exported?(Repo.Port, :get_by, 3)
+      assert function_exported?(Repo.Port, :get_by!, 3)
+      assert function_exported?(Repo.Port, :one, 2)
+      assert function_exported?(Repo.Port, :one!, 2)
+      assert function_exported?(Repo.Port, :all, 2)
+      assert function_exported?(Repo.Port, :exists?, 2)
+      assert function_exported?(Repo.Port, :aggregate, 4)
     end
 
     test "Port facade has bang variants for write operations" do
@@ -81,6 +104,11 @@ defmodule DoubleDown.RepoTest do
       assert function_exported?(Repo.Port, :insert!, 1)
       assert function_exported?(Repo.Port, :update!, 1)
       assert function_exported?(Repo.Port, :delete!, 1)
+
+      # Opts-accepting bang variants
+      assert function_exported?(Repo.Port, :insert!, 2)
+      assert function_exported?(Repo.Port, :update!, 2)
+      assert function_exported?(Repo.Port, :delete!, 2)
     end
 
     test "read bang operations are separate ports (not auto-generated bangs)" do
@@ -92,12 +120,9 @@ defmodule DoubleDown.RepoTest do
       assert :one! in ops
     end
 
-    test "__callbacks__ lists all 17 operations" do
+    test "__callbacks__ covers all expected operation names" do
       ops = Repo.__callbacks__()
-
-      assert length(ops) == 17
-
-      op_names = Enum.map(ops, & &1.name) |> Enum.sort()
+      op_names = Enum.map(ops, & &1.name) |> Enum.uniq() |> Enum.sort()
 
       assert op_names == [
                :aggregate,
@@ -126,21 +151,21 @@ defmodule DoubleDown.RepoTest do
   # -------------------------------------------------------------------
 
   defmodule MockRepo do
-    def insert(cs), do: {:ok, Ecto.Changeset.apply_changes(cs)}
-    def update(cs), do: {:ok, Ecto.Changeset.apply_changes(cs)}
-    def delete(record), do: {:ok, record}
+    def insert(cs, _opts \\ []), do: {:ok, Ecto.Changeset.apply_changes(cs)}
+    def update(cs, _opts \\ []), do: {:ok, Ecto.Changeset.apply_changes(cs)}
+    def delete(record, _opts \\ []), do: {:ok, record}
     def insert_all(_s, entries, _o), do: {length(entries), nil}
     def update_all(_q, _u, _o), do: {3, nil}
     def delete_all(_q, _o), do: {5, nil}
-    def get(_q, id), do: %User{id: id, name: "found"}
-    def get!(_q, id), do: %User{id: id, name: "found!"}
-    def get_by(_q, clauses), do: %User{id: 1, name: clauses[:name]}
-    def get_by!(_q, clauses), do: %User{id: 1, name: clauses[:name]}
-    def one(_q), do: %User{id: 1, name: "one"}
-    def one!(_q), do: %User{id: 1, name: "one!"}
-    def all(_q), do: [%User{id: 1}, %User{id: 2}]
-    def exists?(_q), do: true
-    def aggregate(_q, _agg, _f), do: 42
+    def get(_q, id, _opts \\ []), do: %User{id: id, name: "found"}
+    def get!(_q, id, _opts \\ []), do: %User{id: id, name: "found!"}
+    def get_by(_q, clauses, _opts \\ []), do: %User{id: 1, name: clauses[:name]}
+    def get_by!(_q, clauses, _opts \\ []), do: %User{id: 1, name: clauses[:name]}
+    def one(_q, _opts \\ []), do: %User{id: 1, name: "one"}
+    def one!(_q, _opts \\ []), do: %User{id: 1, name: "one!"}
+    def all(_q, _opts \\ []), do: [%User{id: 1}, %User{id: 2}]
+    def exists?(_q, _opts \\ []), do: true
+    def aggregate(_q, _agg, _f, _opts \\ []), do: 42
 
     # The facade's pre_dispatch wraps 1-arity fns into 0-arity thunks,
     # so implementations always receive a 0-arity fn or an Ecto.Multi.

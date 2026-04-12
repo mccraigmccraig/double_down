@@ -139,6 +139,46 @@ if Code.ensure_loaded?(Ecto) do
       {:ok, record}
     end
 
+    # Opts-accepting variants — strip opts, delegate to base arity.
+    # Ecto.Repo operations all accept an optional opts keyword list as
+    # the last argument. These are called by Ecto.Multi's internal :run
+    # callbacks and by user code passing opts through the facade.
+    defp dispatch(:insert, [changeset, _opts], fallback_fn),
+      do: dispatch(:insert, [changeset], fallback_fn)
+
+    defp dispatch(:update, [changeset, _opts], fallback_fn),
+      do: dispatch(:update, [changeset], fallback_fn)
+
+    defp dispatch(:delete, [record, _opts], fallback_fn),
+      do: dispatch(:delete, [record], fallback_fn)
+
+    defp dispatch(:get, [queryable, id, _opts], fallback_fn),
+      do: dispatch(:get, [queryable, id], fallback_fn)
+
+    defp dispatch(:get!, [queryable, id, _opts], fallback_fn),
+      do: dispatch(:get!, [queryable, id], fallback_fn)
+
+    defp dispatch(:get_by, [queryable, clauses, _opts], fallback_fn),
+      do: dispatch(:get_by, [queryable, clauses], fallback_fn)
+
+    defp dispatch(:get_by!, [queryable, clauses, _opts], fallback_fn),
+      do: dispatch(:get_by!, [queryable, clauses], fallback_fn)
+
+    defp dispatch(:one, [queryable, _opts], fallback_fn),
+      do: dispatch(:one, [queryable], fallback_fn)
+
+    defp dispatch(:one!, [queryable, _opts], fallback_fn),
+      do: dispatch(:one!, [queryable], fallback_fn)
+
+    defp dispatch(:all, [queryable, _opts], fallback_fn),
+      do: dispatch(:all, [queryable], fallback_fn)
+
+    defp dispatch(:exists?, [queryable, _opts], fallback_fn),
+      do: dispatch(:exists?, [queryable], fallback_fn)
+
+    defp dispatch(:aggregate, [queryable, aggregate, field, _opts], fallback_fn),
+      do: dispatch(:aggregate, [queryable, aggregate, field], fallback_fn)
+
     # -----------------------------------------------------------------
     # Read and bulk operations — fallback or error
     # -----------------------------------------------------------------

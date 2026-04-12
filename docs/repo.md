@@ -2,7 +2,7 @@
 
 [< Testing](testing.md) | [Up: README](../README.md) | [Migration >](migration.md)
 
-DoubleDown ships a ready-made 17-operation Ecto Repo contract behaviour
+DoubleDown ships a ready-made Ecto Repo contract behaviour
 with two test double implementations (`Repo.Test` and `Repo.InMemory`).
 In production, the dispatch facade passes through to your existing Ecto
 Repo with zero overhead (via static dispatch). The test doubles are
