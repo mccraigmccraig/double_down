@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.30.0]
+
+### Added
+
+- Opts-accepting variants for all `DoubleDown.Repo` contract operations.
+  Every operation now has both a base arity and an `+ opts` arity
+  (e.g. `insert/1` and `insert/2`, `get/2` and `get/3`), matching
+  `Ecto.Repo`'s actual API where every function accepts an optional
+  `opts` keyword list. This fixes `UndefinedFunctionError` when
+  `Ecto.Multi.update/4` (and `insert/4`, `delete/4`) receive a
+  function argument — Multi's internal `:run` callbacks call
+  `repo.update(changeset, opts)` with 2 args, which previously had
+  no matching facade function.
+- `Repo.Test` and `Repo.InMemory` handle opts-accepting dispatches
+  by stripping opts and delegating to base-arity logic.
+
 ## [0.29.0]
 
 ### Added
