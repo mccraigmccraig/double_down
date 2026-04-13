@@ -224,6 +224,7 @@ defmodule DoubleDown.Facade do
   # param_types and return_type as AST tuples (runtime data).
   # We splice them directly with unquote — Elixir treats 3-tuples as AST.
 
+  # credo:disable-for-next-line Credo.Check.Refactor.CyclomaticComplexity
   defp generate_facade(
          %{
            name: name,
@@ -298,7 +299,21 @@ defmodule DoubleDown.Facade do
           end
         end
 
+      static_impl != nil && pre_dispatch == nil ->
+        # Direct call + inline — zero dispatch overhead.
+        # Only possible when there's no pre_dispatch transform.
+        quote do
+          unquote(doc_ast)
+          @compile {:inline, [{unquote(name), unquote(length(param_names))}]}
+          @spec unquote(name)(unquote_splicing(param_types)) :: unquote(return_type)
+          def unquote(name)(unquote_splicing(param_vars)) do
+            unquote(static_impl).unquote(name)(unquote_splicing(param_vars))
+          end
+        end
+
       static_impl != nil ->
+        # Static impl with pre_dispatch — can't inline because args
+        # are transformed at runtime.
         quote do
           unquote(doc_ast)
           @spec unquote(name)(unquote_splicing(param_types)) :: unquote(return_type)
@@ -342,9 +357,14 @@ defmodule DoubleDown.Facade do
           doc =
             "Like `#{name}/#{length(param_names)}` but unwraps `{:ok, value}` or raises on error.\n"
 
+          # Use apply(__MODULE__, ...) to call the non-bang. This prevents
+          # the compiler from inferring the return type through an inlined
+          # non-bang function, which would cause "clause will never match"
+          # warnings on the {:error, reason} branch when the impl's @spec
+          # doesn't include an error return.
           body =
             quote do
-              case unquote({name, [], param_vars}) do
+              case apply(__MODULE__, unquote(name), unquote(param_vars)) do
                 {:ok, value} -> value
                 {:error, reason} -> raise "#{unquote(name)} failed: #{inspect(reason)}"
               end
@@ -358,7 +378,7 @@ defmodule DoubleDown.Facade do
 
           body =
             quote do
-              result = unquote({name, [], param_vars})
+              result = apply(__MODULE__, unquote(name), unquote(param_vars))
 
               case unquote(unwrap_fn_ast).(result) do
                 {:ok, value} -> value
