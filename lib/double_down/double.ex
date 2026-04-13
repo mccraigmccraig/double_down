@@ -569,6 +569,27 @@ defmodule DoubleDown.Double do
     end
   end
 
+  # -- Public API: allow --
+
+  @doc """
+  Allow a child process to use the current process's test doubles.
+
+  Delegates to `DoubleDown.Testing.allow/3`. Use this when spawning
+  Tasks or other processes that need to dispatch through the same
+  test handlers.
+
+      {:ok, pid} = MyApp.Worker.start_link([])
+      DoubleDown.Double.allow(MyContract, pid)
+
+  Also accepts a lazy pid function for processes that don't exist
+  yet at setup time:
+
+      DoubleDown.Double.allow(MyContract, fn -> GenServer.whereis(MyWorker) end)
+  """
+  @spec allow(module(), pid() | (-> pid() | [pid()])) :: :ok | {:error, term()}
+  @spec allow(module(), pid(), pid() | (-> pid() | [pid()])) :: :ok | {:error, term()}
+  defdelegate allow(contract, owner_pid \\ self(), child_pid), to: DoubleDown.Testing
+
   # -- Public API: verify --
 
   @doc """
