@@ -57,7 +57,7 @@ defmodule DoubleDown.Contract do
       # Guard the non-idempotent parts: registering the accumulator attribute
       # and the @before_compile hook. This makes `use DoubleDown.Contract`
       # idempotent, so a module can both `use DoubleDown.Contract` directly and
-      # `use Skuld.Effects.Port.Contract` (which calls it internally).
+      # have it called by a wrapper macro internally.
       unless Module.has_attribute?(__MODULE__, :callback_operations) do
         Module.register_attribute(__MODULE__, :callback_operations, accumulate: true)
         @before_compile DoubleDown.Contract

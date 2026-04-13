@@ -573,8 +573,8 @@ test "queries see records written through Repo" do
   {:ok, _alice} = MyApp.Repo.insert(changeset)
 
   # The Queries handler reads from Repo's InMemory state
-  assert [%User{name: "Alice"}] = MyApp.UserQueries.Port.active_users()
-  assert %User{email: "alice@co.com"} = MyApp.UserQueries.Port.user_by_email("alice@co.com")
+  assert [%User{name: "Alice"}] = MyApp.UserQueries.active_users()
+  assert %User{email: "alice@co.com"} = MyApp.UserQueries.user_by_email("alice@co.com")
 end
 ```
 
