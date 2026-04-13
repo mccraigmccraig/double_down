@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.37.2]
+
+### Fixed
+
+- Module fakes (`Double.fake(contract, Module)`) now run in the
+  calling process instead of the NimbleOwnership GenServer process.
+  Previously `invoke_module_fallback` called `apply(module, op, args)`
+  directly inside `get_and_update`, which meant real implementations
+  doing I/O (e.g. Ecto queries) ran in the GenServer — a process
+  with no Ecto sandbox checkout. Now uses `%Defer{}` to move the
+  `apply` outside the lock, matching how `transact` already works.
+  This fixes `DBConnection.OwnershipError` when using
+  `Double.fake(Repo, Backend.Repo)` in integration tests.
+
 ## [0.37.1]
 
 ### Added
