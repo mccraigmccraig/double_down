@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.31.0]
+
+### Added
+
+- Compile-time spec mismatch detection between `defcallback` type specs
+  and the production implementation's `@spec` declarations. When a
+  facade is compiled with a known static impl, param types and return
+  types are compared and a `CompileError` is raised on mismatch. This
+  catches the class of bug where a `defcallback` declares a narrower
+  type than the impl accepts (e.g. `keyword()` vs `list()`), which
+  would otherwise only surface as a non-local Dialyzer error.
+- `warn_on_typespec_mismatch?: true` option on `defcallback` to
+  downgrade the compile error to a warning for individual operations
+  during migration.
+- `DoubleDown.Contract.SpecWarnings` — private module handling spec
+  fetching, type AST normalization, and comparison.
+
 ## [0.30.1]
 
 ### Fixed
