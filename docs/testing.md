@@ -78,7 +78,24 @@ DoubleDown.Double.expect(MyApp.Todos, :get_todo, fn [id] -> {:ok, %Todo{id: id}}
 A fallback handles any operation without a specific expect or
 per-operation stub. Three forms are supported:
 
-**Stateless stub** — a 2-arity
+**StubHandler module** — a module implementing
+`DoubleDown.Dispatch.StubHandler`. Modules like `Repo.Test` implement
+this and can be used by name:
+
+```elixir
+# Writes only — reads will raise
+DoubleDown.Double.stub(DoubleDown.Repo, DoubleDown.Repo.Test)
+
+# With a fallback function for reads
+DoubleDown.Double.stub(DoubleDown.Repo, DoubleDown.Repo.Test,
+  fn
+    :get, [User, 1] -> %User{id: 1, name: "Alice"}
+    :all, [User] -> [%User{id: 1, name: "Alice"}]
+  end
+)
+```
+
+**Stateless function stub** — a 2-arity
 `fn operation, args -> result end`:
 
 ```elixir
