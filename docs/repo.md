@@ -458,6 +458,47 @@ DoubleDown.Repo
 end)
 ```
 
+### Stateful expects and stubs with `Repo.InMemory`
+
+Expects and per-operation stubs can be 2-arity or 3-arity to read
+and update the InMemory store directly. The state passed to the
+responder is the InMemory store (`%{Schema => %{pk => record}}`):
+
+```elixir
+# 2-arity expect: reject duplicate emails, otherwise passthrough
+DoubleDown.Repo
+|> DoubleDown.Double.fake(DoubleDown.Repo.InMemory)
+|> DoubleDown.Double.stub(:insert, fn [changeset], state ->
+  existing_emails =
+    state
+    |> Map.get(User, %{})
+    |> Map.values()
+    |> Enum.map(& &1.email)
+
+  if Ecto.Changeset.get_field(changeset, :email) in existing_emails do
+    {{:error, Ecto.Changeset.add_error(changeset, :email, "taken")}, state}
+  else
+    # No duplicate — let InMemory handle it normally
+    DoubleDown.Double.passthrough()
+  end
+end)
+```
+
+This is more powerful than 1-arity expects because:
+
+- The responder can **inspect the current store** to make decisions
+  (e.g. check for duplicates, verify foreign keys exist)
+- The responder can **update the store** directly when needed
+- `Double.passthrough()` delegates to InMemory when the responder
+  doesn't want to handle the call — no need to duplicate InMemory's
+  insert logic
+- As a **stub**, it applies to every call indefinitely — no need to
+  guess `times: N`
+
+See [Stateful expect responders](testing.md#stateful-expect-responders)
+and [Stateful per-operation stubs](testing.md#stateful-per-operation-stubs)
+in the Testing guide for the full API.
+
 ### Combining with `DoubleDown.Log`
 
 Double and Log complement each other — Double for controlling return
