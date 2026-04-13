@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.38.0]
+
+### Added
+
+- Static dispatch facades now generate direct function calls
+  (`Module.function(args)`) with `@compile {:inline, ...}` instead
+  of `apply(Module, :function, [args])`. This allows the BEAM to
+  inline facade functions at call sites — zero dispatch overhead,
+  zero extra stack frames. Falls back to `apply` for operations
+  with `pre_dispatch:` transforms where args are computed at runtime.
+
+### Changed
+
+- **Breaking:** Removed auto-bang variant generation from
+  `defcallback`. The `:bang` option is no longer supported. Previously
+  `defcallback insert(...) :: {:ok, T} | {:error, E}` would
+  auto-generate `insert!/1`. This added complexity (bang_mode,
+  extract_success_type, has_ok_error_pattern?) for limited value —
+  Ecto already provides its own bang functions, and the generic
+  wrappers produced unhelpful error messages.
+- `bang: false` is no longer needed on `get!`, `get_by!`, `one!`,
+  `transact`, and `rollback` declarations — they are now regular
+  `defcallback` operations with no special treatment.
+- `bang_mode` removed from `__callbacks__/0` introspection maps.
+
+### Fixed
+
+- Module fakes (`Double.fake(contract, Module)`) now run via
+  `%Defer{}` in the calling process instead of inside the
+  NimbleOwnership GenServer. Fixes `DBConnection.OwnershipError`
+  when using `Double.fake(Repo, Backend.Repo)` for integration
+  tests with real Ecto implementations.
+
 ## [0.37.2]
 
 ### Fixed
