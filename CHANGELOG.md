@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.33.0]
+
+### Added
+
+- Stateful expect responders. `DoubleDown.Double.expect` now accepts
+  2-arity and 3-arity responder functions that can read and update the
+  stateful fake's state:
+  - **2-arity:** `fn [args], state -> {result, new_state} end`
+  - **3-arity:** `fn [args], state, all_states -> {result, new_state} end`
+  (cross-contract state access)
+  
+  Stateful responders require `Double.fake/3` to be called first.
+  `ArgumentError` is raised at `expect` time if no stateful fake is
+  configured, and at dispatch time if the responder doesn't return a
+  `{result, new_state}` tuple. 1-arity expects are unchanged.
+
+### Fixed
+
+- Removed stale "Limitation: no inline passthrough" notes from
+  `DoubleDown.Double` moduledoc and `docs/testing.md` — this
+  limitation no longer exists with stateful expect responders.
+- Fixed historical `.Port.` module name references in docs.
+- Removed stale `Skuld` reference in contract.ex comment.
+
 ## [0.32.0]
 
 ### Added
