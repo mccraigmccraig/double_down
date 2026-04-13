@@ -947,6 +947,17 @@ defmodule DoubleDown.Double do
     :ok
   end
 
+  # -- Internal: behaviour detection --
+
+  defp implements_behaviour?(module, behaviour) do
+    case module.__info__(:attributes)[:behaviour] do
+      nil -> false
+      behaviours when is_list(behaviours) -> behaviour in behaviours
+    end
+  rescue
+    _ -> false
+  end
+
   # -- Internal: module fallback validation --
 
   defp validate_module_fallback!(contract, module) do
