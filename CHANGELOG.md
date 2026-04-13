@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.34.0]
+
+### Added
+
+- `DoubleDown.Double.passthrough/0` — returns a sentinel value that
+  expect responders can return to conditionally delegate to the
+  fallback/fake. The expect is still consumed for `verify!` counting.
+  This enables patterns like "fail if duplicate, otherwise let the
+  fake handle it" without duplicating the fake's logic. Works with
+  all responder arities (1, 2, 3).
+
 ## [0.33.0]
 
 ### Added
