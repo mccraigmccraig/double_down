@@ -172,15 +172,12 @@ Explicitly set timestamps are preserved.
 
 #### Seed data
 
-Pre-populate the store with existing records:
+Pre-populate the store with existing records by passing them as the
+third argument to `Double.fake`:
 
 ```elixir
-DoubleDown.Repo.InMemory.new(
-  seed: [
-    %User{id: 1, name: "Alice"},
-    %Item{id: 1, sku: "widget"}
-  ]
-)
+DoubleDown.Double.fake(DoubleDown.Repo, DoubleDown.Repo.InMemory,
+  [%User{id: 1, name: "Alice"}, %Item{id: 1, sku: "widget"}])
 ```
 
 Seeded records are keyed by their schema module and primary key, and
