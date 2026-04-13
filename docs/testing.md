@@ -107,13 +107,12 @@ end)
 |> DoubleDown.Double.expect(:create_todo, fn [p] -> {:ok, struct!(Todo, p)} end)
 ```
 
-**Stateful fake** — a module implementing
-`DoubleDown.Dispatch.FakeHandler`, or a 3/4-arity function with
-initial state. Fakes like `Repo.InMemory` implement FakeHandler
-and integrate directly by module name:
+**FakeHandler module** — a module implementing
+`DoubleDown.Dispatch.FakeHandler`. Modules like `Repo.InMemory`
+implement this and can be used by name:
 
 ```elixir
-# FakeHandler module — simplest form
+# Default state
 DoubleDown.Repo
 |> DoubleDown.Double.fake(DoubleDown.Repo.InMemory)
 |> DoubleDown.Double.expect(:insert, fn [changeset] ->
@@ -128,8 +127,15 @@ DoubleDown.Double.fake(DoubleDown.Repo, DoubleDown.Repo.InMemory,
 DoubleDown.Double.fake(DoubleDown.Repo, DoubleDown.Repo.InMemory,
   [%User{id: 1, name: "Alice"}],
   fallback_fn: fn :all, [User], state -> Map.values(state[User]) end)
+```
 
-# Function form (still supported)
+**Stateful function fake** — a 3-arity
+`fn op, args, state -> {result, state}` or 4-arity
+`fn op, args, state, all_states -> {result, state}` with initial
+state. 4-arity fakes receive a read-only snapshot of all contract
+states for [cross-contract state access](#cross-contract-state-access):
+
+```elixir
 DoubleDown.Double.fake(DoubleDown.Repo,
   &DoubleDown.Repo.InMemory.dispatch/3,
   DoubleDown.Repo.InMemory.new())
