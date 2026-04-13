@@ -190,8 +190,8 @@ Stateful responders require `fake/3` to be called **before**
 2-arity or 3-arity function without a stateful fake raises
 `ArgumentError` immediately.
 
-**Example: first insert modifies state, second insert fails based
-on that state**
+**Example: insert fails if duplicate email, otherwise delegates to
+the fake**
 
 ```elixir
 DoubleDown.Repo
@@ -199,21 +199,30 @@ DoubleDown.Repo
   &DoubleDown.Repo.InMemory.dispatch/3,
   DoubleDown.Repo.InMemory.new()
 )
+|> DoubleDown.Double.expect(:insert, :passthrough)
 |> DoubleDown.Double.expect(:insert, fn [changeset], state ->
-  # First insert: delegate to InMemory's insert logic manually,
-  # or just pass through and update state
-  record = Ecto.Changeset.apply_changes(changeset)
-  {{:ok, record}, Map.put(state, :last_inserted, record)}
-end)
-|> DoubleDown.Double.expect(:insert, fn [changeset], state ->
-  # Second insert: check what first insert did
-  if state[:last_inserted] do
+  # state is the InMemory store: %{Schema => %{pk => record}}
+  existing_emails =
+    state
+    |> Map.get(User, %{})
+    |> Map.values()
+    |> Enum.map(& &1.email)
+
+  email = Ecto.Changeset.get_field(changeset, :email)
+
+  if email in existing_emails do
     {{:error, Ecto.Changeset.add_error(changeset, :email, "taken")}, state}
   else
-    {{:ok, Ecto.Changeset.apply_changes(changeset)}, state}
+    # No duplicate — let InMemory handle it normally
+    DoubleDown.Double.passthrough()
   end
 end)
 ```
+
+When a responder returns `Double.passthrough()`, the call is
+delegated to the fallback/fake as if it were a `:passthrough` expect.
+The expect is still consumed for `verify!` counting. This avoids
+duplicating the fake's logic in the else branch.
 
 State threads through sequenced expects — each expect sees the
 state left by the previous one. When a 1-arity expect fires

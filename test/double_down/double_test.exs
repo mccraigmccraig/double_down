@@ -534,6 +534,127 @@ defmodule DoubleDown.DoubleTest do
     end
   end
 
+  # ── Double.passthrough() from expect responders ────────────
+
+  describe "Double.passthrough() from expect responders" do
+    test "1-arity responder returning passthrough() delegates to stateful fake" do
+      Counter
+      |> Double.fake(
+        fn
+          :increment, [n], count -> {count + n, count + n}
+          :get_count, [], count -> {count, count}
+        end,
+        0
+      )
+      |> Double.expect(:increment, fn [_n] ->
+        Double.passthrough()
+      end)
+
+      # Passthrough to fake — increments normally
+      assert 5 = Counter.Port.increment(5)
+      assert 5 = Counter.Port.get_count()
+    end
+
+    test "2-arity responder returning passthrough() delegates, state unchanged" do
+      Counter
+      |> Double.fake(
+        fn
+          :increment, [n], count -> {count + n, count + n}
+          :get_count, [], count -> {count, count}
+        end,
+        0
+      )
+      |> Double.expect(:increment, fn [_n], _state ->
+        Double.passthrough()
+      end)
+
+      # Passthrough to fake — state managed by fake, not the expect
+      assert 5 = Counter.Port.increment(5)
+      assert 5 = Counter.Port.get_count()
+    end
+
+    test "3-arity responder returning passthrough() delegates, state unchanged" do
+      Counter
+      |> Double.fake(
+        fn
+          :increment, [n], count -> {count + n, count + n}
+          :get_count, [], count -> {count, count}
+        end,
+        0
+      )
+      |> Double.expect(:increment, fn [_n], _state, _all_states ->
+        Double.passthrough()
+      end)
+
+      assert 5 = Counter.Port.increment(5)
+      assert 5 = Counter.Port.get_count()
+    end
+
+    test "conditional passthrough — handle or delegate based on state" do
+      Counter
+      |> Double.fake(
+        fn
+          :increment, [n], count -> {count + n, count + n}
+          :get_count, [], count -> {count, count}
+        end,
+        0
+      )
+      |> Double.expect(:increment, fn [_n], count ->
+        if count >= 10 do
+          # Over threshold — return error
+          {{:error, :overflow}, count}
+        else
+          # Under threshold — let fake handle it
+          Double.passthrough()
+        end
+      end)
+
+      # First call: count is 0, passthrough to fake, count becomes 5
+      assert 5 = Counter.Port.increment(5)
+      assert 5 = Counter.Port.get_count()
+    end
+
+    test "passthrough() expect is consumed for verify! counting" do
+      Counter
+      |> Double.fake(
+        fn
+          :increment, [n], count -> {count + n, count + n}
+          :get_count, [], count -> {count, count}
+        end,
+        0
+      )
+      |> Double.expect(:increment, fn [_n] ->
+        Double.passthrough()
+      end)
+
+      assert 5 = Counter.Port.increment(5)
+
+      # verify! succeeds — the expect was consumed
+      Double.verify!()
+    end
+
+    test "passthrough() works with module fake" do
+      Greeter
+      |> Double.fake(Greeter.Impl)
+      |> Double.expect(:greet, fn [_name] ->
+        Double.passthrough()
+      end)
+
+      # Delegates to Greeter.Impl
+      assert "Hello, Alice!" = Greeter.Port.greet("Alice")
+    end
+
+    test "passthrough() works with fn fallback" do
+      Greeter
+      |> Double.stub(fn :greet, [name] -> "stub: #{name}" end)
+      |> Double.expect(:greet, fn [_name] ->
+        Double.passthrough()
+      end)
+
+      assert "stub: Alice" = Greeter.Port.greet("Alice")
+    end
+  end
+
   # ── dispatch with unexpected operations ───────────────────
 
   describe "unexpected operations" do

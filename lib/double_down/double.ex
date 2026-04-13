@@ -161,6 +161,31 @@ defmodule DoubleDown.Double do
   @ownership_server DoubleDown.Dispatch.Ownership
   @contracts_key DoubleDown.Double.Contracts
 
+  # -- Public API: passthrough sentinel --
+
+  @doc """
+  Return a passthrough sentinel for use in expect responders.
+
+  When returned from an expect responder, delegates the call to the
+  fallback/fake as if the expect had been registered with `:passthrough`.
+  The expect is still consumed for `verify!` counting.
+
+  This enables conditional passthrough — the responder can inspect
+  the state and decide whether to handle the call or delegate:
+
+      DoubleDown.Repo
+      |> Double.fake(&Repo.InMemory.dispatch/3, Repo.InMemory.new())
+      |> Double.expect(:insert, fn [changeset], state ->
+        if duplicate?(state, changeset) do
+          {{:error, add_error(changeset, :email, "taken")}, state}
+        else
+          Double.passthrough()
+        end
+      end)
+  """
+  @spec passthrough() :: DoubleDown.Dispatch.Passthrough.t()
+  def passthrough, do: %DoubleDown.Dispatch.Passthrough{}
+
   # -- Public API: expect --
 
   @doc """
@@ -520,14 +545,26 @@ defmodule DoubleDown.Double do
 
   # Invoke an expect responder. 1-arity is stateless (bare result).
   # 2-arity and 3-arity are stateful (return {result, new_fallback_state}).
-  defp invoke_expect(fun, args, state, _all_states, _operation)
+  #
+  # Any arity may return %DoubleDown.Dispatch.Passthrough{} to delegate to the
+  # fallback/fake. The expect is still consumed for verify! counting.
+  defp invoke_expect(fun, args, state, all_states, operation)
        when is_function(fun, 1) do
-    {fun.(args), state}
+    case fun.(args) do
+      %DoubleDown.Dispatch.Passthrough{} ->
+        invoke_fallback_or_raise(state, operation, args, all_states)
+
+      result ->
+        {result, state}
+    end
   end
 
-  defp invoke_expect(fun, args, state, _all_states, operation)
+  defp invoke_expect(fun, args, state, all_states, operation)
        when is_function(fun, 2) do
     case fun.(args, state.fallback_state) do
+      %DoubleDown.Dispatch.Passthrough{} ->
+        invoke_fallback_or_raise(state, operation, args, all_states)
+
       {result, new_fallback_state} ->
         {result, %{state | fallback_state: new_fallback_state}}
 
@@ -539,6 +576,9 @@ defmodule DoubleDown.Double do
   defp invoke_expect(fun, args, state, all_states, operation)
        when is_function(fun, 3) do
     case fun.(args, state.fallback_state, all_states) do
+      %DoubleDown.Dispatch.Passthrough{} ->
+        invoke_fallback_or_raise(state, operation, args, all_states)
+
       {result, new_fallback_state} ->
         {result, %{state | fallback_state: new_fallback_state}}
 
