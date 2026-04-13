@@ -879,13 +879,14 @@ defmodule DoubleDown.Double do
       {%DoubleDown.Dispatch.Defer{fn: fn -> reraise msg, __STACKTRACE__ end}, state}
   end
 
+  # Module fallback: defer the apply to the calling process via %Defer{}.
+  # This is critical — the canonical_handler runs inside NimbleOwnership's
+  # get_and_update (GenServer process). Real implementation modules do I/O
+  # (e.g. Ecto queries) that require the calling process's context (sandbox
+  # checkout, process dictionary, etc.). %Defer{} moves the apply outside
+  # the lock, same mechanism transact uses.
   defp invoke_module_fallback(module, state, operation, args) do
-    result = apply(module, operation, args)
-    {result, state}
-  rescue
-    UndefinedFunctionError ->
-      msg = unexpected_call_message(state.contract, state, operation, args)
-      {%DoubleDown.Dispatch.Defer{fn: fn -> reraise msg, __STACKTRACE__ end}, state}
+    {%DoubleDown.Dispatch.Defer{fn: fn -> apply(module, operation, args) end}, state}
   end
 
   defp unexpected_call_message(contract, %{expects: expects}, operation, args) do
