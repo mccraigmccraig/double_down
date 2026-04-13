@@ -178,6 +178,17 @@ defmodule DoubleDown.Facade do
 
     operations = fetch_operations!(contract, env)
 
+    # When the impl is known at compile time, check that defcallback
+    # type specs match the impl's @spec declarations.
+    if static_impl do
+      DoubleDown.Contract.SpecWarnings.check_specs!(
+        env.module,
+        static_impl,
+        operations,
+        env
+      )
+    end
+
     facades =
       Enum.map(
         operations,
@@ -444,6 +455,7 @@ defmodule DoubleDown.Facade do
          return_type: return_type,
          bang_mode: bang_mode,
          pre_dispatch: pre_dispatch,
+         warn_on_typespec_mismatch?: warn_on_typespec_mismatch?,
          user_doc: user_doc
        }) do
     %{
@@ -453,6 +465,7 @@ defmodule DoubleDown.Facade do
       return_type: return_type,
       bang_mode: bang_mode,
       pre_dispatch: pre_dispatch,
+      warn_on_typespec_mismatch?: warn_on_typespec_mismatch?,
       user_doc: user_doc,
       arity: length(param_names)
     }

@@ -135,7 +135,16 @@ defmodule DoubleDown.Contract do
   defmacro defcallback({:"::", _meta, [call_ast, return_type_ast]}, opts) do
     bang_opt = Keyword.get(opts, :bang, :auto)
     pre_dispatch_opt = Keyword.get(opts, :pre_dispatch, nil)
-    build_defcallback_ast(call_ast, return_type_ast, bang_opt, pre_dispatch_opt, __CALLER__)
+    warn_on_typespec_mismatch? = Keyword.get(opts, :warn_on_typespec_mismatch?, false)
+
+    build_defcallback_ast(
+      call_ast,
+      return_type_ast,
+      bang_opt,
+      pre_dispatch_opt,
+      warn_on_typespec_mismatch?,
+      __CALLER__
+    )
   end
 
   defmacro defcallback(other, _opts) do
@@ -149,7 +158,14 @@ defmodule DoubleDown.Contract do
 
   # -- AST capture (at macro expansion time) --
 
-  defp build_defcallback_ast(call_ast, return_type_ast, bang_opt, pre_dispatch_opt, caller) do
+  defp build_defcallback_ast(
+         call_ast,
+         return_type_ast,
+         bang_opt,
+         pre_dispatch_opt,
+         warn_on_typespec_mismatch?,
+         caller
+       ) do
     {name, params} = parse_call(call_ast, caller)
 
     param_names = Enum.map(params, &elem(&1, 0))
@@ -174,6 +190,7 @@ defmodule DoubleDown.Contract do
       return_type: return_type_ast,
       bang_mode: bang_mode,
       pre_dispatch: pre_dispatch_opt,
+      warn_on_typespec_mismatch?: warn_on_typespec_mismatch?,
       user_doc: nil
     }
 
@@ -300,6 +317,7 @@ defmodule DoubleDown.Contract do
                                 return_type: return_type,
                                 bang_mode: bang_mode,
                                 pre_dispatch: pre_dispatch,
+                                warn_on_typespec_mismatch?: warn_on_typespec_mismatch?,
                                 user_doc: user_doc
                               } ->
         quote do
@@ -310,6 +328,7 @@ defmodule DoubleDown.Contract do
             return_type: unquote(Macro.escape(return_type)),
             bang_mode: unquote(Macro.escape(bang_mode)),
             pre_dispatch: unquote(Macro.escape(pre_dispatch)),
+            warn_on_typespec_mismatch?: unquote(warn_on_typespec_mismatch?),
             user_doc: unquote(Macro.escape(user_doc)),
             arity: unquote(length(param_names))
           }
