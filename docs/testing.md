@@ -229,6 +229,41 @@ state left by the previous one. When a 1-arity expect fires
 between stateful expects, the state is unchanged (1-arity expects
 don't touch state).
 
+### Stateful per-operation stubs
+
+Per-operation stubs support the same arities as expects — 1-arity
+(stateless), 2-arity (stateful), and 3-arity (cross-contract).
+All arities can return `Double.passthrough()`.
+
+This is the natural fit when you want to intercept every call to
+an operation and decide per-call whether to handle or delegate,
+without knowing the call count in advance:
+
+```elixir
+DoubleDown.Repo
+|> DoubleDown.Double.fake(
+  &DoubleDown.Repo.InMemory.dispatch/3,
+  DoubleDown.Repo.InMemory.new()
+)
+|> DoubleDown.Double.stub(:insert, fn [changeset], state ->
+  existing_emails =
+    state
+    |> Map.get(User, %{})
+    |> Map.values()
+    |> Enum.map(& &1.email)
+
+  if Ecto.Changeset.get_field(changeset, :email) in existing_emails do
+    {{:error, Ecto.Changeset.add_error(changeset, :email, "taken")}, state}
+  else
+    DoubleDown.Double.passthrough()
+  end
+end)
+```
+
+Unlike expects, stubs are not consumed — they handle every call
+indefinitely. Stateful stubs require `fake/3` to be called first,
+same as stateful expects.
+
 ### Multi-contract
 
 ```elixir

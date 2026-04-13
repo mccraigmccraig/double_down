@@ -282,12 +282,23 @@ defmodule DoubleDown.Double do
   @doc """
   Add a stub for a contract operation or a stateless function fallback.
 
-  ## Per-operation stub (1-arity function)
+  ## Per-operation stub
 
   The function receives the argument list and returns the result.
   Stubs handle any number of calls and are used after all expectations
   for an operation are consumed. Setting a stub twice for the same
   operation replaces the previous one.
+
+  The function may be:
+
+    * **1-arity** `fn [args] -> result end` — stateless
+    * **2-arity** `fn [args], state -> {result, new_state} end` — stateful
+      (requires `fake/3` first)
+    * **3-arity** `fn [args], state, all_states -> {result, new_state} end` —
+      cross-contract state access (requires `fake/3` first)
+
+  Any arity may return `Double.passthrough()` to delegate to the
+  fallback/fake for that specific call.
 
       DoubleDown.Double.stub(MyContract, :list, fn [_] -> [] end)
 
@@ -324,11 +335,17 @@ defmodule DoubleDown.Double do
     contract
   end
 
-  # stub/3 — per-operation stub
+  # stub/3 — per-operation stub (1, 2, or 3-arity)
   @spec stub(module(), atom(), function()) :: module()
   def stub(contract, operation, fun)
-      when is_atom(contract) and is_atom(operation) and is_function(fun, 1) do
+      when is_atom(contract) and is_atom(operation) and
+             (is_function(fun, 1) or is_function(fun, 2) or is_function(fun, 3)) do
     ensure_handler_installed(contract)
+
+    # Stateful stubs (2-arity, 3-arity) require a stateful fake
+    if not is_function(fun, 1) do
+      validate_stateful_fake_exists!(contract, operation, fun)
+    end
 
     update_handler_state(contract, fn state ->
       %{state | stubs: Map.put(state.stubs, operation, fun)}
@@ -538,7 +555,7 @@ defmodule DoubleDown.Double do
             invoke_fallback_or_raise(state, operation, args, all_states)
 
           stub_fun ->
-            {stub_fun.(args), state}
+            invoke_stub(stub_fun, args, state, all_states, operation)
         end
     end
   end
@@ -569,7 +586,7 @@ defmodule DoubleDown.Double do
         {result, %{state | fallback_state: new_fallback_state}}
 
       other ->
-        raise_bad_stateful_expect_return(operation, 2, other)
+        raise_bad_stateful_responder_return(:expect, operation, 2, other)
     end
   end
 
@@ -583,18 +600,58 @@ defmodule DoubleDown.Double do
         {result, %{state | fallback_state: new_fallback_state}}
 
       other ->
-        raise_bad_stateful_expect_return(operation, 3, other)
+        raise_bad_stateful_responder_return(:expect, operation, 3, other)
     end
   end
 
-  defp raise_bad_stateful_expect_return(operation, arity, got) do
+  # Invoke a per-operation stub. Same arity dispatch as invoke_expect.
+  defp invoke_stub(fun, args, state, all_states, operation)
+       when is_function(fun, 1) do
+    case fun.(args) do
+      %DoubleDown.Dispatch.Passthrough{} ->
+        invoke_fallback_or_raise(state, operation, args, all_states)
+
+      result ->
+        {result, state}
+    end
+  end
+
+  defp invoke_stub(fun, args, state, all_states, operation)
+       when is_function(fun, 2) do
+    case fun.(args, state.fallback_state) do
+      %DoubleDown.Dispatch.Passthrough{} ->
+        invoke_fallback_or_raise(state, operation, args, all_states)
+
+      {result, new_fallback_state} ->
+        {result, %{state | fallback_state: new_fallback_state}}
+
+      other ->
+        raise_bad_stateful_responder_return(:stub, operation, 2, other)
+    end
+  end
+
+  defp invoke_stub(fun, args, state, all_states, operation)
+       when is_function(fun, 3) do
+    case fun.(args, state.fallback_state, all_states) do
+      %DoubleDown.Dispatch.Passthrough{} ->
+        invoke_fallback_or_raise(state, operation, args, all_states)
+
+      {result, new_fallback_state} ->
+        {result, %{state | fallback_state: new_fallback_state}}
+
+      other ->
+        raise_bad_stateful_responder_return(:stub, operation, 3, other)
+    end
+  end
+
+  defp raise_bad_stateful_responder_return(kind, operation, arity, got) do
     raise ArgumentError, """
-    Stateful expect responder for :#{operation} must return {result, new_state}.
+    Stateful #{kind} responder for :#{operation} must return {result, new_state}.
 
     Got: #{inspect(got)}
 
-    #{arity}-arity expect responders must return a {result, new_fallback_state} tuple. \
-    Use a 1-arity fn [args] -> result end for stateless expects that return bare results.
+    #{arity}-arity #{kind} responders must return a {result, new_fallback_state} tuple. \
+    Use a 1-arity fn [args] -> result end for stateless #{kind}s that return bare results.
     """
   end
 
