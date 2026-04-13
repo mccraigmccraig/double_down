@@ -177,8 +177,12 @@ end
 
 - **[Getting Started](docs/getting-started.md)** — contracts, facades,
   dispatch resolution, terminology
-- **[Testing](docs/testing.md)** — Double expect/stub/fake, dispatch
-  logging, Log matchers, async safety, process sharing
+- **[Testing](docs/testing.md)** — Double expect/stub/fake, stateful
+  responders, cross-contract state access
+- **[Logging](docs/logging.md)** — dispatch logging, Log matchers,
+  structured log assertions
+- **[Process Sharing](docs/process-sharing.md)** — async safety, allow,
+  global mode, supervision tree testing
 - **[Repo](docs/repo.md)** — built-in Ecto Repo contract, `Repo.Test`,
   `Repo.InMemory`, failure scenario testing
 - **[Migration](docs/migration.md)** — incremental adoption, coexisting

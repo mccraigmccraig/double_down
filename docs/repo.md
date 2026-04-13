@@ -1,6 +1,6 @@
 # Repo
 
-[< Testing](testing.md) | [Up: README](../README.md) | [Migration >](migration.md)
+[< Process Sharing](process-sharing.md) | [Up: README](../README.md) | [Migration >](migration.md)
 
 DoubleDown ships a ready-made Ecto Repo contract behaviour
 with two test double implementations (`Repo.Test` and `Repo.InMemory`).
@@ -611,4 +611,4 @@ then use the Ecto adapter in integration tests for the full stack.
 
 ---
 
-[< Testing](testing.md) | [Up: README](../README.md) | [Migration >](migration.md)
+[< Process Sharing](process-sharing.md) | [Up: README](../README.md) | [Migration >](migration.md)
