@@ -156,10 +156,39 @@ MyApp.Todos
 |> DoubleDown.Double.expect(:create_todo, fn [_] -> {:error, :conflict} end)
 ```
 
-The module is validated at `fake` time. Note: if the module's
-`:bar` internally calls `:foo` and you've stubbed `:foo`, the module
-won't see your stub — it calls its own `:foo` directly. For stubs to
-be visible, the module must call through the facade.
+The module is validated at `fake` time.
+
+**Important caveat:** if the module's internal implementation calls
+other operations directly, your stubs and expects won't intercept
+those internal calls — only calls that go through the facade are
+dispatched:
+
+```elixir
+# Given this implementation:
+defmodule MyApp.Todos.Ecto do
+  def create_todo(params) do
+    changeset = Todo.changeset(params)
+    # This calls insert directly — NOT through the facade
+    MyApp.EctoRepo.insert(changeset)
+  end
+end
+
+# This expect will NOT fire when create_todo calls insert internally:
+MyApp.Todos
+|> Double.fake(MyApp.Todos.Ecto)
+|> Double.expect(:insert, fn [_] -> {:error, :conflict} end)
+#                ^^^^^^^ never called — create_todo bypasses the facade
+
+# To make stubs/expects visible to internal calls, the implementation
+# must call through the facade:
+defmodule MyApp.Todos.Ecto do
+  def create_todo(params) do
+    changeset = Todo.changeset(params)
+    # This goes through dispatch — stubs and expects will intercept it
+    MyApp.Todos.insert(changeset)
+  end
+end
+```
 
 Dispatch priority: expects > per-operation stubs > fallback/fake > raise.
 
