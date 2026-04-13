@@ -140,8 +140,8 @@ defmodule MyApp.BillingTest do
       {:ok, %PaymentMethod{id: 1, type: :card}}
     end)
 
-    # Repo — stateless writes via Repo.Test fake
-    DoubleDown.Double.stub(DoubleDown.Repo, DoubleDown.Repo.Test.new())
+    # Repo — stateless writes via Repo.Test stub
+    DoubleDown.Double.stub(DoubleDown.Repo, DoubleDown.Repo.Test)
 
     :ok
   end

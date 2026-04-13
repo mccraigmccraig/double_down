@@ -227,6 +227,63 @@ defmodule DoubleDown.DoubleTest do
     end
   end
 
+  # ── StubHandler module-based stub ──────────────────────────
+
+  describe "StubHandler module-based stub" do
+    alias DoubleDown.Repo
+    alias DoubleDown.Test.SimpleUser
+
+    test "stub/2 with StubHandler module — writes only" do
+      Double.stub(Repo, Repo.Test)
+
+      {:ok, user} = Repo.Port.insert(SimpleUser.changeset(%{name: "Alice"}))
+      assert %SimpleUser{name: "Alice"} = user
+    end
+
+    test "stub/2 with StubHandler — reads raise without fallback" do
+      Double.stub(Repo, Repo.Test)
+
+      assert_raise ArgumentError, ~r/cannot service :all/, fn ->
+        Repo.Port.all(SimpleUser)
+      end
+    end
+
+    test "stub/3 with StubHandler module and fallback_fn" do
+      Double.stub(Repo, Repo.Test, fn :all, [SimpleUser] ->
+        [%SimpleUser{id: 1, name: "Alice"}]
+      end)
+
+      assert [%SimpleUser{name: "Alice"}] = Repo.Port.all(SimpleUser)
+    end
+
+    test "stub/3 with StubHandler supports expects" do
+      Repo
+      |> Double.stub(Repo.Test)
+      |> Double.expect(:insert, fn [_changeset] -> {:error, :conflict} end)
+
+      assert {:error, :conflict} = Repo.Port.insert(SimpleUser.changeset(%{name: "Bob"}))
+
+      assert {:ok, %SimpleUser{name: "Bob"}} =
+               Repo.Port.insert(SimpleUser.changeset(%{name: "Bob"}))
+    end
+
+    test "stub/2 with non-StubHandler module raises" do
+      assert_raise ArgumentError, ~r/does not implement.*StubHandler/, fn ->
+        Double.stub(Greeter, Greeter.Impl)
+      end
+    end
+
+    test "returns contract module for piping" do
+      result = Double.stub(Repo, Repo.Test)
+      assert result == Repo
+    end
+
+    test "per-operation stub/3 still works with operation atom" do
+      Double.stub(Greeter, :greet, fn [name] -> "stub: #{name}" end)
+      assert "stub: Alice" = Greeter.Port.greet("Alice")
+    end
+  end
+
   describe "stub/2 function fallback" do
     test "returns contract module for piping" do
       result = Double.stub(Greeter, fn _op, _args -> :fallback end)

@@ -21,6 +21,8 @@
 #
 if Code.ensure_loaded?(Ecto) do
   defmodule DoubleDown.Repo.Test do
+    @behaviour DoubleDown.Dispatch.StubHandler
+
     @moduledoc """
     Stateless test handler for `DoubleDown.Repo`.
 
@@ -69,33 +71,54 @@ if Code.ensure_loaded?(Ecto) do
     Create a new Test handler function.
 
     Returns a 2-arity function `(operation, args) -> result` suitable for
-    use with `DoubleDown.Testing.set_fn_handler/2`.
+    use with `DoubleDown.Double.stub/2` or `DoubleDown.Testing.set_fn_handler/2`.
 
-    ## Options
+    ## Arguments
 
-      * `:fallback_fn` - a 2-arity function `(operation, args) -> result` that
-        handles read operations. If the function raises `FunctionClauseError`
-        (no matching clause), dispatch falls through to an error. If omitted,
-        all reads raise immediately.
+      * `fallback_fn` — an optional 2-arity function `(operation, args) -> result`
+        that handles read operations. If the function raises `FunctionClauseError`
+        (no matching clause), dispatch falls through to an error. If omitted or
+        `nil`, all reads raise immediately.
+      * `opts` — keyword options (reserved for future use).
 
     ## Examples
 
-        # Writes only
-        DoubleDown.Repo.Test.new()
+        # Writes only — via module name (StubHandler)
+        DoubleDown.Double.stub(DoubleDown.Repo, DoubleDown.Repo.Test)
 
         # With fallback for specific reads
-        DoubleDown.Repo.Test.new(
-          fallback_fn: fn
+        DoubleDown.Double.stub(DoubleDown.Repo, DoubleDown.Repo.Test,
+          fn
             :get, [User, 1] -> %User{id: 1, name: "Alice"}
             :all, [User] -> [%User{id: 1, name: "Alice"}]
             :exists?, [User] -> true
           end
         )
-    """
-    @spec new(keyword()) :: (atom(), [term()] -> term())
-    def new(opts \\ []) do
-      fallback_fn = Keyword.get(opts, :fallback_fn, nil)
 
+    ## Legacy keyword-only form (still supported)
+
+        DoubleDown.Repo.Test.new(fallback_fn: fn :get, [User, 1] -> %User{} end)
+    """
+    @impl DoubleDown.Dispatch.StubHandler
+    @spec new((atom(), [term()] -> term()) | nil, keyword()) :: (atom(), [term()] -> term())
+    def new(fallback_fn \\ nil, opts \\ [])
+
+    # Legacy keyword-only form: new(fallback_fn: fn ...)
+    def new(opts, []) when is_list(opts) and opts != [] do
+      if Keyword.keyword?(opts) do
+        fallback_fn = Keyword.get(opts, :fallback_fn, nil)
+        build_handler(fallback_fn)
+      else
+        # Not a keyword list — shouldn't happen, but handle gracefully
+        build_handler(nil)
+      end
+    end
+
+    def new(fallback_fn, _opts) do
+      build_handler(fallback_fn)
+    end
+
+    defp build_handler(fallback_fn) do
       fn operation, args ->
         dispatch(operation, args, fallback_fn)
       end

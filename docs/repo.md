@@ -68,23 +68,20 @@ and return `{:ok, struct}`, but nothing is stored. Read operations
 delegate to an optional fallback function, or raise with an actionable
 error message.
 
-`Repo.Test.new/1` returns a 2-arity function suitable for use as a
-`Double.stub` fallback:
+`Repo.Test` implements `DoubleDown.Dispatch.StubHandler` and can be
+used by module name with `Double.stub`:
 
 ```elixir
 # Writes only — reads will raise with a suggestion:
-DoubleDown.Double.stub(DoubleDown.Repo, DoubleDown.Repo.Test.new())
+DoubleDown.Double.stub(DoubleDown.Repo, DoubleDown.Repo.Test)
 
 # With fallback for reads:
-DoubleDown.Double.stub(
-  DoubleDown.Repo,
-  DoubleDown.Repo.Test.new(
-    fallback_fn: fn
-      :get, [User, 1] -> %User{id: 1, name: "Alice"}
-      :all, [User] -> [%User{id: 1, name: "Alice"}]
-      :exists?, [User] -> true
-    end
-  )
+DoubleDown.Double.stub(DoubleDown.Repo, DoubleDown.Repo.Test,
+  fn
+    :get, [User, 1] -> %User{id: 1, name: "Alice"}
+    :all, [User] -> [%User{id: 1, name: "Alice"}]
+    :exists?, [User] -> true
+  end
 )
 ```
 
@@ -381,7 +378,7 @@ should fail:
 ```elixir
 setup do
   DoubleDown.Repo
-  |> DoubleDown.Double.stub(DoubleDown.Repo.Test.new())
+  |> DoubleDown.Double.stub(DoubleDown.Repo.Test)
   |> DoubleDown.Double.expect(:insert, fn [changeset] ->
     {:error, Ecto.Changeset.add_error(changeset, :email, "has already been taken")}
   end)

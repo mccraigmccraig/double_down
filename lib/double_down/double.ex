@@ -314,16 +314,28 @@ defmodule DoubleDown.Double do
         :count, [] -> 0
       end)
 
+  ## StubHandler module
+
+  A module implementing `DoubleDown.Dispatch.StubHandler`. The module's
+  `new/2` builds a dispatch function from an optional fallback:
+
+      # Writes only — reads will raise
+      DoubleDown.Double.stub(MyContract, DoubleDown.Repo.Test)
+
+      # With fallback for reads
+      DoubleDown.Double.stub(MyContract, DoubleDown.Repo.Test,
+        fn :all, [User] -> [] end)
+
   For stateful fakes and module delegation, see `fake/2` and `fake/3`.
 
   Dispatch priority: expects > per-operation stubs > fallback/fake > raise.
-  Function fallback, stateful fake, and module fake are mutually
-  exclusive — setting one replaces the other.
+  Function fallback, StubHandler, stateful fake, and module fake are
+  mutually exclusive — setting one replaces the other.
 
   Returns the contract module for piping.
   """
-  # stub/2 — function fallback
-  @spec stub(module(), function()) :: module()
+  # stub/2 — function fallback or StubHandler module
+  @spec stub(module(), function() | module()) :: module()
   def stub(contract, fun)
       when is_atom(contract) and is_function(fun, 2) do
     ensure_handler_installed(contract)
@@ -335,11 +347,39 @@ defmodule DoubleDown.Double do
     contract
   end
 
-  # stub/3 — per-operation stub (1, 2, or 3-arity)
-  @spec stub(module(), atom(), function()) :: module()
-  def stub(contract, operation, fun)
-      when is_atom(contract) and is_atom(operation) and
-             (is_function(fun, 1) or is_function(fun, 2) or is_function(fun, 3)) do
+  def stub(contract, module)
+      when is_atom(contract) and is_atom(module) do
+    do_stub_handler(contract, module, nil, [])
+  end
+
+  # stub/3 — per-operation stub OR StubHandler module with fallback_fn
+  #
+  # Disambiguation: if the second arg is an atom and the third is a 2-arity
+  # function or nil, check if the second arg is a StubHandler module.
+  # Per-operation stubs have a 1/2/3-arity function as the third arg.
+  @spec stub(module(), atom(), function() | nil) :: module()
+  def stub(contract, module_or_operation, fun_or_fallback)
+
+  def stub(contract, module, fallback_fn)
+      when is_atom(contract) and is_atom(module) and is_nil(fallback_fn) do
+    # nil third arg — must be StubHandler
+    do_stub_handler(contract, module, nil, [])
+  end
+
+  def stub(contract, module_or_op, fun)
+      when is_atom(contract) and is_atom(module_or_op) and is_function(fun) do
+    # Function third arg — could be per-op stub or StubHandler with fallback.
+    # Check if second arg is a StubHandler module AND fun is 2-arity (fallback shape).
+    if is_function(fun, 2) and stub_handler?(module_or_op) do
+      do_stub_handler(contract, module_or_op, fun, [])
+    else
+      # Per-operation stub
+      do_per_op_stub(contract, module_or_op, fun)
+    end
+  end
+
+  defp do_per_op_stub(contract, operation, fun)
+       when is_function(fun, 1) or is_function(fun, 2) or is_function(fun, 3) do
     ensure_handler_installed(contract)
 
     # Stateful stubs (2-arity, 3-arity) require a stateful fake
@@ -352,6 +392,41 @@ defmodule DoubleDown.Double do
     end)
 
     contract
+  end
+
+  # stub/4 — StubHandler module with fallback_fn and opts
+  @spec stub(module(), module(), (atom(), [term()] -> term()) | nil, keyword()) :: module()
+  def stub(contract, module, fallback_fn, opts)
+      when is_atom(contract) and is_atom(module) and
+             (is_function(fallback_fn, 2) or is_nil(fallback_fn)) and
+             is_list(opts) do
+    do_stub_handler(contract, module, fallback_fn, opts)
+  end
+
+  defp do_stub_handler(contract, module, fallback_fn, opts) do
+    unless stub_handler?(module) do
+      raise ArgumentError, """
+      #{inspect(module)} does not implement the DoubleDown.Dispatch.StubHandler behaviour.
+
+      To use a module with Double.stub/2..4, it must implement:
+        @behaviour DoubleDown.Dispatch.StubHandler
+        @callback new(fallback_fn, opts) :: (atom(), [term()] -> term())
+      """
+    end
+
+    handler_fn = module.new(fallback_fn, opts)
+
+    ensure_handler_installed(contract)
+
+    update_handler_state(contract, fn state ->
+      %{state | fallback: {:fn, handler_fn}}
+    end)
+
+    contract
+  end
+
+  defp stub_handler?(module) do
+    Code.ensure_loaded?(module) and function_exported?(module, :new, 2)
   end
 
   # -- Public API: fake --
