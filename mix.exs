@@ -22,6 +22,8 @@ defmodule DoubleDown.MixProject do
           "README.md",
           "docs/getting-started.md",
           "docs/testing.md",
+          "docs/logging.md",
+          "docs/process-sharing.md",
           "docs/repo.md",
           "docs/migration.md",
           "CHANGELOG.md"
@@ -33,6 +35,8 @@ defmodule DoubleDown.MixProject do
           ],
           Guides: [
             "docs/testing.md",
+            "docs/logging.md",
+            "docs/process-sharing.md",
             "docs/repo.md",
             "docs/migration.md"
           ],
