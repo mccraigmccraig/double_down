@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.39.0]
+
+### Added
+
+- `DoubleDown.Dynamic` — Mimic-style dynamic dispatch facades.
+  `Dynamic.setup(Module)` copies a module's bytecode to a backup
+  and replaces it with a dispatch shim, enabling the full Double
+  API (expects, stubs, fakes, stateful responders, passthrough,
+  cross-contract state access) without defining a contract or
+  facade. Call in `test_helper.exs` before `ExUnit.start()`.
+  Tests that don't install a handler get the original module's
+  behaviour automatically. Async-safe.
+- Guardrails: `Dynamic.setup/1` refuses DoubleDown contracts,
+  DoubleDown internals, NimbleOwnership, and Erlang/OTP modules.
+- `Dynamic.setup?/1` — check if a module has been set up.
+- `Dynamic.original_module/1` — get the backup module name.
+- `docs/dynamic.md` — full documentation with setup, usage,
+  comparison table, and migration path from dynamic to
+  contract-based facades.
+
 ## [0.38.0]
 
 ### Added
