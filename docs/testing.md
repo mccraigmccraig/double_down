@@ -77,78 +77,71 @@ DoubleDown.Double.expect(MyApp.Todos, :get_todo, fn [id] -> {:ok, %Todo{id: id}}
 ### Contract-wide fallback (stub or fake)
 
 A fallback handles any operation without a specific expect or
-per-operation stub. Three forms are supported:
+per-operation stub. There are three types — **stateless stubs**,
+**stateful fakes**, and **module fakes** — each available as a
+handler module or a function.
 
-**StubHandler module** — a module implementing
-`DoubleDown.Dispatch.StubHandler`. Modules like `Repo.Test` implement
-this and can be used by name:
+#### Stateless stubs
+
+Stubs provide canned responses without maintaining state. Use
+`Double.stub` with a `StubHandler` module or a 2-arity function:
 
 ```elixir
-# Writes only — reads will raise
+# StubHandler module (e.g. Repo.Test)
 DoubleDown.Double.stub(DoubleDown.Repo, DoubleDown.Repo.Test)
 
-# With a fallback function for reads
+# StubHandler with a fallback function for reads
 DoubleDown.Double.stub(DoubleDown.Repo, DoubleDown.Repo.Test,
   fn
     :get, [User, 1] -> %User{id: 1, name: "Alice"}
     :all, [User] -> [%User{id: 1, name: "Alice"}]
   end
 )
-```
 
-**Stateless function stub** — a 2-arity
-`fn operation, args -> result end`:
-
-```elixir
+# 2-arity function fallback
 MyApp.Todos
 |> DoubleDown.Double.stub(fn
   :list_todos, [_] -> []
   :get_todo, [id] -> {:ok, %Todo{id: id}}
 end)
-|> DoubleDown.Double.expect(:create_todo, fn [p] -> {:ok, struct!(Todo, p)} end)
 ```
 
-**FakeHandler module** — a module implementing
-`DoubleDown.Dispatch.FakeHandler`. Modules like `Repo.InMemory`
-implement this and can be used by name:
+#### Stateful fakes
+
+Fakes maintain in-memory state with atomic updates, enabling
+read-after-write consistency. Use `Double.fake` with a `FakeHandler`
+module or a 3/4-arity function:
 
 ```elixir
-# Default state
+# FakeHandler module (e.g. Repo.InMemory)
 DoubleDown.Repo
 |> DoubleDown.Double.fake(DoubleDown.Repo.InMemory)
 |> DoubleDown.Double.expect(:insert, fn [changeset] ->
   {:error, Ecto.Changeset.add_error(changeset, :email, "taken")}
 end)
 
-# With seed data
-DoubleDown.Double.fake(DoubleDown.Repo, DoubleDown.Repo.InMemory,
-  [%User{id: 1, name: "Alice"}])
-
 # With seed data and options
 DoubleDown.Double.fake(DoubleDown.Repo, DoubleDown.Repo.InMemory,
   [%User{id: 1, name: "Alice"}],
   fallback_fn: fn :all, [User], state -> Map.values(state[User]) end)
-```
 
-**Stateful function fake** — a 3-arity
-`fn op, args, state -> {result, state}` or 4-arity
-`fn op, args, state, all_states -> {result, state}` with initial
-state. 4-arity fakes receive a read-only snapshot of all contract
-states for [cross-contract state access](#cross-contract-state-access):
-
-```elixir
+# 3-arity function fake (equivalent to FakeHandler)
 DoubleDown.Double.fake(DoubleDown.Repo,
   &DoubleDown.Repo.InMemory.dispatch/3,
   DoubleDown.Repo.InMemory.new())
 ```
 
+4-arity fakes receive a read-only snapshot of all contract states
+for [cross-contract state access](#cross-contract-state-access).
+
 When a 1-arity expect short-circuits (returns an error), the fake
 state is unchanged — correct for error simulation. Expects can also
 be stateful — see [Stateful expect responders](#stateful-expect-responders).
 
-**Module fake** — a module implementing the contract's behaviour.
-Override specific operations while the rest delegate to the real
-implementation:
+#### Module fakes
+
+A module implementing the contract's `@behaviour`. Override specific
+operations with expects while the rest delegate to the module:
 
 ```elixir
 MyApp.Todos
@@ -156,7 +149,9 @@ MyApp.Todos
 |> DoubleDown.Double.expect(:create_todo, fn [_] -> {:error, :conflict} end)
 ```
 
-The module is validated at `fake` time.
+The module is validated at `fake` time. Module fakes run in the
+calling process (via `%Defer{}`), so they work correctly with Ecto
+sandbox and other process-scoped resources.
 
 **Important caveat:** if the module's internal implementation calls
 other operations directly, your stubs and expects won't intercept
@@ -190,7 +185,11 @@ defmodule MyApp.Todos.Ecto do
 end
 ```
 
-Dispatch priority: expects > per-operation stubs > fallback/fake > raise.
+#### Dispatch priority
+
+Expects > per-operation stubs > fallback (stub/fake) > raise.
+Stubs, stateful fakes, and module fakes are mutually exclusive —
+setting one replaces any previous fallback.
 
 ### Passthrough expects
 
