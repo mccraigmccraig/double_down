@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.40.0]
+
+### Added
+
+- `DoubleDown.Double.dynamic/1` — convenience for setting up a
+  dynamically-faked module with its original implementation as the
+  fallback. Pipes naturally with expects and stubs:
+
+      SomeClient
+      |> Double.dynamic()
+      |> Double.expect(:fetch, fn [_] -> {:error, :timeout} end)
+
+  Raises if the module hasn't been set up with `Dynamic.setup/1`.
+
 ## [0.39.0]
 
 ### Added
