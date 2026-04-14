@@ -72,106 +72,115 @@ DoubleDown extends the Mox pattern:
 
 ## Quick example
 
-Define a contract behaviour and dispatch facade in one module:
+### Define contracts
+
+Use the built-in `DoubleDown.Repo` contract for database operations,
+and define domain-specific contracts for business logic:
 
 ```elixir
+# Repo facade — wraps your Ecto Repo
+defmodule MyApp.Repo do
+  use DoubleDown.Facade, contract: DoubleDown.Repo, otp_app: :my_app
+end
+
+# Domain contract — queries specific to your domain
 defmodule MyApp.Todos do
   use DoubleDown.Facade, otp_app: :my_app
 
-  defcallback create_todo(params :: map()) ::
-    {:ok, Todo.t()} | {:error, Ecto.Changeset.t()}
-
-  defcallback get_todo(id :: String.t()) ::
-    {:ok, Todo.t()} | {:error, :not_found}
-
-  defcallback list_todos(tenant_id :: String.t()) :: [Todo.t()]
+  defcallback active_todos(tenant_id :: String.t()) :: [Todo.t()]
+  defcallback todo_exists?(tenant_id :: String.t(), title :: String.t()) :: boolean()
 end
 ```
 
-Implement the behaviour:
+### Write orchestration code
+
+Orchestration code uses both contracts — Repo for writes, Todos for
+domain queries:
 
 ```elixir
-defmodule MyApp.Todos.Ecto do
-  @behaviour MyApp.Todos
-
-  @impl true
-  def create_todo(params), do: MyApp.Repo.insert(Todo.changeset(params))
-
-  @impl true
-  def get_todo(id) do
-    case MyApp.Repo.get(Todo, id) do
-      nil -> {:error, :not_found}
-      todo -> {:ok, todo}
+defmodule MyApp.CreateTodo do
+  def call(tenant_id, params) do
+    if MyApp.Todos.todo_exists?(tenant_id, params.title) do
+      {:error, :duplicate}
+    else
+      MyApp.Repo.insert(Todo.changeset(%Todo{tenant_id: tenant_id}, params))
     end
-  end
-
-  @impl true
-  def list_todos(tenant_id) do
-    MyApp.Repo.all(from t in Todo, where: t.tenant_id == ^tenant_id)
   end
 end
 ```
 
-Wire it up:
+### Wire up production implementations
 
 ```elixir
 # config/config.exs
+config :my_app, DoubleDown.Repo, impl: MyApp.EctoRepo
 config :my_app, MyApp.Todos, impl: MyApp.Todos.Ecto
 ```
 
-Start the test ownership server in `test/test_helper.exs`:
+### Test without a database
+
+Start the ownership server in `test/test_helper.exs`:
 
 ```elixir
 DoubleDown.Testing.start()
 ```
 
-Test with expects and stubs — no database, full async isolation:
+Test the orchestration with fakes and stubs — no database, full
+async isolation:
 
 ```elixir
 setup do
-  MyApp.Todos
-  |> DoubleDown.Double.expect(:create_todo, fn [params] ->
-    {:ok, struct!(Todo, Map.put(params, :id, "123"))}
+  # InMemory Repo for writes — read-after-write consistency
+  DoubleDown.Double.fake(DoubleDown.Repo, DoubleDown.Repo.InMemory)
+
+  # Stub domain queries
+  DoubleDown.Double.stub(MyApp.Todos, fn
+    :active_todos, [_tenant] -> []
+    :todo_exists?, [_tenant, _title] -> false
   end)
-  |> DoubleDown.Double.stub(:get_todo, fn [id] -> {:ok, %Todo{id: id}} end)
-  |> DoubleDown.Double.stub(:list_todos, fn [_] -> [] end)
+
   :ok
 end
 
-test "create then get" do
-  {:ok, todo} = MyApp.Todos.create_todo(%{title: "Ship it"})
-  assert {:ok, _} = MyApp.Todos.get_todo(todo.id)
+test "creates a todo when no duplicate exists" do
+  assert {:ok, todo} = MyApp.CreateTodo.call("t1", %{title: "Ship it"})
+  assert todo.tenant_id == "t1"
+
+  # Read-after-write: InMemory serves from store
+  assert ^todo = MyApp.Repo.get(Todo, todo.id)
+end
+
+test "rejects duplicate todos" do
+  # Override the stub for this specific test
+  DoubleDown.Double.expect(MyApp.Todos, :todo_exists?, fn [_tenant, _title] -> true end)
+
+  assert {:error, :duplicate} = MyApp.CreateTodo.call("t1", %{title: "Existing"})
   DoubleDown.Double.verify!()
 end
 ```
 
 ### Testing failure scenarios
 
-Layer expects over a stateful fake to simulate specific failures:
+Layer expects over the InMemory Repo to simulate database failures:
 
 ```elixir
 setup do
-  # InMemory Repo as the baseline — real state, read-after-write
-  DoubleDown.Repo
-  |> DoubleDown.Double.fake(DoubleDown.Repo.InMemory)
-  # First insert fails with constraint error
-  |> DoubleDown.Double.expect(:insert, fn [changeset] ->
-    {:error, Ecto.Changeset.add_error(changeset, :email, "taken")}
-  end)
+  DoubleDown.Double.fake(DoubleDown.Repo, DoubleDown.Repo.InMemory)
+  DoubleDown.Double.stub(MyApp.Todos, fn :todo_exists?, [_, _] -> false end)
   :ok
 end
 
-test "retries after constraint violation" do
-  changeset = User.changeset(%User{}, %{email: "alice@example.com"})
+test "handles constraint violation on insert" do
+  # First insert fails with constraint error
+  DoubleDown.Double.expect(DoubleDown.Repo, :insert, fn [changeset] ->
+    {:error, Ecto.Changeset.add_error(changeset, :title, "taken")}
+  end)
 
-  # First insert: expect fires, returns error
-  assert {:error, _} = MyApp.Repo.insert(changeset)
+  assert {:error, cs} = MyApp.CreateTodo.call("t1", %{title: "Conflict"})
+  assert {"taken", _} = cs.errors[:title]
 
-  # Second insert: falls through to InMemory, writes to store
-  assert {:ok, user} = MyApp.Repo.insert(changeset)
-
-  # Read-after-write: InMemory serves from store
-  assert ^user = MyApp.Repo.get(User, user.id)
+  # Second call succeeds — expect consumed, InMemory handles it
+  assert {:ok, _} = MyApp.CreateTodo.call("t1", %{title: "Conflict"})
 end
 ```
 
