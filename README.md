@@ -12,18 +12,13 @@ enough to test Ecto.Repo operations without a database.
 
 DoubleDown extends the Mox pattern:
 
-- **Explicit contracts at system boundaries** — Jose Valim's
+- **Explicit contracts, zero boilerplate** — Jose Valim's
   [Mocks and explicit contracts](https://dashbit.co/blog/mocks-and-explicit-contracts)
-  makes the case for defining clear boundaries between components.
-  Explicit contracts make dependencies visible, isolate components
-  so that changing an implementation doesn't break unrelated tests,
-  and push complexity to where it can be managed. DoubleDown makes
-  this easier: `defcallback` declares the contract, and the behaviour,
-  facade, and typespecs are generated automatically.
-- **Boilerplate & consistency** — the Mox pattern requires a
-  contract behaviour, a dispatch facade, and config wiring for
-  each boundary. `defcallback` generates all three from a single
-  declaration — the behaviour and facade are always in sync.
+  makes the case for clear boundaries between components, but the
+  Mox pattern requires a contract behaviour, a dispatch facade, and
+  config wiring for each boundary. `defcallback` generates all three
+  from a single declaration — the behaviour, facade, and typespecs
+  are always in sync.
 - **Stubs are not always enough** — modelling stateful dependencies
   like a database with plain mocks is verbose and fragile, so most
   projects just hit the real DB and accept the speed penalty.
