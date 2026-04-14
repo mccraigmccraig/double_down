@@ -40,3 +40,10 @@ defmodule DoubleDown.Test.SimpleUser do
     user |> Ecto.Changeset.cast(attrs, [:name])
   end
 end
+
+# Module for dynamic dispatch testing.
+defmodule DoubleDown.Test.DynamicTarget do
+  def greet(name), do: "Original: #{name}"
+  def add(a, b), do: a + b
+  def zero_arity, do: :original
+end

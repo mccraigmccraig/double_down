@@ -76,8 +76,9 @@ defmodule DoubleDown.Dispatch do
 
   # -- Test handler resolution --
 
+  @doc false
   # credo:disable-for-next-line Credo.Check.Refactor.CyclomaticComplexity
-  defp resolve_test_handler(contract) do
+  def resolve_test_handler(contract) do
     case GenServer.whereis(@ownership_server) do
       nil ->
         :none
@@ -106,26 +107,27 @@ defmodule DoubleDown.Dispatch do
 
   # -- Handler invocation --
 
-  defp invoke_handler(%{type: :module, impl: impl}, _owner_pid, operation, args) do
+  @doc false
+  def invoke_handler(%{type: :module, impl: impl}, _owner_pid, operation, args) do
     case apply(impl, operation, args) do
       %DoubleDown.Dispatch.Defer{fn: deferred_fn} -> deferred_fn.()
       result -> result
     end
   end
 
-  defp invoke_handler(%{type: :fn, fun: fun}, _owner_pid, operation, args) do
+  def invoke_handler(%{type: :fn, fun: fun}, _owner_pid, operation, args) do
     case fun.(operation, args) do
       %DoubleDown.Dispatch.Defer{fn: deferred_fn} -> deferred_fn.()
       result -> result
     end
   end
 
-  defp invoke_handler(
-         %{type: :stateful, fun: fun, state_key: state_key},
-         owner_pid,
-         operation,
-         args
-       ) do
+  def invoke_handler(
+        %{type: :stateful, fun: fun, state_key: state_key},
+        owner_pid,
+        operation,
+        args
+      ) do
     # Atomically read state, call handler, update state.
     # Must use owner_pid so allowed child processes can update state.
     #
@@ -244,7 +246,8 @@ defmodule DoubleDown.Dispatch do
 
   # -- Dispatch logging --
 
-  defp maybe_log(owner_pid, contract, operation, args, result) do
+  @doc false
+  def maybe_log(owner_pid, contract, operation, args, result) do
     log_key = Module.concat(DoubleDown.Log, contract)
 
     # Only log if the owner has logging enabled (owns the log key).
