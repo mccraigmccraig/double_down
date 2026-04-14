@@ -193,6 +193,21 @@ Expects > per-operation stubs > fallback (stub/fake) > raise.
 Stubs, stateful fakes, and module fakes are mutually exclusive —
 setting one replaces any previous fallback.
 
+#### Passthrough limitation
+
+Expects and stubs can return `Double.passthrough()` to delegate a
+call to the fake, but they cannot call the fake and then do
+something with its result. Passthrough is a one-way handoff — once
+you delegate, the fake handles it entirely.
+
+For example, you can't write "let the fake insert the record, then
+modify the returned struct before giving it back to the caller."
+Enabling this would require either chained continuations (awkward
+API) or a fundamentally different execution model like algebraic
+effects. In practice, the combination of stateful responders
+(2-arity expects that read/write fake state) and conditional
+passthrough covers most scenarios where you'd want this.
+
 ### Passthrough expects
 
 When a fallback/fake is configured, pass `:passthrough` instead of a
