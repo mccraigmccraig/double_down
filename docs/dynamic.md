@@ -1,0 +1,178 @@
+# Dynamic Facades
+
+[< Testing](testing.md) | [Up: README](../README.md) | [Logging >](logging.md)
+
+Dynamic facades enable Mimic-style bytecode interception — replace
+any module with a dispatch shim at test time, then use the full
+`DoubleDown.Double` API without defining a contract or facade.
+
+## When to use dynamic facades
+
+| Scenario | Approach |
+|----------|----------|
+| New code, long-term boundary | Contract-based (`defcallback` + `DoubleDown.Facade`) |
+| Legacy code without contracts | **Dynamic facade** |
+| Third-party modules you can't modify | **Dynamic facade** |
+| Quick prototyping | **Dynamic facade**, graduate to contract-based later |
+
+Dynamic facades trade compile-time safety (typespecs, LSP docs,
+spec mismatch detection) for zero-ceremony setup. Both approaches
+use the same dispatch and Double infrastructure — they coexist in
+the same test suite.
+
+## Setup
+
+Call `Dynamic.setup/1` in `test/test_helper.exs` **before**
+`ExUnit.start()`:
+
+```elixir
+# test/test_helper.exs
+DoubleDown.Dynamic.setup(MyApp.EctoRepo)
+DoubleDown.Dynamic.setup(SomeThirdPartyClient)
+
+ExUnit.start()
+{:ok, _} = DoubleDown.Testing.start()
+```
+
+`setup/1` copies the original module to a backup
+(`Module.__dd_original__`) and replaces it with a dispatch shim.
+The shim checks NimbleOwnership for test handlers, falling back to
+the original implementation when none are installed.
+
+Bytecode replacement is VM-global — it must happen before any tests
+run. Tests that don't install a handler get the original module's
+behaviour automatically.
+
+## Using Double APIs
+
+After setup, the full `DoubleDown.Double` API works with the
+dynamic module — expects, stubs, fakes, passthrough, stateful
+responders, cross-contract state access, dispatch logging:
+
+```elixir
+setup do
+  # Stateful fake
+  DoubleDown.Double.fake(MyApp.EctoRepo, DoubleDown.Repo.InMemory)
+  :ok
+end
+
+test "insert then get" do
+  {:ok, user} = MyApp.EctoRepo.insert(User.changeset(%{name: "Alice"}))
+  assert ^user = MyApp.EctoRepo.get(User, user.id)
+end
+```
+
+### Stubs
+
+```elixir
+# Function stub
+DoubleDown.Double.stub(SomeClient, fn
+  :fetch, [id] -> {:ok, %{id: id}}
+  :list, [] -> []
+end)
+
+# Per-operation stub
+DoubleDown.Double.stub(SomeClient, :fetch, fn [id] -> {:ok, %{id: id}} end)
+```
+
+### Expects
+
+```elixir
+DoubleDown.Double.expect(SomeClient, :fetch, fn [_] -> {:error, :timeout} end)
+
+# With passthrough — delegates to the original module
+DoubleDown.Double.expect(SomeClient, :fetch, :passthrough)
+
+# Stateful expect (requires a fake)
+DoubleDown.Double.expect(SomeClient, :fetch, fn [id], state ->
+  {Map.get(state, id), state}
+end)
+```
+
+### Module fake (Mimic-style override)
+
+Override one operation, delegate the rest to the original:
+
+```elixir
+DoubleDown.Double.fake(SomeClient,
+  DoubleDown.Dynamic.original_module(SomeClient))
+|> DoubleDown.Double.expect(:fetch, fn [_] -> {:error, :not_found} end)
+
+# fetch is overridden, all other functions delegate to the original
+```
+
+## Passthrough to original
+
+When no test handler is installed, the dynamic shim automatically
+falls back to the original module. This means unrelated tests are
+completely unaffected.
+
+When a handler IS installed, `Double.passthrough()` and
+`:passthrough` expects delegate to the fallback (fake, stub, or
+module fake) — not directly to the original. To delegate to the
+original explicitly, use a module fake:
+
+```elixir
+DoubleDown.Double.fake(SomeClient,
+  DoubleDown.Dynamic.original_module(SomeClient))
+```
+
+## Cross-contract state access
+
+Dynamic facades participate in cross-contract state access. A
+4-arity handler on a dynamic module can read state from
+contract-based facades, and vice versa:
+
+```elixir
+# Contract-based Repo with InMemory
+DoubleDown.Double.fake(DoubleDown.Repo, DoubleDown.Repo.InMemory)
+
+# Dynamic module reads Repo state
+DoubleDown.Double.fake(MyApp.Legacy,
+  fn :check_user, [id], state, all_states ->
+    repo_state = Map.get(all_states, DoubleDown.Repo, %{})
+    users = repo_state |> Map.get(User, %{}) |> Map.values()
+    {Enum.any?(users, &(&1.id == id)), state}
+  end,
+  %{}
+)
+```
+
+## Guardrails
+
+`Dynamic.setup/1` refuses to set up facades for:
+
+- **DoubleDown contract modules** — use `DoubleDown.Facade` instead
+- **DoubleDown internal modules** — would break the dispatch machinery
+- **NimbleOwnership** — required by dispatch
+- **Erlang/OTP modules** — would be catastrophic
+
+## Comparison with contract-based facades
+
+| Feature | Contract-based | Dynamic |
+|---------|---------------|---------|
+| Setup ceremony | `defcallback` + `use Facade` + config | `Dynamic.setup(Module)` |
+| Typespecs | Generated `@spec` on facade | None |
+| LSP docs | `@doc` on facade functions | None |
+| Compile-time spec checking | Yes (impl vs contract) | No |
+| Production dispatch | Zero-cost inlined calls | N/A (test-only) |
+| Test doubles | Full Double API | Full Double API |
+| Stateful fakes | Full support | Full support |
+| Cross-contract state | Full support | Full support |
+| Dispatch logging | Full support | Full support |
+| async: true | Yes | Yes |
+
+## Migration path
+
+Start with dynamic facades for quick wins, then graduate to
+contract-based facades for boundaries you want to keep long-term:
+
+1. `Dynamic.setup(MyModule)` in test_helper.exs
+2. Write tests using Double APIs
+3. When the boundary stabilises, define a `defcallback` contract
+4. Create a facade with `use DoubleDown.Facade`
+5. Remove the `Dynamic.setup` call
+
+---
+
+[< Testing](testing.md) | [Up: README](../README.md) | [Logging >](logging.md)

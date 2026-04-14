@@ -1,6 +1,6 @@
 # Testing
 
-[< Getting Started](getting-started.md) | [Up: README](../README.md) | [Logging >](logging.md)
+[< Getting Started](getting-started.md) | [Up: README](../README.md) | [Dynamic Facades >](dynamic.md)
 
 DoubleDown provides Mox/Mimic-style `expect`, `stub`, and `verify!`
 APIs via `DoubleDown.Double`, extended with stateful fakes that model
@@ -542,4 +542,4 @@ capability has no Mox equivalent.
 
 ---
 
-[< Getting Started](getting-started.md) | [Up: README](../README.md) | [Logging >](logging.md)
+[< Getting Started](getting-started.md) | [Up: README](../README.md) | [Dynamic Facades >](dynamic.md)

@@ -1,6 +1,6 @@
 # Logging
 
-[< Testing](testing.md) | [Up: README](../README.md) | [Process Sharing >](process-sharing.md)
+[< Dynamic Facades](dynamic.md) | [Up: README](../README.md) | [Process Sharing >](process-sharing.md)
 
 ## Dispatch logging
 
@@ -104,4 +104,4 @@ end)
 
 ---
 
-[< Testing](testing.md) | [Up: README](../README.md) | [Process Sharing >](process-sharing.md)
+[< Dynamic Facades](dynamic.md) | [Up: README](../README.md) | [Process Sharing >](process-sharing.md)

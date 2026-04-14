@@ -68,6 +68,7 @@ DoubleDown extends the Mox pattern:
 | Dispatch logging                   | Record `{contract, op, args, result}` for every call                       |
 | Structured log matching            | `DoubleDown.Log` — pattern-match on logged results                         |
 | Built-in Ecto Repo                 | Full Ecto.Repo contract with `Repo.Test` and `Repo.InMemory` fakes        |
+| Dynamic facades                    | Mimic-style bytecode interception — fake any module without a contract     |
 | Async-safe                         | Process-scoped isolation via NimbleOwnership, `async: true` out of the box |
 
 ## Quick example
@@ -206,6 +207,8 @@ end
   dispatch resolution, terminology
 - **[Testing](docs/testing.md)** — Double expect/stub/fake, stateful
   responders, cross-contract state access
+- **[Dynamic Facades](docs/dynamic.md)** — Mimic-style bytecode
+  interception, fake any module without a contract
 - **[Logging](docs/logging.md)** — dispatch logging, Log matchers,
   structured log assertions
 - **[Process Sharing](docs/process-sharing.md)** — async safety, allow,
