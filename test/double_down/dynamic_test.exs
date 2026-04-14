@@ -128,6 +128,106 @@ defmodule DoubleDown.DynamicTest do
     end
   end
 
+  describe "passthrough expects" do
+    test ":passthrough expect delegates to original" do
+      Double.fake(
+        DynamicTarget,
+        fn :greet, [name], state -> {"Fake: #{name}", state} end,
+        %{}
+      )
+      |> Double.expect(:greet, :passthrough)
+
+      # Passthrough delegates to the fake (which is the fallback)
+      assert "Fake: Alice" = DynamicTarget.greet("Alice")
+      # Second call goes to fake directly
+      assert "Fake: Bob" = DynamicTarget.greet("Bob")
+
+      Double.verify!()
+    end
+
+    test "Double.passthrough() from stateful responder delegates to fake" do
+      Double.fake(
+        DynamicTarget,
+        fn :greet, [name], state -> {"Fake: #{name}", state} end,
+        %{}
+      )
+      |> Double.expect(:greet, fn [name], _state ->
+        if name == "special" do
+          {"Special!", %{}}
+        else
+          Double.passthrough()
+        end
+      end)
+
+      # "special" is handled by the expect
+      assert "Special!" = DynamicTarget.greet("special")
+      # "Alice" passes through to the fake
+      assert "Fake: Alice" = DynamicTarget.greet("Alice")
+    end
+  end
+
+  describe "stateful expect responders with dynamic facade" do
+    test "2-arity expect reads and updates fake state" do
+      Double.fake(
+        DynamicTarget,
+        fn
+          :greet, [name], state -> {"Fake: #{name}", state}
+          :zero_arity, [], state -> {state[:count] || 0, state}
+        end,
+        %{count: 0}
+      )
+      |> Double.expect(:greet, fn [name], state ->
+        count = (state[:count] || 0) + 1
+        {"Counted(#{count}): #{name}", %{state | count: count}}
+      end)
+
+      assert "Counted(1): Alice" = DynamicTarget.greet("Alice")
+      # State was updated — verify via zero_arity
+      assert 1 = DynamicTarget.zero_arity()
+    end
+  end
+
+  describe "cross-contract state access with dynamic facade" do
+    test "4-arity fake on dynamic module reads contract-based Repo state" do
+      alias DoubleDown.Repo
+      alias DoubleDown.Test.SimpleUser
+
+      # Set up Repo with InMemory
+      Double.fake(Repo, Repo.InMemory)
+
+      # Insert a record via Repo
+      {:ok, _user} = Repo.Port.insert(SimpleUser.changeset(%{name: "Alice"}))
+
+      # Set up dynamic module with 4-arity fake that reads Repo state
+      Double.fake(
+        DynamicTarget,
+        fn :greet, [_name], state, all_states ->
+          repo_state = Map.get(all_states, Repo, %{})
+          users = repo_state |> Map.get(SimpleUser, %{}) |> Map.values()
+          names = Enum.map(users, & &1.name)
+          {names, state}
+        end,
+        %{}
+      )
+
+      assert ["Alice"] = DynamicTarget.greet("ignored")
+    end
+  end
+
+  describe "per-operation stubs with dynamic facade" do
+    test "per-op stub overrides specific operation" do
+      Double.stub(DynamicTarget, fn
+        :greet, [name] -> "Fallback: #{name}"
+        :add, [a, b] -> a + b
+        :zero_arity, [] -> :fallback
+      end)
+      |> Double.stub(:greet, fn [name] -> "Stubbed: #{name}" end)
+
+      assert "Stubbed: Alice" = DynamicTarget.greet("Alice")
+      assert 5 = DynamicTarget.add(2, 3)
+    end
+  end
+
   describe "validation" do
     test "refuses DoubleDown contract modules" do
       assert_raise ArgumentError, ~r/DoubleDown contract/, fn ->
