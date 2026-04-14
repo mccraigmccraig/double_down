@@ -106,6 +106,7 @@ defmodule DoubleDown.Dynamic do
 
   # -- Validation --
 
+  # credo:disable-for-next-line Credo.Check.Refactor.CyclomaticComplexity
   defp validate_module!(module) do
     unless Code.ensure_loaded?(module) do
       raise ArgumentError,
