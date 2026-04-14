@@ -57,8 +57,10 @@ config :my_app, DoubleDown.Repo, impl: MyApp.EctoRepo
 ```
 
 With the default `:static_dispatch?` setting, the facade resolves
-`MyApp.EctoRepo` at compile time and generates direct function calls
-— no `Application.get_env` lookup at runtime, zero dispatch overhead.
+`MyApp.EctoRepo` at compile time and generates inlined direct function
+calls — no `Application.get_env`, no extra stack frame, the facade
+compiles away entirely. `MyApp.Repo.insert(changeset)` produces
+identical bytecode to `MyApp.EctoRepo.insert(changeset)`.
 
 ### `Repo.Test` — stateless test double
 

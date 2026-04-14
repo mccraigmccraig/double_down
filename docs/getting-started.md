@@ -253,11 +253,11 @@ runtime:
 2. **Raise** — clear error message if nothing is configured
 
 **Static dispatch** — when the implementation is available in config
-at compile time, the facade generates direct function calls to the
-implementation module. No NimbleOwnership, no `Application.get_env`
-— zero dispatch overhead:
-
-1. **Direct call** — `apply(MyApp.Todos.Ecto, :get_todo, [id])`
+at compile time, the facade generates inlined direct function calls
+to the implementation module. No NimbleOwnership, no
+`Application.get_env`, no extra stack frame — the BEAM inlines the
+facade function at call sites, so `MyContract.do_thing(args)`
+compiles to identical bytecode as calling the implementation directly.
 
 Static dispatch is enabled by default in production (when
 `:static_dispatch?` is true and the config is available at compile

@@ -19,6 +19,12 @@ DoubleDown extends the Mox pattern:
   config wiring for each boundary. `defcallback` generates all three
   from a single declaration — the behaviour, facade, and typespecs
   are always in sync.
+- **Zero-cost production dispatch** — in production, facades are
+  compiled to inlined direct function calls to the configured
+  implementation. `MyContract.do_thing(args)` compiles to exactly
+  the same bytecode as `DirectImpl.do_thing(args)` — the facade
+  disappears entirely after BEAM inlining. Contract boundaries are
+  a pure architectural decision with no runtime cost.
 - **Stubs are not always enough** — modelling stateful dependencies
   like a database with plain mocks is verbose and fragile, so most
   projects just hit the real DB and accept the speed penalty.
@@ -47,6 +53,7 @@ DoubleDown extends the Mox pattern:
 | `defcallback` declarations | Typed function signatures with parameter names and return types |
 | Contract behaviour generation   | Standard `@behaviour` + `@callback` — fully Mox-compatible            |
 | Dispatch facades       | Config-dispatched caller functions, generated automatically     |
+| Zero-cost static dispatch | Inlined direct calls in production — no overhead vs calling the impl directly |
 | LSP-friendly           | `@doc` and `@spec` on every generated function                  |
 
 ### Test doubles (beyond Mox)
