@@ -51,6 +51,12 @@ defmodule DoubleDown.Facade do
       at compile time. Accepts `true`, `false`, or a zero-arity function.
       Defaults to `fn -> Mix.env() == :prod end`.
 
+  ## See also
+
+    * `DoubleDown.Facade.Behaviour` — generates dispatch facades for vanilla
+      `@behaviour` modules (when you don't control the contract definition).
+    * `DoubleDown.Dynamic` — Mimic-style bytecode interception for any module.
+
   ## Configuration
 
       # config/config.exs
@@ -75,6 +81,8 @@ defmodule DoubleDown.Facade do
       end
   """
 
+  alias DoubleDown.Facade.Codegen
+
   @doc false
   defmacro __using__(opts) do
     contract =
@@ -86,40 +94,18 @@ defmodule DoubleDown.Facade do
     otp_app = Keyword.fetch!(opts, :otp_app)
 
     test_dispatch? =
-      case Keyword.get(opts, :test_dispatch?) do
-        nil ->
-          # Default: enable test dispatch in non-prod environments
-          Mix.env() != :prod
-
-        bool when is_boolean(bool) ->
-          bool
-
-        fun when is_function(fun, 0) ->
-          # Direct function (e.g. from the default or programmatic use)
-          fun.()
-
-        ast ->
-          # Function literal passed as an option arrives as AST in the macro.
-          # Evaluate it at compile time in the caller's context.
-          {fun, _binding} = Code.eval_quoted(ast, [], __CALLER__)
-          fun.()
-      end
+      Codegen.resolve_dispatch_option(
+        Keyword.get(opts, :test_dispatch?),
+        __CALLER__,
+        Mix.env() != :prod
+      )
 
     static_dispatch? =
-      case Keyword.get(opts, :static_dispatch?) do
-        nil ->
-          Mix.env() == :prod
-
-        bool when is_boolean(bool) ->
-          bool
-
-        fun when is_function(fun, 0) ->
-          fun.()
-
-        ast ->
-          {fun, _binding} = Code.eval_quoted(ast, [], __CALLER__)
-          fun.()
-      end
+      Codegen.resolve_dispatch_option(
+        Keyword.get(opts, :static_dispatch?),
+        __CALLER__,
+        Mix.env() == :prod
+      )
 
     self_ref? = contract == __CALLER__.module
 
@@ -154,27 +140,8 @@ defmodule DoubleDown.Facade do
     test_dispatch? = Module.get_attribute(env.module, :double_down_test_dispatch)
     static_dispatch? = Module.get_attribute(env.module, :double_down_static_dispatch)
 
-    # When static dispatch is enabled and test dispatch is disabled,
-    # try to resolve the implementation module at compile time.
-    # Application.compile_env is a macro that must be called in the
-    # module body (i.e. inside the quote block returned by __before_compile__),
-    # not in a helper function. So we generate the compile_env call as AST
-    # and evaluate it here in the macro context.
     static_impl =
-      if !test_dispatch? and static_dispatch? do
-        case Application.get_env(otp_app, contract) do
-          nil ->
-            nil
-
-          config when is_list(config) ->
-            Keyword.get(config, :impl)
-
-          impl when is_atom(impl) ->
-            impl
-        end
-      else
-        nil
-      end
+      Codegen.resolve_static_impl(otp_app, contract, test_dispatch?, static_dispatch?)
 
     operations = fetch_operations!(contract, env)
 
@@ -192,159 +159,17 @@ defmodule DoubleDown.Facade do
     facades =
       Enum.map(
         operations,
-        &generate_facade(&1, contract, otp_app, test_dispatch?, static_impl)
+        &Codegen.generate_facade(&1, contract, otp_app, test_dispatch?, static_impl)
       )
 
-    key_helpers = Enum.map(operations, &generate_key_helper(&1, contract))
+    key_helpers = Enum.map(operations, &Codegen.generate_key_helper(&1, contract))
+
+    moduledoc = Codegen.generate_moduledoc(contract, otp_app)
 
     quote do
-      @moduledoc """
-      Dispatch facade for `#{inspect(unquote(contract))}`.
-
-      Dispatches calls to the configured implementation via
-      `DoubleDown.Dispatch`. In production, resolves from application
-      config (`#{inspect(unquote(otp_app))}`). In tests, resolves
-      from `DoubleDown.Testing` handlers.
-      """
-
+      unquote(moduledoc)
       unquote_splicing(facades)
       unquote_splicing(key_helpers)
-    end
-  end
-
-  # -- Code Generation: Port facade functions --
-  #
-  # Note: operations come from __callbacks__/0 which stores
-  # param_types and return_type as AST tuples (runtime data).
-  # We splice them directly with unquote — Elixir treats 3-tuples as AST.
-
-  # credo:disable-for-next-line Credo.Check.Refactor.CyclomaticComplexity
-  defp generate_facade(
-         %{
-           name: name,
-           params: param_names,
-           param_types: param_types,
-           return_type: return_type,
-           pre_dispatch: pre_dispatch,
-           user_doc: user_doc
-         },
-         contract,
-         otp_app,
-         test_dispatch?,
-         static_impl
-       ) do
-    param_vars = Enum.map(param_names, fn pname -> {pname, [], nil} end)
-
-    doc_ast =
-      if user_doc do
-        {_line, doc_content} = user_doc
-
-        quote do
-          @doc unquote(doc_content)
-        end
-      else
-        doc_string =
-          "Port operation: `#{name}/#{length(param_names)}`\n\nDispatches to the configured implementation via `DoubleDown.Dispatch`.\n"
-
-        quote do
-          @doc unquote(doc_string)
-        end
-      end
-
-    # param_types and return_type are AST tuples from __callbacks__/0.
-    # We splice them directly — unquote treats 3-tuples as AST.
-    #
-    # When a pre_dispatch function is declared on a defcallback, it is applied
-    # to the args list before dispatch. The function receives (args, facade_module)
-    # and returns the (possibly modified) args list. The pre_dispatch value
-    # is AST (double-escaped through __callbacks__/0) and is spliced
-    # directly into the generated function body.
-    dispatch_args =
-      if pre_dispatch do
-        quote do
-          unquote(pre_dispatch).(unquote(param_vars), __MODULE__)
-        end
-      else
-        param_vars
-      end
-
-    # Three dispatch paths, selected at compile time:
-    #
-    # 1. test_dispatch? true → DoubleDown.Dispatch.call/4
-    #    (NimbleOwnership test handlers + config fallback)
-    #
-    # 2. static_impl set → apply(impl, operation, args)
-    #    (direct call, zero overhead — impl resolved at compile time)
-    #
-    # 3. otherwise → DoubleDown.Dispatch.call_config/4
-    #    (runtime Application.get_env lookup)
-    cond do
-      test_dispatch? ->
-        quote do
-          unquote(doc_ast)
-          @spec unquote(name)(unquote_splicing(param_types)) :: unquote(return_type)
-          def unquote(name)(unquote_splicing(param_vars)) do
-            DoubleDown.Dispatch.call(
-              unquote(otp_app),
-              unquote(contract),
-              unquote(name),
-              unquote(dispatch_args)
-            )
-          end
-        end
-
-      static_impl != nil && pre_dispatch == nil ->
-        # Direct call + inline — zero dispatch overhead.
-        # Only possible when there's no pre_dispatch transform.
-        quote do
-          unquote(doc_ast)
-          @compile {:inline, [{unquote(name), unquote(length(param_names))}]}
-          @spec unquote(name)(unquote_splicing(param_types)) :: unquote(return_type)
-          def unquote(name)(unquote_splicing(param_vars)) do
-            unquote(static_impl).unquote(name)(unquote_splicing(param_vars))
-          end
-        end
-
-      static_impl != nil ->
-        # Static impl with pre_dispatch — can't inline because args
-        # are transformed at runtime.
-        quote do
-          unquote(doc_ast)
-          @spec unquote(name)(unquote_splicing(param_types)) :: unquote(return_type)
-          def unquote(name)(unquote_splicing(param_vars)) do
-            apply(unquote(static_impl), unquote(name), unquote(dispatch_args))
-          end
-        end
-
-      true ->
-        quote do
-          unquote(doc_ast)
-          @spec unquote(name)(unquote_splicing(param_types)) :: unquote(return_type)
-          def unquote(name)(unquote_splicing(param_vars)) do
-            DoubleDown.Dispatch.call_config(
-              unquote(otp_app),
-              unquote(contract),
-              unquote(name),
-              unquote(dispatch_args)
-            )
-          end
-        end
-    end
-  end
-
-  # -- Code Generation: Key helpers --
-
-  defp generate_key_helper(%{name: name, params: param_names}, contract) do
-    param_vars = Enum.map(param_names, fn pname -> {pname, [], nil} end)
-
-    doc_string =
-      "Build a test stub key for the `#{name}` port operation.\n"
-
-    quote do
-      @doc unquote(doc_string)
-      def __key__(unquote(name), unquote_splicing(param_vars)) do
-        DoubleDown.Dispatch.key(unquote(contract), unquote(name), unquote(param_vars))
-      end
     end
   end
 
