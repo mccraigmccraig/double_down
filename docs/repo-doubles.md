@@ -122,9 +122,11 @@ DoubleDown.Double.fake(
 `Repo.InMemory` works with [ExMachina](https://hex.pm/packages/ex_machina)
 factories as a drop-in replacement for the Ecto sandbox. Factory
 `insert` calls go through the Repo facade dispatch, land in the
-InMemory store, and all subsequent reads work — `all`, `get_by`,
-`aggregate`, etc. No database, no sandbox, `async: true`, at
-speeds suitable for property-based testing.
+InMemory store, and all subsequent bare-schema reads work — `all`,
+`get_by`, `aggregate`, etc. (`Ecto.Query` reads still need a
+fallback — see [Ecto.Query fallback](#ecto-query-fallback) above.)
+No database, no sandbox, `async: true`, at speeds suitable for
+property-based testing.
 
 ### Step 1: Define your factory
 
