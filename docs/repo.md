@@ -3,7 +3,8 @@
 [< Process Sharing](process-sharing.md) | [Up: README](../README.md) | [Migration >](migration.md)
 
 DoubleDown ships a ready-made Ecto Repo contract behaviour
-with two test double implementations (`Repo.Test` and `Repo.InMemory`).
+with three test double implementations (`Repo.Test`, `Repo.InMemory`,
+and `Repo.ClosedInMemory`).
 In production, the dispatch facade passes through to your existing Ecto
 Repo with zero overhead (via static dispatch). The test doubles are
 sophisticated enough to support `Ecto.Multi` transactions and
@@ -252,6 +253,69 @@ exact operation and suggesting how to add a fallback clause:
 
 This fail-loud approach prevents tests from passing with silently
 wrong data.
+
+### `Repo.ClosedInMemory` — closed-world stateful test double
+
+`Repo.ClosedInMemory` is a variant of `Repo.InMemory` with
+**closed-world semantics**: the state is the complete truth. If a
+record isn't in the state, it doesn't exist. This makes the adapter
+authoritative for bare schema queryables without needing a fallback:
+
+| Category | Operations | Behaviour |
+|----------|-----------|-----------|
+| **Writes** | `insert`, `update`, `delete` | Same as InMemory |
+| **PK reads** | `get`, `get!` | Return `nil` / raise on miss (no fallback) |
+| **Clause reads** | `get_by`, `get_by!` | Scan and filter all records |
+| **Collection reads** | `all`, `one`/`one!`, `exists?` | Scan all records of schema |
+| **Aggregates** | `aggregate` | Compute from records in state |
+| **Bulk writes** | `insert_all`, `delete_all`, `update_all` (`set:`) | Modify state directly |
+| **Transactions** | `transact`, `rollback` | Same as InMemory |
+| **Ecto.Query** | Any operation with `Ecto.Query` queryable | Fallback or error |
+
+Use `ClosedInMemory` when the state is the full picture — typically
+when using factories (e.g. ExMachina) to build test data:
+
+```elixir
+setup do
+  DoubleDown.Double.fake(DoubleDown.Repo, DoubleDown.Repo.ClosedInMemory)
+
+  # Factory-inserted records are the complete store
+  insert(:user, name: "Alice", email: "alice@example.com")
+  insert(:user, name: "Bob", email: "bob@example.com")
+  :ok
+end
+
+test "all users" do
+  assert [_, _] = MyApp.Repo.all(User)
+end
+
+test "find by email" do
+  assert %User{name: "Alice"} =
+    MyApp.Repo.get_by(User, email: "alice@example.com")
+end
+
+test "count users" do
+  assert 2 = MyApp.Repo.aggregate(User, :count, :id)
+end
+```
+
+The fallback function is still available as an escape hatch for
+`Ecto.Query` queryables that cannot be evaluated in-memory:
+
+```elixir
+DoubleDown.Double.fake(
+  DoubleDown.Repo,
+  DoubleDown.Repo.ClosedInMemory,
+  [],
+  fallback_fn: fn
+    :all, [%Ecto.Query{}], _state -> []
+  end
+)
+```
+
+Use `InMemory` (open-world) when the state is partial and missing
+records should fall through to a fallback. Use `ClosedInMemory`
+(closed-world) when the state is the complete truth.
 
 ## Transactions
 

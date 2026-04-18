@@ -78,7 +78,7 @@ pattern:
 | Stubs and fakes as fallbacks       | Dispatch priority chain: expects > stubs > fake > raise                    |
 | Dispatch logging                   | Record `{contract, op, args, result}` for every call                       |
 | Structured log matching            | `DoubleDown.Log` — pattern-match on logged results                         |
-| Built-in Ecto Repo                 | Full Ecto.Repo contract with `Repo.Test` and `Repo.InMemory` fakes        |
+| Built-in Ecto Repo                 | Full Ecto.Repo contract with `Repo.Test`, `Repo.InMemory`, and `Repo.ClosedInMemory` fakes |
 | Async-safe                         | Process-scoped isolation via NimbleOwnership, `async: true` out of the box |
 
 ## Quick example
