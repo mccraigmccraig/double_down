@@ -131,10 +131,22 @@ end
 
 This reads `@callback` specs from the compiled behaviour module and
 generates the same dispatch facade, `@spec` declarations, and
-`__key__` helpers. The behaviour must be compiled before the facade
-(its `.beam` file must be on disk). See
-`DoubleDown.BehaviourFacade` for details and limitations compared
-to `defcallback`.
+`__key__` helpers. The **behaviour module is the contract** — it's
+the key used in application config and test double setup:
+
+```elixir
+# config/config.exs
+config :my_app, MyApp.Todos.Behaviour, impl: MyApp.Todos.Ecto
+
+# test setup
+DoubleDown.Testing.set_fn_handler(MyApp.Todos.Behaviour, fn
+  :get_todo, [id] -> {:ok, %Todo{id: id}}
+end)
+```
+
+The behaviour must be compiled before the facade (its `.beam`
+file must be on disk). See `DoubleDown.BehaviourFacade` for
+details and limitations compared to `defcallback`.
 
 ## `defcallback` syntax
 
