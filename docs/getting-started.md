@@ -16,8 +16,8 @@ If you're coming from Mox or standard Elixir, here's the mapping:
 
 | DoubleDown term | Familiar Elixir equivalent | Nuance |
 |---|---|---|
-| **Contract**    | Behaviour (`@callback` specs) | The abstract interface an implementation must satisfy. Same sense of "contract" in [Mocks and explicit contracts](https://dashbit.co/blog/mocks-and-explicit-contracts). DoubleDown generates the `@behaviour` + `@callback` from `defcallback` — the contract is the source of truth. |
-| **Facade**      | The proxy module you write by hand in Mox (`def foo(x), do: impl().foo(x)`) | The module callers use — dispatches to the configured implementation. DoubleDown generates this; with Mox you write it manually. |
+| **Contract**    | Behaviour (`@callback` specs) | The module that defines the boundary interface. This is the key used in application config and test double setup. Can be a `defcallback` module, a vanilla `@behaviour`, or the original module in a dynamic facade. Same sense of "contract" in [Mocks and explicit contracts](https://dashbit.co/blog/mocks-and-explicit-contracts). |
+| **Facade**      | The proxy module you write by hand in Mox (`def foo(x), do: impl().foo(x)`) | The module callers use — dispatches to the configured implementation. May be the same module as the contract (combined pattern, dynamic facades) or a separate module. |
 | **Test double** | Mock (but broader) | Any thing that stands in for a real implementation in tests. See [test double types](https://en.wikipedia.org/wiki/Test_double#Types). |
 
 ### Test double types
@@ -51,29 +51,38 @@ write but test less; fakes test more but require more upfront work
 
 ## Contracts and facades
 
-A contract declares the operations that cross a boundary. A facade
-dispatches calls to the configured implementation. DoubleDown
-supports three ways to define this pairing:
+A **contract** is the module that defines the boundary — the set of
+operations an implementation must provide. The **contract module**
+is the key used everywhere: in application config to wire the
+production implementation, and in test setup to install test doubles.
 
-- **`defcallback` contracts** — richest option. `defcallback`
-  captures typed signatures with parameter names, return types,
-  and optional metadata, and `DoubleDown.Facade` generates the
-  dispatch facade. Supports combined contract + facade in a single
-  module, LSP-friendly `@doc` sync, pre-dispatch transforms, and
-  compile-time spec checking. See
+A **facade** is the module callers use — it dispatches calls to the
+configured implementation. Callers never reference the implementation
+directly; they call the facade, and the dispatch machinery resolves
+the target.
+
+DoubleDown supports three ways to define this pairing, each with
+a different answer to "which module is the contract?":
+
+- **`defcallback` contracts** (`DoubleDown.Facade`) — richest
+  option. The contract module contains `defcallback` declarations.
+  In the combined (recommended) pattern, the contract and facade
+  are the **same module**. In the separate pattern, the contract is
+  one module and the facade is another. See
   [Why `defcallback`?](#why-defcallback-instead-of-plain-callback)
   for the rationale.
 
-- **Vanilla behaviours** — for existing `@behaviour` modules you
-  don't control (third-party libraries, shared packages, legacy
-  code). `DoubleDown.BehaviourFacade` reads `@callback`
-  declarations from the compiled module and generates an equivalent
-  dispatch facade.
+- **Vanilla behaviours** (`DoubleDown.BehaviourFacade`) — for
+  existing `@behaviour` modules you don't control. The **behaviour
+  module is the contract**; the facade is a separate module that
+  calls `use DoubleDown.BehaviourFacade`. Config and test doubles
+  reference the behaviour module.
 
-- **Dynamic facades** — Mimic-style bytecode interception for any
-  module, no explicit contract needed. `DoubleDown.Dynamic` replaces
-  a module with a dispatch shim at test time — the module itself
-  becomes the ad-hoc contract. See [Dynamic Facades](dynamic.md).
+- **Dynamic facades** (`DoubleDown.Dynamic`) — Mimic-style bytecode
+  interception for any module, no explicit contract needed. The
+  **original module is both contract and facade** — `Dynamic.setup`
+  replaces it with a dispatch shim, and test doubles reference the
+  original module name. See [Dynamic Facades](dynamic.md).
 
 ### Combined contract + facade (recommended)
 
@@ -95,12 +104,16 @@ defmodule MyApp.Todos do
 end
 ```
 
-This module is now three things at once:
+`MyApp.Todos` is both the **contract** and the **facade** —
+config and test doubles both reference `MyApp.Todos`:
 
-1. **Contract** — `@callback` declarations and `__callbacks__/0`
-2. **Behaviour** — implementations use `@behaviour MyApp.Todos`
-3. **Facade** — caller functions like `MyApp.Todos.create_todo/1` that
-   dispatch to the configured implementation
+```elixir
+# config
+config :my_app, MyApp.Todos, impl: MyApp.Todos.Ecto
+
+# test setup
+DoubleDown.Double.stub(MyApp.Todos, fn :get_todo, [id] -> {:ok, %Todo{id: id}} end)
+```
 
 ### Separate contract and facade
 
@@ -126,6 +139,19 @@ defmodule MyApp.Todos do
 end
 ```
 
+Here the **contract** is `MyApp.Todos.Contract` and the **facade**
+is `MyApp.Todos`. Config and test doubles reference the contract:
+
+```elixir
+# config
+config :my_app, MyApp.Todos.Contract, impl: MyApp.Todos.Ecto
+
+# test setup
+DoubleDown.Double.stub(MyApp.Todos.Contract, fn :get_todo, [id] -> {:ok, %Todo{id: id}} end)
+```
+
+Callers use the facade: `MyApp.Todos.get_todo("42")`.
+
 This is how the built-in `DoubleDown.Repo` works — it defines
 the contract, and your app creates a facade that binds it to your
 `otp_app`. See [Repo](repo.md).
@@ -146,20 +172,21 @@ defmodule MyApp.Todos do
 end
 ```
 
-This reads `@callback` specs from the compiled behaviour module and
-generates the same dispatch facade, `@spec` declarations, and
-`__key__` helpers. The **behaviour module is the contract** — it's
-the key used in application config and test double setup:
+Here the **contract** is the behaviour module
+(`MyApp.Todos.Behaviour`) and the **facade** is `MyApp.Todos`.
+Config and test doubles reference the behaviour module:
 
 ```elixir
-# config/config.exs
+# config
 config :my_app, MyApp.Todos.Behaviour, impl: MyApp.Todos.Ecto
 
 # test setup
-DoubleDown.Testing.set_fn_handler(MyApp.Todos.Behaviour, fn
+DoubleDown.Double.stub(MyApp.Todos.Behaviour, fn
   :get_todo, [id] -> {:ok, %Todo{id: id}}
 end)
 ```
+
+Callers use the facade: `MyApp.Todos.get_todo("42")`.
 
 The behaviour must be compiled before the facade (its `.beam`
 file must be on disk). See `DoubleDown.BehaviourFacade` for
@@ -167,10 +194,8 @@ details and limitations compared to `defcallback`.
 
 ### Choosing a facade type
 
-All three facade types use the same dispatch and Double
-infrastructure — they coexist in the same project. A fourth
-option, [Dynamic Facades](dynamic.md), provides Mimic-style
-bytecode interception for any module without a contract.
+All three approaches use the same dispatch and Double
+infrastructure — they coexist in the same project.
 
 | Feature | `Facade` (defcallback) | `BehaviourFacade` | Dynamic |
 |---------|----------------------|-------------------|---------|
