@@ -7,6 +7,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.43.0]
+
+### Changed
+
+- **Breaking:** `DoubleDown.Facade` renamed to `DoubleDown.ContractFacade`.
+  Symmetric `<qualifier>Facade` naming across all three facade builders:
+  `ContractFacade`, `BehaviourFacade`, `DynamicFacade`.
+
+- **Breaking:** `DoubleDown.Dynamic` renamed to `DoubleDown.DynamicFacade`.
+
+- **Breaking:** `DoubleDown.Dispatch` renamed to
+  `DoubleDown.Contract.Dispatch`. The dispatch machinery is keyed by
+  contract module and belongs under Contract, not at the top level.
+  Child modules (`Defer`, `FakeHandler`, `StubHandler`, `Passthrough`)
+  moved accordingly. Moved to "Internals" doc group.
+
+- **Breaking:** `DoubleDown.Repo.Test` renamed to `DoubleDown.Repo.Stub`.
+  The name now communicates what the module is — a stateless stub —
+  matching the test-double taxonomy (stub/mock/fake).
+
+- **Breaking:** `DoubleDown.Repo.InMemory` renamed to
+  `DoubleDown.Repo.OpenInMemory` (open-world, fallback-based).
+  `DoubleDown.Repo.ClosedInMemory` renamed to
+  `DoubleDown.Repo.InMemory` (closed-world, recommended default).
+  The unqualified `InMemory` name now refers to the closed-world
+  store — the one most users should reach for, especially with
+  ExMachina factories.
+
+- **Breaking:** `DoubleDown.Repo.Autogenerate` renamed to
+  `DoubleDown.Repo.Impl.Autogenerate`.
+  `DoubleDown.Repo.MultiStepper` renamed to
+  `DoubleDown.Repo.Impl.MultiStepper`.
+  `DoubleDown.Repo.InMemory.Shared` renamed to
+  `DoubleDown.Repo.Impl.InMemoryShared`.
+  Internal helpers moved to `Repo.Impl.*` namespace.
+
+- `DoubleDown.BehaviourFacade.CompileHelper` renamed to
+  `DoubleDown.Facade.CompileHelper`. The `Facade.*` namespace is
+  shared internal infrastructure for all facade builders.
+
+- Updated all documentation (README, getting-started, testing,
+  dynamic, repo, migration, process-sharing, logging) for the
+  new module names.
+
 ## [0.42.0]
 
 ### Added
@@ -891,7 +935,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `DoubleDown.Testing` with NimbleOwnership, `Repo.Test` stateless
   adapter, CI setup, Credo, Dialyzer.
 
-[Unreleased]: https://github.com/mccraigmccraig/double_down/compare/v0.42.0...HEAD
+[Unreleased]: https://github.com/mccraigmccraig/double_down/compare/v0.43.0...HEAD
+[0.43.0]: https://github.com/mccraigmccraig/double_down/compare/v0.42.0...v0.43.0
 [0.42.0]: https://github.com/mccraigmccraig/double_down/compare/v0.41.1...v0.42.0
 [0.41.1]: https://github.com/mccraigmccraig/double_down/compare/v0.41.0...v0.41.1
 [0.41.0]: https://github.com/mccraigmccraig/double_down/compare/v0.40.0...v0.41.0
