@@ -18,13 +18,13 @@ pattern:
 - **Flexible contract boundaries** — a contract module defines the
   interface; a facade dispatches to the configured implementation.
   Three ways to set this up:
-  - `defcallback` + `DoubleDown.Facade` — generates the behaviour,
-    facade, and typespecs from a single declaration (recommended for
-    new code)
+  - `defcallback` + `DoubleDown.ContractFacade` — generates the
+    behaviour, facade, and typespecs from a single declaration
+    (recommended for new code)
   - `DoubleDown.BehaviourFacade` — generates a dispatch facade from
     an existing vanilla `@behaviour` module you don't control
-  - `DoubleDown.Dynamic` — Mimic-style bytecode interception for
-    any module, no explicit contract needed
+  - `DoubleDown.DynamicFacade` — Mimic-style bytecode interception
+    for any module, no explicit contract needed
 
   All three use the same dispatch and test double infrastructure.
   See [Choosing a facade type](docs/getting-started.md#choosing-a-facade-type)
@@ -42,12 +42,12 @@ pattern:
   enabling read-after-write consistency without a database — fast
   enough for property-based testing. The built-in Ecto Repo ships
   with three test doubles:
-  - `Repo.Test` — stateless stub (fire-and-forget writes)
-  - `Repo.InMemory` — open-world stateful fake (PK-based
-    read-after-write, fallback for other reads)
-  - `Repo.ClosedInMemory` — closed-world stateful fake (state is
-    the complete truth, authoritative for all bare-schema reads —
+  - `Repo.Stub` — stateless stub (fire-and-forget writes)
+  - `Repo.InMemory` — closed-world stateful fake (state is the
+    complete truth, authoritative for all bare-schema reads —
     works with ExMachina factories)
+  - `Repo.OpenInMemory` — open-world stateful fake (PK-based
+    read-after-write, fallback for other reads)
 - **Fakes with expectations** — testing "what happens when the second
   insert fails with a constraint violation?" means either a real DB
   or a mock that responds to each Repo call individually — verbose and
@@ -69,7 +69,7 @@ pattern:
 |---------------------------------|------------------------------------------------------------------------------------|
 | `defcallback` contracts         | Typed signatures with parameter names, `@doc` sync, pre-dispatch transforms        |
 | Vanilla behaviour facades       | `BehaviourFacade` — dispatch facade from any existing `@behaviour` module          |
-| Dynamic facades                 | `Dynamic` — Mimic-style bytecode shim, module becomes ad-hoc contract              |
+| Dynamic facades                 | `DynamicFacade` — Mimic-style bytecode shim, module becomes ad-hoc contract        |
 | Zero-cost static dispatch       | Inlined direct calls in production — no overhead vs calling the impl directly      |
 | Generated `@spec` + `@doc`      | LSP-friendly on `defcallback` and `BehaviourFacade` facades                        |
 | Standard `@behaviour`           | All contracts are Mox-compatible — `@behaviour` + `@callback`                      |
@@ -93,9 +93,9 @@ Full `Ecto.Repo` contract (`DoubleDown.Repo`) with three test doubles:
 
 | Fake | Type | Best for |
 |------|------|----------|
-| `Repo.Test` | Stateless stub | Fire-and-forget writes, canned read responses |
-| `Repo.InMemory` | Open-world stateful fake | PK-based read-after-write; fallback for other reads |
-| `Repo.ClosedInMemory` | Closed-world stateful fake | Full in-memory store; all bare-schema reads without fallback; ExMachina factories |
+| `Repo.Stub` | Stateless stub | Fire-and-forget writes, canned read responses |
+| `Repo.InMemory` | Closed-world stateful fake | Full in-memory store; all bare-schema reads without fallback; ExMachina factories |
+| `Repo.OpenInMemory` | Open-world stateful fake | PK-based read-after-write; fallback for other reads |
 
 All three support `Ecto.Multi` transactions, PK autogeneration,
 changeset validation, and timestamps. See [Repo](docs/repo.md).
@@ -105,7 +105,7 @@ changeset validation, and timestamps. See [Repo](docs/repo.md).
 This example uses `defcallback` contracts — the recommended approach
 for new code. For existing `@behaviour` modules, see
 `DoubleDown.BehaviourFacade`. For Mimic-style interception of any
-module, see `DoubleDown.Dynamic`.
+module, see `DoubleDown.DynamicFacade`.
 
 ### Define contracts
 
@@ -115,12 +115,12 @@ and define domain-specific contracts for business logic:
 ```elixir
 # Repo facade — wraps your Ecto Repo
 defmodule MyApp.Repo do
-  use DoubleDown.Facade, contract: DoubleDown.Repo, otp_app: :my_app
+  use DoubleDown.ContractFacade, contract: DoubleDown.Repo, otp_app: :my_app
 end
 
 # Domain model contract — queries specific to your domain
 defmodule MyApp.Todos.Model do
-  use DoubleDown.Facade, otp_app: :my_app
+  use DoubleDown.ContractFacade, otp_app: :my_app
 
   defcallback active_todos(tenant_id :: String.t()) :: [Todo.t()]
   defcallback todo_exists?(tenant_id :: String.t(), title :: String.t()) :: boolean()
@@ -247,8 +247,8 @@ end
   structured log assertions
 - **[Process Sharing](docs/process-sharing.md)** — async safety, allow,
   global mode, supervision tree testing
-- **[Repo](docs/repo.md)** — built-in Ecto Repo contract, `Repo.Test`,
-  `Repo.InMemory`, `Repo.ClosedInMemory`, failure scenario testing
+- **[Repo](docs/repo.md)** — built-in Ecto Repo contract, `Repo.Stub`,
+  `Repo.InMemory`, `Repo.OpenInMemory`, failure scenario testing
 - **[Migration](docs/migration.md)** — incremental adoption, coexisting
   with direct Ecto.Repo calls
 
