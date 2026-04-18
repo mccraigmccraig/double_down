@@ -98,196 +98,71 @@ Use `Repo.Stub` when your test only needs fire-and-forget writes and
 a few canned read responses. For read-after-write consistency, use
 `Repo.InMemory`.
 
-### `Repo.OpenInMemory` — stateful test double (open-world)
+### Shared behaviour: writes, PK autogeneration, timestamps
 
-`Repo.OpenInMemory` models a consistent in-memory store
-with primary-key indexing, read-after-write consistency for PK lookups,
-and a fallback mechanism for operations the store can't answer
-authoritatively.
+All three test doubles share these behaviours for write operations:
 
-State is a nested map `%{schema_module => %{pk => struct}}`, stored
-in NimbleOwnership via the stateful handler mechanism and updated
-atomically on each dispatch.
+- **Changeset validation** — if `changeset.valid?` is `false`, the
+  operation returns `{:error, changeset}` without side effects,
+  matching real Ecto Repo behaviour.
+- **Primary key autogeneration** — `:id` (auto-increment), `:binary_id`
+  (UUID), parameterized types (`Ecto.UUID`, `Uniq.UUID` etc.),
+  `@primary_key false`, and `autogenerate: false` are all handled
+  via Ecto schema metadata. Explicitly set PK values are preserved.
+- **Timestamps** — `inserted_at`/`updated_at` are auto-populated on
+  insert and refreshed on update via `__schema__(:autogenerate)`.
+  Custom field names and types are handled automatically. Explicitly
+  set timestamps are preserved.
 
-#### The key insight
+The stateful fakes (`InMemory` and `OpenInMemory`) also support
+**seed data** — pre-populate the store by passing a list of structs
+as the third argument to `Double.fake`:
 
-The InMemory store only contains records that have been explicitly
-inserted (or seeded) during the test. It is _not_ a complete model
-of the database. When a record is not found in state, InMemory cannot
-know whether it "really" exists — so it must not silently return `nil`
-or `[]`. Instead, it falls through to a user-supplied fallback
-function, or raises a clear error.
+    DoubleDown.Double.fake(DoubleDown.Repo, DoubleDown.Repo.InMemory,
+      [%User{id: 1, name: "Alice"}, %Item{id: 1, sku: "widget"}])
 
-#### Operation dispatch
-
-| Category | Operations | Behaviour |
-|----------|-----------|-----------|
-| **Writes** | `insert`, `update`, `delete` | Always handled by state |
-| **PK reads** | `get`, `get!` | Check state first. If found, return it. If not, fallback or error. |
-| **get_by** | `get_by`, `get_by!` | When queryable is a bare schema and clauses include all PK fields: PK lookup in state, then fallback on miss. Otherwise: fallback or error. |
-| **Non-PK reads** | `one`, `all`, `exists?`, `aggregate`, ... | Always fallback or error |
-| **Bulk** | `insert_all`, `update_all`, `delete_all` | Always fallback or error |
-| **Transactions** | `transact`, `rollback` | Delegates to sub-operations; rollback throws to unwind |
-
-#### Basic usage — writes and PK reads
-
-If your test only needs writes and PK-based lookups, no fallback is
-needed:
-
-```elixir
-setup do
-  DoubleDown.Double.fake(DoubleDown.Repo, DoubleDown.Repo.OpenInMemory)
-  :ok
-end
-
-test "insert then get by PK" do
-  {:ok, user} = MyApp.Repo.insert(User.changeset(%{name: "Alice"}))
-  assert ^user = MyApp.Repo.get(User, user.id)
-end
-
-test "insert then get_by with PK in clauses" do
-  {:ok, user} = MyApp.Repo.insert(User.changeset(%{name: "Alice"}))
-  assert ^user = MyApp.Repo.get_by(User, id: user.id)
-  assert ^user = MyApp.Repo.get_by(User, id: user.id, name: "Alice")
-end
-```
-
-`insert` applies the changeset, autogenerates the primary key if
-nil, and stores the record. `get` finds it by PK. `get_by` also
-uses PK lookup when the clauses include all primary key fields —
-any additional clauses are verified against the found record.
-
-Primary key autogeneration uses Ecto's schema metadata to handle
-all common PK configurations:
-
-- **`:id` type** (default `schema`) — auto-incremented integer
-- **`:binary_id`** — generates a UUID string
-- **Parameterized types** (`Ecto.UUID`, `Uniq.UUID`, etc.) —
-  calls the type's `autogenerate` callback
-- **`@primary_key false`** — no PK, works without error
-- **`autogenerate: false`** — raises if no PK value is provided
-
-Explicitly set PK values are always preserved.
-
-Both test adapters validate changesets before applying them — if
-`changeset.valid?` is `false`, the operation returns
-`{:error, changeset}` without modifying the store, matching real
-Ecto Repo behaviour.
-
-Schemas with `timestamps()` get their `inserted_at`/`updated_at`
-fields auto-populated on insert, and `updated_at` refreshed on
-update. This uses Ecto's `__schema__(:autogenerate)` metadata, so
-custom field names and timestamp types are handled automatically.
-Explicitly set timestamps are preserved.
-
-#### Seed data
-
-Pre-populate the store with existing records by passing them as the
-third argument to `Double.fake`:
-
-```elixir
-DoubleDown.Double.fake(DoubleDown.Repo, DoubleDown.Repo.OpenInMemory,
-  [%User{id: 1, name: "Alice"}, %Item{id: 1, sku: "widget"}])
-```
-
-Seeded records are keyed by their schema module and primary key, and
-are available for PK reads immediately.
-
-#### Fallback function for non-PK reads
-
-For operations the state cannot answer — reads where the clauses
-don't include the primary key, `Ecto.Query`-based reads, and
-operations like `one`, `all`, `exists?`, `aggregate` — supply a
-`fallback_fn`. The fallback is also used for `get_by` when the PK
-is in the clauses but the record is not found in state (absence is
-not authoritative — the store is incomplete).
-
-The fallback receives `(operation, args, state)` where `state` is
-the clean store map (internal keys stripped), so it can compose
-canned data with records inserted during the test:
-
-```elixir
-setup do
-  alice = %User{id: 1, name: "Alice", email: "alice@example.com"}
-
-  DoubleDown.Double.fake(
-    DoubleDown.Repo,
-    DoubleDown.Repo.OpenInMemory,
-    [alice],
-    fallback_fn: fn
-      :get_by, [User, [email: "alice@example.com"]], _state -> alice
-      :all, [User], state -> state |> Map.get(User, %{}) |> Map.values()
-      :exists?, [User], _state -> true
-      :aggregate, [User, :count, :id], _state -> 1
-    end
-  )
-  :ok
-end
-
-test "PK read comes from state, non-PK reads use fallback" do
-  assert %User{name: "Alice"} = MyApp.Repo.get(User, 1)
-  assert %User{name: "Alice"} = MyApp.Repo.get_by(User, email: "alice@example.com")
-  assert [%User{}] = MyApp.Repo.all(User)
-end
-```
-
-If the fallback function raises `FunctionClauseError` (no matching
-clause), dispatch falls through to a clear error — the same behaviour
-as having no fallback at all.
-
-#### Error on unhandled operations
-
-When an operation can't be served by either state or fallback,
-`Repo.OpenInMemory` raises `ArgumentError` with a message showing the
-exact operation and suggesting how to add a fallback clause:
-
-```
-** (ArgumentError) DoubleDown.Repo.OpenInMemory cannot service :get_by
-   with args [User, [name: "Bob"]].
-
-    The InMemory adapter can only answer authoritatively for:
-      - Write operations (insert, update, delete)
-      - PK-based reads (get, get!) when the record exists in state
-
-    For all other operations, register a fallback function:
-
-        DoubleDown.Repo.OpenInMemory.new(
-          fallback_fn: fn
-            :get_by, [User, [name: "Bob"]], _state -> # your result here
-          end
-        )
-```
-
-This fail-loud approach prevents tests from passing with silently
-wrong data.
-
-### `Repo.InMemory` — stateful test double (closed-world)
+### `Repo.InMemory` — stateful test double (closed-world, recommended)
 
 `Repo.InMemory` uses **closed-world semantics**: the state is
 the complete truth. If a record isn't in the state, it doesn't
 exist. This makes the adapter authoritative for all bare schema
 operations without needing a fallback — the fallback becomes the
-escape hatch for `Ecto.Query` queryables, not the default path:
+escape hatch for `Ecto.Query` queryables, not the default path.
+
+**This is the recommended Repo fake for most tests.**
 
 | Category | Operations | Behaviour |
 |----------|-----------|-----------|
-| **Writes** | `insert`, `update`, `delete` | Same as InMemory |
+| **Writes** | `insert`, `update`, `delete` | Store in state |
 | **PK reads** | `get`, `get!` | Return `nil` / raise on miss (no fallback) |
 | **Clause reads** | `get_by`, `get_by!` | Scan and filter all records |
 | **Collection reads** | `all`, `one`/`one!`, `exists?` | Scan all records of schema |
 | **Aggregates** | `aggregate` | Compute from records in state |
 | **Bulk writes** | `insert_all`, `delete_all`, `update_all` (`set:`) | Modify state directly |
-| **Transactions** | `transact`, `rollback` | Same as InMemory |
+| **Transactions** | `transact`, `rollback` | Delegate to sub-operations |
 | **Ecto.Query** | Any operation with `Ecto.Query` queryable | Fallback or error |
 
-Use `InMemory` when the state is the full picture — typically
-when using factories (e.g. ExMachina) to build test data:
+#### Basic usage
 
 ```elixir
 setup do
   DoubleDown.Double.fake(DoubleDown.Repo, DoubleDown.Repo.InMemory)
+  :ok
+end
 
-  # Factory-inserted records are the complete store
+test "insert then read back" do
+  {:ok, user} = MyApp.Repo.insert(User.changeset(%{name: "Alice"}))
+  assert ^user = MyApp.Repo.get(User, user.id)
+  assert [^user] = MyApp.Repo.all(User)
+  assert %User{} = MyApp.Repo.get_by(User, name: "Alice")
+end
+```
+
+#### ExMachina integration
+
+```elixir
+setup do
+  DoubleDown.Double.fake(DoubleDown.Repo, DoubleDown.Repo.InMemory)
   insert(:user, name: "Alice", email: "alice@example.com")
   insert(:user, name: "Bob", email: "bob@example.com")
   :ok
@@ -307,7 +182,9 @@ test "count users" do
 end
 ```
 
-The fallback function is still available as an escape hatch for
+#### Ecto.Query fallback
+
+The fallback function is available as an escape hatch for
 `Ecto.Query` queryables that cannot be evaluated in-memory:
 
 ```elixir
@@ -321,9 +198,66 @@ DoubleDown.Double.fake(
 )
 ```
 
-Use `OpenInMemory` when the state is partial and missing records
-should fall through to a fallback. Use `InMemory` (the default)
-when the state is the complete truth.
+### `Repo.OpenInMemory` — stateful test double (open-world)
+
+`Repo.OpenInMemory` uses **open-world semantics**: the state may
+be incomplete. When a record is not found, the adapter falls through
+to a user-supplied fallback function rather than returning `nil`.
+Use this when you need fine-grained control over which reads come
+from state vs fallback.
+
+For most tests, prefer `Repo.InMemory` (closed-world) which handles
+all bare-schema reads without a fallback.
+
+| Category | Operations | Behaviour |
+|----------|-----------|-----------|
+| **Writes** | `insert`, `update`, `delete` | Store in state |
+| **PK reads** | `get`, `get!` | State first, then fallback |
+| **get_by** | `get_by`, `get_by!` | PK lookup when PK in clauses, then fallback |
+| **Other reads** | `one`, `all`, `exists?`, `aggregate` | Always fallback |
+| **Bulk** | `insert_all`, `update_all`, `delete_all` | Always fallback |
+| **Transactions** | `transact`, `rollback` | Delegate to sub-operations |
+
+#### Basic usage — writes and PK reads
+
+If your test only needs writes and PK-based lookups, no fallback is
+needed:
+
+```elixir
+setup do
+  DoubleDown.Double.fake(DoubleDown.Repo, DoubleDown.Repo.OpenInMemory)
+  :ok
+end
+
+test "insert then get by PK" do
+  {:ok, user} = MyApp.Repo.insert(User.changeset(%{name: "Alice"}))
+  assert ^user = MyApp.Repo.get(User, user.id)
+end
+```
+
+#### Fallback function for non-PK reads
+
+For operations the state cannot answer, supply a `fallback_fn`.
+The fallback receives `(operation, args, state)` where `state` is
+the clean store map (internal keys stripped):
+
+```elixir
+DoubleDown.Double.fake(
+  DoubleDown.Repo,
+  DoubleDown.Repo.OpenInMemory,
+  [%User{id: 1, name: "Alice", email: "alice@example.com"}],
+  fallback_fn: fn
+    :get_by, [User, [email: email]], _state -> %User{id: 1, email: email}
+    :all, [User], state -> state |> Map.get(User, %{}) |> Map.values()
+  end
+)
+```
+
+#### Error on unhandled operations
+
+When an operation can't be served by either state or fallback,
+`Repo.OpenInMemory` raises `ArgumentError` with a message showing the
+exact operation and suggesting how to add a fallback clause.
 
 ## Transactions
 
