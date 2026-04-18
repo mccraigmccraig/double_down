@@ -239,7 +239,10 @@ defmodule DoubleDown.Repo.InMemoryTest do
 
     test "raises when multiple records" do
       store = InMemory.new([%User{id: 1, name: "Alice"}, %User{id: 2, name: "Bob"}])
-      {%DoubleDown.Contract.Dispatch.Defer{fn: raise_fn}, _} = InMemory.dispatch(:one, [User], store)
+
+      {%DoubleDown.Contract.Dispatch.Defer{fn: raise_fn}, _} =
+        InMemory.dispatch(:one, [User], store)
+
       assert_raise ArgumentError, ~r/found 2/, fn -> raise_fn.() end
     end
   end

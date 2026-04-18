@@ -155,7 +155,8 @@ defmodule DoubleDown.Contract.DispatchTest do
 
   describe "key/3" do
     test "builds a canonical key" do
-      assert {Greeter, :greet, ["Alice"]} = DoubleDown.Contract.Dispatch.key(Greeter, :greet, ["Alice"])
+      assert {Greeter, :greet, ["Alice"]} =
+               DoubleDown.Contract.Dispatch.key(Greeter, :greet, ["Alice"])
     end
 
     test "normalizes map argument order" do

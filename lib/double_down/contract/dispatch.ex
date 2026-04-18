@@ -176,7 +176,9 @@ defmodule DoubleDown.Contract.Dispatch do
         rescue
           exception ->
             stacktrace = __STACKTRACE__
-            {%DoubleDown.Contract.Dispatch.Defer{fn: fn -> reraise exception, stacktrace end}, state}
+
+            {%DoubleDown.Contract.Dispatch.Defer{fn: fn -> reraise exception, stacktrace end},
+             state}
         catch
           :throw, value ->
             {%DoubleDown.Contract.Dispatch.Defer{fn: fn -> throw(value) end}, state}

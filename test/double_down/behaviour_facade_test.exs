@@ -113,7 +113,10 @@ defmodule DoubleDown.BehaviourFacadeTest do
       key = VanillaBehaviour.Port.__key__(:create_item, %{a: 1}, verbose: true)
 
       assert key ==
-               DoubleDown.Contract.Dispatch.key(VanillaBehaviour, :create_item, [%{a: 1}, [verbose: true]])
+               DoubleDown.Contract.Dispatch.key(VanillaBehaviour, :create_item, [
+                 %{a: 1},
+                 [verbose: true]
+               ])
     end
 
     test "generates __key__ for zero-arg callback" do

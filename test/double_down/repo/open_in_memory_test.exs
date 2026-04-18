@@ -642,7 +642,9 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
       query = Ecto.Queryable.to_query(User)
 
       state =
-        Repo.OpenInMemory.new(fallback_fn: fn :get_by, [^query, [name: "Alice"]], _state -> alice end)
+        Repo.OpenInMemory.new(
+          fallback_fn: fn :get_by, [^query, [name: "Alice"]], _state -> alice end
+        )
 
       DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/3, state)
 

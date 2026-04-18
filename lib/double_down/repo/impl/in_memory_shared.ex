@@ -191,7 +191,9 @@ if Code.ensure_loaded?(Ecto) do
             # then defer the reraise to the calling test process.
             exception ->
               stacktrace = __STACKTRACE__
-              {%DoubleDown.Contract.Dispatch.Defer{fn: fn -> reraise exception, stacktrace end}, store}
+
+              {%DoubleDown.Contract.Dispatch.Defer{fn: fn -> reraise exception, stacktrace end},
+               store}
           end
       end
     end
