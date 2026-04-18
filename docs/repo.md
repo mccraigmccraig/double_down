@@ -3,8 +3,8 @@
 [< Process Sharing](process-sharing.md) | [Up: README](../README.md) | [Migration >](migration.md)
 
 DoubleDown ships a ready-made Ecto Repo contract behaviour
-with three test double implementations (`Repo.Stub`, `Repo.OpenInMemory`,
-and `Repo.InMemory`).
+with three test double implementations (`Repo.Stub`, `Repo.InMemory`,
+and `Repo.OpenInMemory`).
 In production, the dispatch facade passes through to your existing Ecto
 Repo with zero overhead (via static dispatch). The test doubles are
 sophisticated enough to support `Ecto.Multi` transactions and
@@ -49,8 +49,8 @@ implementation.
 |----------------|------|-------|----------|
 | **Your Ecto Repo** | Production | Real database | Production dispatch (zero-cost passthrough) |
 | **`Repo.Stub`** | Stateless stub | None | Fire-and-forget writes, canned read responses |
-| **`Repo.OpenInMemory`** | Stateful fake (open-world) | `%{Schema => %{pk => struct}}` | PK-based read-after-write; fallback for other reads |
 | **`Repo.InMemory`** | Stateful fake (closed-world) | `%{Schema => %{pk => struct}}` | Full in-memory store; ExMachina factories; all bare-schema reads without fallback |
+| **`Repo.OpenInMemory`** | Stateful fake (open-world) | `%{Schema => %{pk => struct}}` | PK-based read-after-write; fallback for other reads |
 
 ### Production — zero-cost passthrough to your Ecto Repo
 
@@ -96,7 +96,7 @@ DoubleDown.Double.stub(DoubleDown.Repo, DoubleDown.Repo.Stub,
 
 Use `Repo.Stub` when your test only needs fire-and-forget writes and
 a few canned read responses. For read-after-write consistency, use
-`Repo.OpenInMemory`.
+`Repo.InMemory`.
 
 ### `Repo.OpenInMemory` — stateful test double (open-world)
 
@@ -321,9 +321,9 @@ DoubleDown.Double.fake(
 )
 ```
 
-Use `InMemory` (open-world) when the state is partial and missing
-records should fall through to a fallback. Use `InMemory`
-(closed-world) when the state is the complete truth.
+Use `OpenInMemory` when the state is partial and missing records
+should fall through to a fallback. Use `InMemory` (the default)
+when the state is the complete truth.
 
 ## Transactions
 
@@ -375,8 +375,8 @@ adapter — so `repo.insert(cs)` dispatches correctly in both cases.
 Bulk operations (`insert_all`, `update_all`, `delete_all`) go through
 the fallback function or raise in test adapters.
 
-Both `Repo.Stub` and `Repo.OpenInMemory` share a `MultiStepper` module
-that walks through Multi operations without a real database.
+All three Repo test doubles share a `MultiStepper` module that walks
+through Multi operations without a real database.
 
 ### Rollback
 
@@ -413,11 +413,11 @@ database.
 The **Ecto adapter** provides real database transactions with full
 ACID isolation — this is the production path.
 
-The **Test** and **InMemory** adapters do **not** provide true
-transaction isolation:
+The **Stub**, **InMemory**, and **OpenInMemory** adapters do **not**
+provide true transaction isolation:
 
 - `Repo.Stub` calls the function directly without any locking.
-- `Repo.OpenInMemory` uses `%DoubleDown.Contract.Dispatch.Defer{}` to run the transaction
+- `Repo.InMemory` and `Repo.OpenInMemory` use `%DoubleDown.Contract.Dispatch.Defer{}` to run the transaction
   function outside the NimbleOwnership lock — each sub-operation
   acquires the lock individually.
 
@@ -435,7 +435,7 @@ Ecto's sandbox.
 
 ## Testing failure scenarios with Double
 
-`DoubleDown.Double` integrates with both Repo test doubles, letting you
+`DoubleDown.Double` integrates with all Repo test doubles, letting you
 override specific operations to simulate failures while the rest of
 the Repo behaves normally.
 
@@ -469,15 +469,15 @@ test "handles duplicate email gracefully" do
 end
 ```
 
-### Error simulation with `Repo.OpenInMemory`
+### Error simulation with `Repo.InMemory`
 
-Use a 3-arity stateful fallback with `Repo.OpenInMemory` for tests that
+Use a 3-arity stateful fallback with `Repo.InMemory` for tests that
 need read-after-write consistency alongside failure simulation:
 
 ```elixir
 setup do
   DoubleDown.Repo
-  |> DoubleDown.Double.fake(DoubleDown.Repo.OpenInMemory)
+  |> DoubleDown.Double.fake(DoubleDown.Repo.InMemory)
   |> DoubleDown.Double.expect(:insert, fn [changeset] ->
     {:error, Ecto.Changeset.add_error(changeset, :email, "has already been taken")}
   end)
@@ -509,7 +509,7 @@ expect is consumed for `verify!` counting:
 ```elixir
 setup do
   DoubleDown.Repo
-  |> DoubleDown.Double.fake(DoubleDown.Repo.OpenInMemory)
+  |> DoubleDown.Double.fake(DoubleDown.Repo.InMemory)
   |> DoubleDown.Double.expect(:insert, :passthrough, times: 2)
   :ok
 end
@@ -525,14 +525,14 @@ You can mix `:passthrough` and function expects — for example,
 
 ```elixir
 DoubleDown.Repo
-|> DoubleDown.Double.fake(DoubleDown.Repo.OpenInMemory)
+|> DoubleDown.Double.fake(DoubleDown.Repo.InMemory)
 |> DoubleDown.Double.expect(:insert, :passthrough)
 |> DoubleDown.Double.expect(:insert, fn [changeset] ->
   {:error, Ecto.Changeset.add_error(changeset, :email, "taken")}
 end)
 ```
 
-### Stateful expects and stubs with `Repo.OpenInMemory`
+### Stateful expects and stubs with `Repo.InMemory`
 
 Expects and per-operation stubs can be 2-arity or 3-arity to read
 and update the InMemory store directly. The state passed to the
@@ -541,7 +541,7 @@ responder is the InMemory store (`%{Schema => %{pk => record}}`):
 ```elixir
 # 2-arity expect: reject duplicate emails, otherwise passthrough
 DoubleDown.Repo
-|> DoubleDown.Double.fake(DoubleDown.Repo.OpenInMemory)
+|> DoubleDown.Double.fake(DoubleDown.Repo.InMemory)
 |> DoubleDown.Double.stub(:insert, fn [changeset], state ->
   existing_emails =
     state
@@ -582,7 +582,7 @@ including computed results:
 ```elixir
 setup do
   DoubleDown.Repo
-  |> DoubleDown.Double.fake(DoubleDown.Repo.OpenInMemory)
+  |> DoubleDown.Double.fake(DoubleDown.Repo.InMemory)
   |> DoubleDown.Double.expect(:insert, fn [changeset] ->
     {:error, Ecto.Changeset.add_error(changeset, :email, "taken")}
   end)
@@ -614,7 +614,7 @@ end
 The "two-contract" pattern separates write operations (through the
 `DoubleDown.Repo` contract) from domain-specific query operations
 (through a separate contract). In production, both hit the same
-database. In tests, the Repo uses `Repo.OpenInMemory`, and the query
+database. In tests, the Repo uses `Repo.InMemory`, and the query
 contract needs to see what Repo has written.
 
 4-arity stateful handlers enable this by providing a read-only
@@ -638,7 +638,7 @@ end
 setup do
   # Repo uses InMemory — writes land here
   DoubleDown.Repo
-  |> DoubleDown.Double.fake(DoubleDown.Repo.OpenInMemory)
+  |> DoubleDown.Double.fake(DoubleDown.Repo.InMemory)
 
   # Queries uses a 4-arity fake that reads Repo's InMemory state
   MyApp.UserQueries
@@ -718,7 +718,7 @@ You get:
 
 This is particularly valuable for domain logic that interleaves Ecto
 operations. The contract boundary lets you swap the real Repo for
-`Repo.OpenInMemory` and verify business rules without database overhead —
+`Repo.InMemory` and verify business rules without database overhead —
 then use the Ecto adapter in integration tests for the full stack.
 
 ---
