@@ -120,22 +120,12 @@ if Code.ensure_loaded?(Ecto) do
       {:error, changeset}
     end
 
-    defp dispatch(:insert, [changeset], _fallback_fn) do
-      alias DoubleDown.Repo.Impl.Autogenerate
+    defp dispatch(:insert, [%Ecto.Changeset{} = changeset], _fallback_fn) do
+      do_insert(Ecto.Changeset.apply_changes(changeset))
+    end
 
-      record = Autogenerate.apply_changes(changeset, :insert)
-      schema = record.__struct__
-
-      case Autogenerate.maybe_autogenerate_id(record, schema, fn _schema ->
-             # Repo.Stub is stateless — use a monotonic counter for unique integer IDs
-             [System.unique_integer([:positive, :monotonic])]
-           end) do
-        {:error, {:no_autogenerate, message}} ->
-          raise ArgumentError, message
-
-        {_id, record} ->
-          {:ok, record}
-      end
+    defp dispatch(:insert, [%{__struct__: _} = struct], _fallback_fn) do
+      do_insert(struct)
     end
 
     defp dispatch(:update, [%Ecto.Changeset{valid?: false} = changeset], _fallback_fn) do
@@ -144,6 +134,14 @@ if Code.ensure_loaded?(Ecto) do
 
     defp dispatch(:update, [changeset], _fallback_fn) do
       {:ok, DoubleDown.Repo.Impl.Autogenerate.apply_changes(changeset, :update)}
+    end
+
+    defp dispatch(:delete, [%Ecto.Changeset{valid?: false} = changeset], _fallback_fn) do
+      {:error, changeset}
+    end
+
+    defp dispatch(:delete, [%Ecto.Changeset{} = changeset], _fallback_fn) do
+      {:ok, Ecto.Changeset.apply_changes(changeset)}
     end
 
     defp dispatch(:delete, [record], _fallback_fn) do
@@ -284,6 +282,28 @@ if Code.ensure_loaded?(Ecto) do
       fun.()
     catch
       {:rollback, value} -> {:error, value}
+    end
+
+    # -----------------------------------------------------------------
+    # Insert helper (after all dispatch clauses to avoid grouping warning)
+    # -----------------------------------------------------------------
+
+    defp do_insert(record) do
+      alias DoubleDown.Repo.Impl.Autogenerate
+
+      record = Autogenerate.apply_timestamps(record, :insert)
+      schema = record.__struct__
+
+      case Autogenerate.maybe_autogenerate_id(record, schema, fn _schema ->
+             # Repo.Stub is stateless — use a monotonic counter for unique integer IDs
+             [System.unique_integer([:positive, :monotonic])]
+           end) do
+        {:error, {:no_autogenerate, message}} ->
+          raise ArgumentError, message
+
+        {_id, record} ->
+          {:ok, record}
+      end
     end
 
     # -----------------------------------------------------------------

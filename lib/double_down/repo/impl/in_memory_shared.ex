@@ -92,10 +92,18 @@ if Code.ensure_loaded?(Ecto) do
       {{:error, changeset}, store}
     end
 
-    def dispatch_insert([changeset], store) do
+    def dispatch_insert([%Ecto.Changeset{} = changeset], store) do
+      do_insert(Ecto.Changeset.apply_changes(changeset), :insert, store)
+    end
+
+    def dispatch_insert([%{__struct__: _} = struct], store) do
+      do_insert(struct, :insert, store)
+    end
+
+    defp do_insert(record, action, store) do
       alias DoubleDown.Repo.Impl.Autogenerate
 
-      record = Autogenerate.apply_changes(changeset, :insert)
+      record = Autogenerate.apply_timestamps(record, action)
       schema = record.__struct__
 
       case Autogenerate.maybe_autogenerate_id(record, schema, fn s ->
@@ -125,6 +133,17 @@ if Code.ensure_loaded?(Ecto) do
     end
 
     @doc false
+    def dispatch_delete([%Ecto.Changeset{valid?: false} = changeset], store) do
+      {{:error, changeset}, store}
+    end
+
+    def dispatch_delete([%Ecto.Changeset{} = changeset], store) do
+      record = Ecto.Changeset.apply_changes(changeset)
+      schema = record.__struct__
+      id = DoubleDown.Repo.Impl.Autogenerate.get_primary_key(record)
+      {{:ok, record}, delete_record(store, schema, id)}
+    end
+
     def dispatch_delete([record], store) do
       schema = record.__struct__
       id = DoubleDown.Repo.Impl.Autogenerate.get_primary_key(record)

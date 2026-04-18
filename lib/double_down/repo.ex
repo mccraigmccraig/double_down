@@ -62,12 +62,12 @@ if Code.ensure_loaded?(Ecto) do
     # Write Operations
     # -----------------------------------------------------------------
 
-    @doc "Insert a new record from a changeset."
-    defcallback insert(changeset :: Ecto.Changeset.t()) ::
+    @doc "Insert a new record from a changeset or struct."
+    defcallback insert(struct_or_changeset :: Ecto.Changeset.t() | struct()) ::
                   {:ok, struct()} | {:error, Ecto.Changeset.t()}
 
-    @doc "Insert a new record from a changeset with options."
-    defcallback insert(changeset :: Ecto.Changeset.t(), opts :: keyword()) ::
+    @doc "Insert a new record from a changeset or struct with options."
+    defcallback insert(struct_or_changeset :: Ecto.Changeset.t() | struct(), opts :: keyword()) ::
                   {:ok, struct()} | {:error, Ecto.Changeset.t()}
 
     @doc "Update an existing record from a changeset."
@@ -78,12 +78,12 @@ if Code.ensure_loaded?(Ecto) do
     defcallback update(changeset :: Ecto.Changeset.t(), opts :: keyword()) ::
                   {:ok, struct()} | {:error, Ecto.Changeset.t()}
 
-    @doc "Delete a record."
-    defcallback delete(record :: struct()) ::
+    @doc "Delete a record or changeset."
+    defcallback delete(struct_or_changeset :: struct() | Ecto.Changeset.t()) ::
                   {:ok, struct()} | {:error, Ecto.Changeset.t()}
 
-    @doc "Delete a record with options."
-    defcallback delete(record :: struct(), opts :: keyword()) ::
+    @doc "Delete a record or changeset with options."
+    defcallback delete(struct_or_changeset :: struct() | Ecto.Changeset.t(), opts :: keyword()) ::
                   {:ok, struct()} | {:error, Ecto.Changeset.t()}
 
     # -----------------------------------------------------------------
@@ -91,10 +91,11 @@ if Code.ensure_loaded?(Ecto) do
     # -----------------------------------------------------------------
 
     @doc "Insert a new record, raising on failure. Mirrors `Ecto.Repo.insert!/2`."
-    defcallback insert!(changeset :: Ecto.Changeset.t()) :: struct()
+    defcallback insert!(struct_or_changeset :: Ecto.Changeset.t() | struct()) :: struct()
 
     @doc "Insert a new record with options, raising on failure."
-    defcallback insert!(changeset :: Ecto.Changeset.t(), opts :: keyword()) :: struct()
+    defcallback insert!(struct_or_changeset :: Ecto.Changeset.t() | struct(), opts :: keyword()) ::
+                  struct()
 
     @doc "Update an existing record, raising on failure. Mirrors `Ecto.Repo.update!/2`."
     defcallback update!(changeset :: Ecto.Changeset.t()) :: struct()
@@ -102,11 +103,12 @@ if Code.ensure_loaded?(Ecto) do
     @doc "Update an existing record with options, raising on failure."
     defcallback update!(changeset :: Ecto.Changeset.t(), opts :: keyword()) :: struct()
 
-    @doc "Delete a record, raising on failure. Mirrors `Ecto.Repo.delete!/2`."
-    defcallback delete!(record :: struct()) :: struct()
+    @doc "Delete a record or changeset, raising on failure. Mirrors `Ecto.Repo.delete!/2`."
+    defcallback delete!(struct_or_changeset :: struct() | Ecto.Changeset.t()) :: struct()
 
-    @doc "Delete a record with options, raising on failure."
-    defcallback delete!(record :: struct(), opts :: keyword()) :: struct()
+    @doc "Delete a record or changeset with options, raising on failure."
+    defcallback delete!(struct_or_changeset :: struct() | Ecto.Changeset.t(), opts :: keyword()) ::
+                  struct()
 
     # -----------------------------------------------------------------
     # Bulk Operations
