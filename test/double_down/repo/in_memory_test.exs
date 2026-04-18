@@ -566,4 +566,134 @@ defmodule DoubleDown.Repo.InMemoryTest do
       assert length(users) == 1
     end
   end
+
+  # -------------------------------------------------------------------
+  # Transaction rollback — state restoration
+  # -------------------------------------------------------------------
+
+  describe "transaction rollback restores state" do
+    setup do
+      DoubleDown.Double.fake(DoubleDown.Repo, InMemory)
+      :ok
+    end
+
+    test "rollback undoes inserts" do
+      result =
+        DoubleDown.Test.Repo.transact(
+          fn ->
+            {:ok, _} = DoubleDown.Test.Repo.insert(User.changeset(%{name: "Alice"}))
+            DoubleDown.Test.Repo.rollback(:aborted)
+          end,
+          []
+        )
+
+      assert {:error, :aborted} = result
+
+      # The insert should have been rolled back
+      assert [] == DoubleDown.Test.Repo.all(User)
+    end
+
+    test "rollback preserves pre-transaction state" do
+      # Insert before transaction
+      {:ok, alice} = DoubleDown.Test.Repo.insert(User.changeset(%{name: "Alice"}))
+
+      result =
+        DoubleDown.Test.Repo.transact(
+          fn ->
+            {:ok, _} = DoubleDown.Test.Repo.insert(User.changeset(%{name: "Bob"}))
+            DoubleDown.Test.Repo.rollback(:aborted)
+          end,
+          []
+        )
+
+      assert {:error, :aborted} = result
+
+      # Alice should still be there, Bob should not
+      users = DoubleDown.Test.Repo.all(User)
+      assert length(users) == 1
+      assert hd(users).name == "Alice"
+      assert ^alice = DoubleDown.Test.Repo.get(User, alice.id)
+    end
+
+    test "rollback undoes updates" do
+      {:ok, alice} = DoubleDown.Test.Repo.insert(User.changeset(%{name: "Alice"}))
+
+      result =
+        DoubleDown.Test.Repo.transact(
+          fn ->
+            cs = Ecto.Changeset.cast(alice, %{name: "CHANGED"}, [:name])
+            {:ok, _} = DoubleDown.Test.Repo.update(cs)
+            DoubleDown.Test.Repo.rollback(:aborted)
+          end,
+          []
+        )
+
+      assert {:error, :aborted} = result
+
+      # Name should be restored to "Alice"
+      found = DoubleDown.Test.Repo.get(User, alice.id)
+      assert found.name == "Alice"
+    end
+
+    test "rollback undoes deletes" do
+      {:ok, alice} = DoubleDown.Test.Repo.insert(User.changeset(%{name: "Alice"}))
+
+      result =
+        DoubleDown.Test.Repo.transact(
+          fn ->
+            {:ok, _} = DoubleDown.Test.Repo.delete(alice)
+            DoubleDown.Test.Repo.rollback(:aborted)
+          end,
+          []
+        )
+
+      assert {:error, :aborted} = result
+
+      # Alice should still be there
+      assert %User{name: "Alice"} = DoubleDown.Test.Repo.get(User, alice.id)
+    end
+
+    test "successful transaction commits normally" do
+      result =
+        DoubleDown.Test.Repo.transact(
+          fn ->
+            {:ok, user} = DoubleDown.Test.Repo.insert(User.changeset(%{name: "Alice"}))
+            {:ok, user}
+          end,
+          []
+        )
+
+      assert {:ok, %User{name: "Alice"}} = result
+
+      # The insert should be committed
+      assert [%User{name: "Alice"}] = DoubleDown.Test.Repo.all(User)
+    end
+
+    test "cross-contract isolation — rollback only affects Repo state" do
+      # Set up a second contract with its own state
+      DoubleDown.Double.fake(
+        DoubleDown.Test.Greeter,
+        fn
+          _op, _args, state -> {"hello", state}
+        end,
+        %{counter: 0}
+      )
+
+      # Run a Repo transaction that rolls back
+      DoubleDown.Test.Repo.transact(
+        fn ->
+          {:ok, _} = DoubleDown.Test.Repo.insert(User.changeset(%{name: "Alice"}))
+          DoubleDown.Test.Repo.rollback(:aborted)
+        end,
+        []
+      )
+
+      # Repo state is restored (no Alice)
+      assert [] == DoubleDown.Test.Repo.all(User)
+
+      # Greeter state is unaffected
+      greeter_state = DoubleDown.Contract.Dispatch.get_state(DoubleDown.Test.Greeter)
+      assert greeter_state == %{counter: 0}
+    end
+  end
 end
