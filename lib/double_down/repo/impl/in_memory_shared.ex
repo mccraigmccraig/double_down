@@ -189,16 +189,25 @@ if Code.ensure_loaded?(Ecto) do
     # -------------------------------------------------------------------
 
     @doc false
-    def dispatch_transact([fun, _opts], store) when is_function(fun, 0) do
-      {%DoubleDown.Contract.Dispatch.Defer{fn: fn -> run_in_transaction(fun) end}, store}
+    def dispatch_transact([fun, _opts], store, contract) when is_function(fun, 0) do
+      snapshot = store
+
+      {%DoubleDown.Contract.Dispatch.Defer{
+         fn: fn -> run_in_transaction(fun, contract, snapshot) end
+       }, store}
     end
 
-    def dispatch_transact([%Ecto.Multi{} = multi, opts], store) do
+    def dispatch_transact([%Ecto.Multi{} = multi, opts], store, contract) do
       repo_facade = Keyword.get(opts, DoubleDown.Repo.Facade)
+      snapshot = store
 
       {%DoubleDown.Contract.Dispatch.Defer{
          fn: fn ->
-           run_in_transaction(fn -> DoubleDown.Repo.Impl.MultiStepper.run(multi, repo_facade) end)
+           run_in_transaction(
+             fn -> DoubleDown.Repo.Impl.MultiStepper.run(multi, repo_facade) end,
+             contract,
+             snapshot
+           )
          end
        }, store}
     end
@@ -208,10 +217,12 @@ if Code.ensure_loaded?(Ecto) do
       {%DoubleDown.Contract.Dispatch.Defer{fn: fn -> throw({:rollback, value}) end}, store}
     end
 
-    defp run_in_transaction(fun) do
+    defp run_in_transaction(fun, contract, snapshot) do
       fun.()
     catch
-      {:rollback, value} -> {:error, value}
+      {:rollback, value} ->
+        DoubleDown.Contract.Dispatch.restore_state(contract, snapshot)
+        {:error, value}
     end
 
     # -------------------------------------------------------------------

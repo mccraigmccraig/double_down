@@ -415,7 +415,7 @@ if Code.ensure_loaded?(Ecto) do
     # Transaction operations — delegate to Shared
     # -----------------------------------------------------------------
 
-    def dispatch(:transact, args, store), do: InMemoryShared.dispatch_transact(args, store)
+    def dispatch(:transact, args, store), do: InMemoryShared.dispatch_transact(args, store, DoubleDown.Repo)
     def dispatch(:rollback, args, store), do: InMemoryShared.dispatch_rollback(args, store)
 
     # -----------------------------------------------------------------
