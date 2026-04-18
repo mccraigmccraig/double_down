@@ -39,9 +39,9 @@ Every `Double` function takes a **contract module** as its first
 argument — this is the module that defines the boundary, regardless
 of how it was created:
 
-- A `defcallback` module (via `DoubleDown.Facade`)
+- A `defcallback` module (via `DoubleDown.ContractFacade`)
 - A vanilla `@behaviour` module (via `DoubleDown.BehaviourFacade`)
-- A dynamically shimmed module (via `DoubleDown.Dynamic`)
+- A dynamically shimmed module (via `DoubleDown.DynamicFacade`)
 
 The contract module is the single identity that ties together
 config, dispatch, and test doubles. `Double` doesn't care which

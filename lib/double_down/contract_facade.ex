@@ -1,8 +1,8 @@
-defmodule DoubleDown.Facade do
+defmodule DoubleDown.ContractFacade do
   @moduledoc """
   Generates a dispatch facade for a `DoubleDown.Contract`.
 
-  `use DoubleDown.Facade` reads a contract's `__callbacks__/0` metadata
+  `use DoubleDown.ContractFacade` reads a contract's `__callbacks__/0` metadata
   and generates facade functions and key helpers that
   dispatch via `DoubleDown.Contract.Dispatch`.
 
@@ -13,7 +13,7 @@ defmodule DoubleDown.Facade do
   contract + facade:
 
       defmodule MyApp.Todos do
-        use DoubleDown.Facade, otp_app: :my_app
+        use DoubleDown.ContractFacade, otp_app: :my_app
 
         defcallback get_todo(id :: String.t()) :: {:ok, Todo.t()} | {:error, term()}
         defcallback list_todos() :: [Todo.t()]
@@ -27,7 +27,7 @@ defmodule DoubleDown.Facade do
   For cases where you want the contract in a different module:
 
       defmodule MyApp.Todos do
-        use DoubleDown.Facade, contract: MyApp.Todos.Contract, otp_app: :my_app
+        use DoubleDown.ContractFacade, contract: MyApp.Todos.Contract, otp_app: :my_app
       end
 
   ## Options
@@ -55,7 +55,7 @@ defmodule DoubleDown.Facade do
 
     * `DoubleDown.BehaviourFacade` — generates dispatch facades for vanilla
       `@behaviour` modules (when you don't control the contract definition).
-    * `DoubleDown.Dynamic` — Mimic-style bytecode interception for any module.
+    * `DoubleDown.DynamicFacade` — Mimic-style bytecode interception for any module.
 
   ## Configuration
 
@@ -119,7 +119,7 @@ defmodule DoubleDown.Facade do
         @double_down_otp_app unquote(otp_app)
         @double_down_test_dispatch unquote(test_dispatch?)
         @double_down_static_dispatch unquote(static_dispatch?)
-        @before_compile {DoubleDown.Facade, :__before_compile__}
+        @before_compile {DoubleDown.ContractFacade, :__before_compile__}
       end
     else
       quote do
@@ -128,7 +128,7 @@ defmodule DoubleDown.Facade do
         @double_down_otp_app unquote(otp_app)
         @double_down_test_dispatch unquote(test_dispatch?)
         @double_down_static_dispatch unquote(static_dispatch?)
-        @before_compile {DoubleDown.Facade, :__before_compile__}
+        @before_compile {DoubleDown.ContractFacade, :__before_compile__}
       end
     end
   end
@@ -187,7 +187,7 @@ defmodule DoubleDown.Facade do
         raise CompileError,
           description:
             "#{inspect(contract)} does not define __callbacks__/0. " <>
-              "Ensure `use DoubleDown.Contract` appears before `use DoubleDown.Facade` " <>
+              "Ensure `use DoubleDown.Contract` appears before `use DoubleDown.ContractFacade` " <>
               "and add `defcallback` declarations.",
           file: env.file,
           line: 0

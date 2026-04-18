@@ -9,7 +9,7 @@ defmodule DoubleDown.TestDispatchTest do
     test "facade uses call_config — bypasses NimbleOwnership test handlers" do
       Code.compile_string("""
       defmodule DoubleDown.Test.ConfigOnlyPort do
-        use DoubleDown.Facade,
+        use DoubleDown.ContractFacade,
           contract: DoubleDown.Test.Greeter,
           otp_app: :double_down,
           test_dispatch?: false
@@ -34,7 +34,7 @@ defmodule DoubleDown.TestDispatchTest do
     test "facade raises with production message when no config set" do
       Code.compile_string("""
       defmodule DoubleDown.Test.ConfigOnlyNoConfig do
-        use DoubleDown.Facade,
+        use DoubleDown.ContractFacade,
           contract: DoubleDown.Test.Greeter,
           otp_app: :double_down_no_config,
           test_dispatch?: false
@@ -52,7 +52,7 @@ defmodule DoubleDown.TestDispatchTest do
     test "key helpers are still generated" do
       Code.compile_string("""
       defmodule DoubleDown.Test.ConfigOnlyKeys do
-        use DoubleDown.Facade,
+        use DoubleDown.ContractFacade,
           contract: DoubleDown.Test.Greeter,
           otp_app: :double_down,
           test_dispatch?: false
@@ -74,7 +74,7 @@ defmodule DoubleDown.TestDispatchTest do
     test "facade uses call — test handlers work" do
       Code.compile_string("""
       defmodule DoubleDown.Test.TestDispatchTrue do
-        use DoubleDown.Facade,
+        use DoubleDown.ContractFacade,
           contract: DoubleDown.Test.Greeter,
           otp_app: :double_down,
           test_dispatch?: true
@@ -97,7 +97,7 @@ defmodule DoubleDown.TestDispatchTest do
     test "function returning true enables test dispatch" do
       Code.compile_string("""
       defmodule DoubleDown.Test.TestDispatchFnTrue do
-        use DoubleDown.Facade,
+        use DoubleDown.ContractFacade,
           contract: DoubleDown.Test.Greeter,
           otp_app: :double_down,
           test_dispatch?: fn -> true end
@@ -116,7 +116,7 @@ defmodule DoubleDown.TestDispatchTest do
     test "function returning false disables test dispatch" do
       Code.compile_string("""
       defmodule DoubleDown.Test.TestDispatchFnFalse do
-        use DoubleDown.Facade,
+        use DoubleDown.ContractFacade,
           contract: DoubleDown.Test.Greeter,
           otp_app: :double_down,
           test_dispatch?: fn -> false end
@@ -145,7 +145,7 @@ defmodule DoubleDown.TestDispatchTest do
     test "in test env, test dispatch is enabled by default" do
       Code.compile_string("""
       defmodule DoubleDown.Test.DefaultDispatch do
-        use DoubleDown.Facade,
+        use DoubleDown.ContractFacade,
           contract: DoubleDown.Test.Greeter,
           otp_app: :double_down
       end
@@ -168,7 +168,7 @@ defmodule DoubleDown.TestDispatchTest do
     test "test_dispatch?: false works with combined module" do
       Code.compile_string("""
       defmodule DoubleDown.Test.CombinedConfigOnly do
-        use DoubleDown.Facade, otp_app: :double_down_combined, test_dispatch?: false
+        use DoubleDown.ContractFacade, otp_app: :double_down_combined, test_dispatch?: false
 
         defcallback greet(name :: String.t()) :: String.t()
       end
@@ -191,7 +191,7 @@ defmodule DoubleDown.TestDispatchTest do
     test "test_dispatch?: true works with combined module" do
       Code.compile_string("""
       defmodule DoubleDown.Test.CombinedTestDispatch do
-        use DoubleDown.Facade, otp_app: :double_down_combined, test_dispatch?: true
+        use DoubleDown.ContractFacade, otp_app: :double_down_combined, test_dispatch?: true
 
         defcallback greet(name :: String.t()) :: String.t()
       end
@@ -218,7 +218,7 @@ defmodule DoubleDown.TestDispatchTest do
 
       Code.compile_string("""
       defmodule DoubleDown.Test.StaticDispatchPort do
-        use DoubleDown.Facade,
+        use DoubleDown.ContractFacade,
           contract: DoubleDown.Test.Greeter,
           otp_app: :double_down_static,
           test_dispatch?: false,
@@ -245,7 +245,7 @@ defmodule DoubleDown.TestDispatchTest do
 
       Code.compile_string("""
       defmodule DoubleDown.Test.StaticDispatchKeys do
-        use DoubleDown.Facade,
+        use DoubleDown.ContractFacade,
           contract: DoubleDown.Test.Greeter,
           otp_app: :double_down_static2,
           test_dispatch?: false,
@@ -267,7 +267,7 @@ defmodule DoubleDown.TestDispatchTest do
     test "falls back to call_config when no compile-time config" do
       Code.compile_string("""
       defmodule DoubleDown.Test.StaticNoConfigPort do
-        use DoubleDown.Facade,
+        use DoubleDown.ContractFacade,
           contract: DoubleDown.Test.Greeter,
           otp_app: :double_down_no_static_config,
           test_dispatch?: false,
@@ -298,7 +298,7 @@ defmodule DoubleDown.TestDispatchTest do
 
       Code.compile_string("""
       defmodule DoubleDown.Test.NoStaticPort do
-        use DoubleDown.Facade,
+        use DoubleDown.ContractFacade,
           contract: DoubleDown.Test.Greeter,
           otp_app: :double_down_no_static,
           test_dispatch?: false,
@@ -331,7 +331,7 @@ defmodule DoubleDown.TestDispatchTest do
 
       Code.compile_string("""
       defmodule DoubleDown.Test.BothDispatchPort do
-        use DoubleDown.Facade,
+        use DoubleDown.ContractFacade,
           contract: DoubleDown.Test.Greeter,
           otp_app: :double_down_both,
           test_dispatch?: true,

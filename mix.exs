@@ -49,9 +49,9 @@ defmodule DoubleDown.MixProject do
         groups_for_modules: [
           Core: [
             DoubleDown.Contract,
-            DoubleDown.Facade,
+            DoubleDown.ContractFacade,
             DoubleDown.BehaviourFacade,
-            DoubleDown.Dynamic
+            DoubleDown.DynamicFacade
           ],
           Testing: [
             DoubleDown.Testing,

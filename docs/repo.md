@@ -35,7 +35,7 @@ Your app creates a dispatch facade module that binds the contract to your
 
 ```elixir
 defmodule MyApp.Repo do
-  use DoubleDown.Facade, contract: DoubleDown.Repo, otp_app: :my_app
+  use DoubleDown.ContractFacade, contract: DoubleDown.Repo, otp_app: :my_app
 end
 ```
 

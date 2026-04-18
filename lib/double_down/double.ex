@@ -576,7 +576,7 @@ defmodule DoubleDown.Double do
   as the fallback.
 
   Requires the module to have been set up with
-  `DoubleDown.Dynamic.setup/1`. Layer expects and stubs on top:
+  `DoubleDown.DynamicFacade.setup/1`. Layer expects and stubs on top:
 
       SomeClient
       |> DoubleDown.Double.dynamic()
@@ -589,16 +589,16 @@ defmodule DoubleDown.Double do
   """
   @spec dynamic(module()) :: module()
   def dynamic(module) when is_atom(module) do
-    unless DoubleDown.Dynamic.setup?(module) do
+    unless DoubleDown.DynamicFacade.setup?(module) do
       raise ArgumentError, """
       #{inspect(module)} has not been set up for dynamic dispatch.
 
-      Call DoubleDown.Dynamic.setup(#{inspect(module)}) in test_helper.exs \
+      Call DoubleDown.DynamicFacade.setup(#{inspect(module)}) in test_helper.exs \
       before ExUnit.start().
       """
     end
 
-    fake(module, DoubleDown.Dynamic.original_module(module))
+    fake(module, DoubleDown.DynamicFacade.original_module(module))
   end
 
   # -- Public API: allow --

@@ -267,7 +267,7 @@ defmodule DoubleDown.ContractTest do
         Code.compile_string("""
         defmodule DoubleDown.Test.Combined do
           use DoubleDown.Contract
-          use DoubleDown.Facade, contract: DoubleDown.Test.Combined, otp_app: :double_down_test
+          use DoubleDown.ContractFacade, contract: DoubleDown.Test.Combined, otp_app: :double_down_test
 
           defcallback greet(name :: String.t()) :: String.t()
           defcallback ping() :: :pong
@@ -296,7 +296,7 @@ defmodule DoubleDown.ContractTest do
     test "omitting contract: defaults to __MODULE__ and implies use DoubleDown.Contract" do
       Code.compile_string("""
       defmodule DoubleDown.Test.CombinedImplicit do
-        use DoubleDown.Facade, otp_app: :double_down_test
+        use DoubleDown.ContractFacade, otp_app: :double_down_test
 
         defcallback greet(name :: String.t()) :: String.t()
         defcallback ping() :: :pong
@@ -322,7 +322,7 @@ defmodule DoubleDown.ContractTest do
     test "facade dispatches correctly via test handler" do
       Code.compile_string("""
       defmodule DoubleDown.Test.CombinedDispatch do
-        use DoubleDown.Facade, otp_app: :double_down_test
+        use DoubleDown.ContractFacade, otp_app: :double_down_test
 
         defcallback greet(name :: String.t()) :: String.t()
       end

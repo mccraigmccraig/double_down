@@ -7,12 +7,12 @@ defmodule DoubleDown.Contract do
 
     * `@callback` declarations on the contract module itself — the
       contract module *is* the behaviour
-    * `__callbacks__/0` — introspection metadata used by `DoubleDown.Facade`
+    * `__callbacks__/0` — introspection metadata used by `DoubleDown.ContractFacade`
       to generate dispatch functions
 
   Contracts are purely static interface definitions. They do **not**
   generate a dispatch facade — that is the concern of
-  `DoubleDown.Facade`, which the consuming application uses separately to
+  `DoubleDown.ContractFacade`, which the consuming application uses separately to
   bind a contract to an OTP application's config.
 
   ## Usage
@@ -38,13 +38,13 @@ defmodule DoubleDown.Contract do
 
   Compatible with `Mox.defmock(Mock, for: MyApp.Todos)`.
 
-  To generate a dispatch facade, use `DoubleDown.Facade` in a separate module:
+  To generate a dispatch facade, use `DoubleDown.ContractFacade` in a separate module:
 
       defmodule MyApp.Todos do
-        use DoubleDown.Facade, contract: MyApp.Todos.Contract, otp_app: :my_app
+        use DoubleDown.ContractFacade, contract: MyApp.Todos.Contract, otp_app: :my_app
       end
 
-  See `DoubleDown.Facade` for dispatch configuration and `DoubleDown` for an overview.
+  See `DoubleDown.ContractFacade` for dispatch configuration and `DoubleDown` for an overview.
   """
 
   @doc false

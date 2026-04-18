@@ -12,7 +12,7 @@ used in test double setup) and the **facade** (what callers use).
 
 | Scenario | Approach |
 |----------|----------|
-| New code, long-term boundary | Contract-based (`defcallback` + `DoubleDown.Facade`) |
+| New code, long-term boundary | Contract-based (`defcallback` + `DoubleDown.ContractFacade`) |
 | Existing `@behaviour` you don't control | `DoubleDown.BehaviourFacade` |
 | Legacy code without contracts or behaviours | **Dynamic facade** |
 | Third-party modules with no behaviour | **Dynamic facade** |
@@ -30,8 +30,8 @@ Call `Dynamic.setup/1` in `test/test_helper.exs` **before**
 
 ```elixir
 # test/test_helper.exs
-DoubleDown.Dynamic.setup(MyApp.EctoRepo)
-DoubleDown.Dynamic.setup(SomeThirdPartyClient)
+DoubleDown.DynamicFacade.setup(MyApp.EctoRepo)
+DoubleDown.DynamicFacade.setup(SomeThirdPartyClient)
 
 ExUnit.start()
 {:ok, _} = DoubleDown.Testing.start()
@@ -155,7 +155,7 @@ DoubleDown.Double.fake(MyApp.Legacy,
 
 `Dynamic.setup/1` refuses to set up facades for:
 
-- **DoubleDown contract modules** — use `DoubleDown.Facade` instead
+- **DoubleDown contract modules** — use `DoubleDown.ContractFacade` instead
 - **DoubleDown internal modules** — would break the dispatch machinery
 - **NimbleOwnership** — required by dispatch
 - **Erlang/OTP modules** — would be catastrophic
@@ -177,7 +177,7 @@ typed facades for boundaries you want to keep long-term:
    - If the module already defines `@callback` declarations,
      use `DoubleDown.BehaviourFacade`
    - Otherwise, define a `defcallback` contract and use
-     `DoubleDown.Facade`
+     `DoubleDown.ContractFacade`
 4. Remove the `Dynamic.setup` call
 
 ---

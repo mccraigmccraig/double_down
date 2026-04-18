@@ -4,7 +4,7 @@ defmodule DoubleDown.Contract.Dispatch do
 
   Three dispatch paths are available, selected at compile time by the
   `:test_dispatch?` and `:static_dispatch?` options on
-  `use DoubleDown.Facade`:
+  `use DoubleDown.ContractFacade`:
 
   ### `call/4` — test-aware dispatch (default in non-prod)
 
@@ -307,7 +307,7 @@ defmodule DoubleDown.Contract.Dispatch do
         if otp_app do
           "config #{inspect(otp_app)}, #{inspect(contract)}, impl: MyImpl"
         else
-          ~s'use DoubleDown.Facade, contract: #{inspect(contract)}, otp_app: :my_app\n' <>
+          ~s'use DoubleDown.ContractFacade, contract: #{inspect(contract)}, otp_app: :my_app\n' <>
             "    then: config :my_app, #{inspect(contract)}, impl: MyImpl"
         end
 

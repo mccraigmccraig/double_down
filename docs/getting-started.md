@@ -64,7 +64,7 @@ the target.
 DoubleDown supports three ways to define this pairing, each with
 a different answer to "which module is the contract?":
 
-- **`defcallback` contracts** (`DoubleDown.Facade`) — richest
+- **`defcallback` contracts** (`DoubleDown.ContractFacade`) — richest
   option. The contract module contains `defcallback` declarations.
   In the combined (recommended) pattern, the contract and facade
   are the **same module**. In the separate pattern, the contract is
@@ -78,7 +78,7 @@ a different answer to "which module is the contract?":
   calls `use DoubleDown.BehaviourFacade`. Config and test doubles
   reference the behaviour module.
 
-- **Dynamic facades** (`DoubleDown.Dynamic`) — Mimic-style bytecode
+- **Dynamic facades** (`DoubleDown.DynamicFacade`) — Mimic-style bytecode
   interception for any module, no explicit contract needed. The
   **original module is both contract and facade** — `Dynamic.setup`
   replaces it with a dispatch shim, and test doubles reference the
@@ -87,12 +87,12 @@ a different answer to "which module is the contract?":
 ### Combined contract + facade (recommended)
 
 The simplest pattern puts the contract and dispatch facade in one
-module. When `DoubleDown.Facade` is used without a `:contract` option,
+module. When `DoubleDown.ContractFacade` is used without a `:contract` option,
 it implicitly sets up the contract in the same module:
 
 ```elixir
 defmodule MyApp.Todos do
-  use DoubleDown.Facade, otp_app: :my_app
+  use DoubleDown.ContractFacade, otp_app: :my_app
 
   defcallback create_todo(params :: map()) ::
     {:ok, Todo.t()} | {:error, Ecto.Changeset.t()}
@@ -135,7 +135,7 @@ end
 ```elixir
 # In a separate file (contract must compile first)
 defmodule MyApp.Todos do
-  use DoubleDown.Facade, contract: MyApp.Todos.Contract, otp_app: :my_app
+  use DoubleDown.ContractFacade, contract: MyApp.Todos.Contract, otp_app: :my_app
 end
 ```
 
@@ -376,13 +376,13 @@ is ignored.
 
 ```elixir
 # Default — test dispatch in dev/test, static dispatch in prod
-use DoubleDown.Facade, otp_app: :my_app
+use DoubleDown.ContractFacade, otp_app: :my_app
 
 # Always config-only (no test dispatch, no static dispatch)
-use DoubleDown.Facade, otp_app: :my_app, test_dispatch?: false, static_dispatch?: false
+use DoubleDown.ContractFacade, otp_app: :my_app, test_dispatch?: false, static_dispatch?: false
 
 # Force static even in dev (e.g. for benchmarks)
-use DoubleDown.Facade, otp_app: :my_app, test_dispatch?: false, static_dispatch?: true
+use DoubleDown.ContractFacade, otp_app: :my_app, test_dispatch?: false, static_dispatch?: true
 ```
 
 ## Key helpers

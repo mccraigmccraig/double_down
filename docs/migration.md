@@ -51,7 +51,7 @@ Suppose you have a `Billing.create_invoice/1` function that:
 
 ```elixir
 defmodule MyApp.Repo do
-  use DoubleDown.Facade, contract: DoubleDown.Repo, otp_app: :my_app
+  use DoubleDown.ContractFacade, contract: DoubleDown.Repo, otp_app: :my_app
 end
 ```
 
@@ -67,7 +67,7 @@ config :my_app, DoubleDown.Repo, impl: nil
 
 ```elixir
 defmodule MyApp.Billing.Queries do
-  use DoubleDown.Facade, otp_app: :my_app
+  use DoubleDown.ContractFacade, otp_app: :my_app
 
   defcallback get_payment_method(customer_id :: integer()) ::
     {:ok, PaymentMethod.t()} | {:error, :not_found}

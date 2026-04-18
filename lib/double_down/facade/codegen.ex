@@ -1,8 +1,8 @@
 defmodule DoubleDown.Facade.Codegen do
   @moduledoc false
 
-  # Shared code generation helpers used by both `DoubleDown.Facade`
-  # (defcallback contracts) and `DoubleDown.Facade.Behaviour`
+  # Shared code generation helpers used by both `DoubleDown.ContractFacade`
+  # (defcallback contracts) and `DoubleDown.ContractFacade.Behaviour`
   # (vanilla @behaviour modules).
   #
   # All public functions in this module are called at compile time

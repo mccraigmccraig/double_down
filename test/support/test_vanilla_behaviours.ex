@@ -1,5 +1,5 @@
 # Vanilla behaviour modules for testing DoubleDown.Facade.BehaviourIntrospection
-# and DoubleDown.Facade.Behaviour.
+# and DoubleDown.ContractFacade.Behaviour.
 
 defmodule DoubleDown.Test.VanillaBehaviour do
   @moduledoc "Simple behaviour with annotated params."

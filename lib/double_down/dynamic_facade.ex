@@ -1,4 +1,4 @@
-defmodule DoubleDown.Dynamic do
+defmodule DoubleDown.DynamicFacade do
   @moduledoc """
   Dynamic dispatch facades for existing modules.
 
@@ -11,8 +11,8 @@ defmodule DoubleDown.Dynamic do
 
   Call `setup/1` in `test/test_helper.exs` **before** `ExUnit.start()`:
 
-      DoubleDown.Dynamic.setup(MyApp.EctoRepo)
-      DoubleDown.Dynamic.setup(SomeThirdPartyModule)
+      DoubleDown.DynamicFacade.setup(MyApp.EctoRepo)
+      DoubleDown.DynamicFacade.setup(SomeThirdPartyModule)
 
       ExUnit.start()
 
@@ -37,12 +37,12 @@ defmodule DoubleDown.Dynamic do
     replacement is VM-global; calling it during async tests may cause
     flaky behaviour.
   - Cannot set up dynamic facades for DoubleDown contracts (use
-    `DoubleDown.Facade` instead), DoubleDown internals,
+    `DoubleDown.ContractFacade` instead), DoubleDown internals,
     NimbleOwnership, or Erlang/OTP modules.
 
   ## See also
 
-    * `DoubleDown.Facade` — dispatch facades for `defcallback` contracts
+    * `DoubleDown.ContractFacade` — dispatch facades for `defcallback` contracts
       (typed, LSP-friendly, recommended for new code).
     * `DoubleDown.BehaviourFacade` — dispatch facades for vanilla
       `@behaviour` modules (typed, but no pre_dispatch or combined
@@ -58,7 +58,7 @@ defmodule DoubleDown.Dynamic do
 
   Copies the original module to a backup (`Module.__dd_original__`)
   and replaces it with a shim that dispatches through
-  `DoubleDown.Dynamic.dispatch/3`.
+  `DoubleDown.DynamicFacade.dispatch/3`.
 
   Call this in `test/test_helper.exs` **before** `ExUnit.start()`.
   Bytecode replacement is VM-global — calling during async tests may
@@ -124,7 +124,7 @@ defmodule DoubleDown.Dynamic do
     if function_exported?(module, :__callbacks__, 0) do
       raise ArgumentError,
             "cannot set up dynamic facade for #{inspect(module)} — " <>
-              "it is a DoubleDown contract. Use `DoubleDown.Facade` instead."
+              "it is a DoubleDown contract. Use `DoubleDown.ContractFacade` instead."
     end
 
     module_str = Atom.to_string(module)
@@ -228,7 +228,7 @@ defmodule DoubleDown.Dynamic do
 
         quote do
           def unquote(name)(unquote_splicing(args)) do
-            DoubleDown.Dynamic.dispatch(
+            DoubleDown.DynamicFacade.dispatch(
               unquote(module),
               unquote(name),
               unquote(args)

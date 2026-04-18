@@ -63,7 +63,7 @@ defmodule DoubleDown.RepoTest do
       assert :transact in callback_names
     end
 
-    test "Facade (defined via use DoubleDown.Facade) has all operations" do
+    test "Facade (defined via use DoubleDown.ContractFacade) has all operations" do
       {:module, _} = Code.ensure_loaded(Repo.Port)
 
       # Base arities

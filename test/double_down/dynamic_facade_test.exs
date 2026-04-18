@@ -1,4 +1,4 @@
-defmodule DoubleDown.DynamicTest do
+defmodule DoubleDown.DynamicFacadeTest do
   use ExUnit.Case, async: true
 
   alias DoubleDown.Double
@@ -9,11 +9,11 @@ defmodule DoubleDown.DynamicTest do
 
   describe "Dynamic.setup?/1" do
     test "returns true for set up modules" do
-      assert DoubleDown.Dynamic.setup?(DynamicTarget)
+      assert DoubleDown.DynamicFacade.setup?(DynamicTarget)
     end
 
     test "returns false for non-set-up modules" do
-      refute DoubleDown.Dynamic.setup?(String)
+      refute DoubleDown.DynamicFacade.setup?(String)
     end
   end
 
@@ -239,30 +239,30 @@ defmodule DoubleDown.DynamicTest do
   describe "validation" do
     test "refuses DoubleDown contract modules" do
       assert_raise ArgumentError, ~r/DoubleDown contract/, fn ->
-        DoubleDown.Dynamic.setup(DoubleDown.Repo)
+        DoubleDown.DynamicFacade.setup(DoubleDown.Repo)
       end
     end
 
     test "refuses DoubleDown internal modules" do
       assert_raise ArgumentError, ~r/DoubleDown internal/, fn ->
-        DoubleDown.Dynamic.setup(DoubleDown.Contract.Dispatch)
+        DoubleDown.DynamicFacade.setup(DoubleDown.Contract.Dispatch)
       end
     end
 
     test "refuses NimbleOwnership" do
       assert_raise ArgumentError, ~r/NimbleOwnership/, fn ->
-        DoubleDown.Dynamic.setup(NimbleOwnership)
+        DoubleDown.DynamicFacade.setup(NimbleOwnership)
       end
     end
 
     test "refuses Erlang modules" do
       assert_raise ArgumentError, ~r/Erlang/, fn ->
-        DoubleDown.Dynamic.setup(:erlang)
+        DoubleDown.DynamicFacade.setup(:erlang)
       end
     end
 
     test "idempotent — setup twice is safe" do
-      assert :ok = DoubleDown.Dynamic.setup(DynamicTarget)
+      assert :ok = DoubleDown.DynamicFacade.setup(DynamicTarget)
     end
   end
 end

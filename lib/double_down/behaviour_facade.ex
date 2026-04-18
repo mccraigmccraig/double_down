@@ -7,7 +7,7 @@ defmodule DoubleDown.BehaviourFacade do
   `@behaviour` in your codebase, or any module that defines `@callback`
   declarations without using `defcallback`.
 
-  For behaviours you *do* control, prefer `DoubleDown.Facade` with
+  For behaviours you *do* control, prefer `DoubleDown.ContractFacade` with
   `defcallback` — it gives you richer features (pre_dispatch transforms,
   `@doc` tag sync, combined contract + facade in one module).
 
@@ -25,7 +25,7 @@ defmodule DoubleDown.BehaviourFacade do
   must be in separate `elixirc_paths` directories (e.g. behaviour
   in `lib/` or an earlier test support directory, facade in a
   later one). Combined contract + facade in a single module is
-  not supported — use `DoubleDown.Facade` for that.
+  not supported — use `DoubleDown.ContractFacade` for that.
 
   ## Options
 
@@ -34,9 +34,9 @@ defmodule DoubleDown.BehaviourFacade do
     * `:otp_app` (required) — the OTP application name for config-based
       dispatch. Implementations are resolved from
       `Application.get_env(otp_app, behaviour)[:impl]`.
-    * `:test_dispatch?` — same as `DoubleDown.Facade`. Defaults to
+    * `:test_dispatch?` — same as `DoubleDown.ContractFacade`. Defaults to
       `Mix.env() != :prod`.
-    * `:static_dispatch?` — same as `DoubleDown.Facade`. Defaults to
+    * `:static_dispatch?` — same as `DoubleDown.ContractFacade`. Defaults to
       `Mix.env() == :prod`.
 
   ## Param names
@@ -61,7 +61,7 @@ defmodule DoubleDown.BehaviourFacade do
         :ok
       end
 
-  ## Limitations vs `DoubleDown.Facade`
+  ## Limitations vs `DoubleDown.ContractFacade`
 
     * No `pre_dispatch` transforms
     * No `@doc` tag sync from contract to facade
@@ -71,9 +71,9 @@ defmodule DoubleDown.BehaviourFacade do
 
   ## See also
 
-    * `DoubleDown.Facade` — dispatch facades for `defcallback` contracts
+    * `DoubleDown.ContractFacade` — dispatch facades for `defcallback` contracts
       (richer features, recommended for new code).
-    * `DoubleDown.Dynamic` — Mimic-style bytecode interception for any module.
+    * `DoubleDown.DynamicFacade` — Mimic-style bytecode interception for any module.
   """
 
   alias DoubleDown.Facade.BehaviourIntrospection
@@ -100,7 +100,7 @@ defmodule DoubleDown.BehaviourFacade do
         description:
           "DoubleDown.BehaviourFacade cannot be used in the same module as the behaviour " <>
             "(#{inspect(behaviour)}). The behaviour must be compiled first. " <>
-            "For combined contract + facade, use DoubleDown.Facade with defcallback instead.",
+            "For combined contract + facade, use DoubleDown.ContractFacade with defcallback instead.",
         file: __CALLER__.file,
         line: __CALLER__.line
     end

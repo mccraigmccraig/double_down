@@ -22,7 +22,7 @@ defmodule DoubleDown.Contract.SpecWarningsTest do
       end
 
       defmodule DoubleDown.Test.SpecMatch.Facade do
-        use DoubleDown.Facade,
+        use DoubleDown.ContractFacade,
           contract: DoubleDown.Test.SpecMatch.Contract,
           otp_app: :double_down,
           test_dispatch?: false,
@@ -51,7 +51,7 @@ defmodule DoubleDown.Contract.SpecWarningsTest do
         end
 
         defmodule DoubleDown.Test.SpecMismatch.Facade do
-          use DoubleDown.Facade,
+          use DoubleDown.ContractFacade,
             contract: DoubleDown.Test.SpecMismatch.Contract,
             otp_app: :double_down,
             test_dispatch?: false,
@@ -79,7 +79,7 @@ defmodule DoubleDown.Contract.SpecWarningsTest do
         end
 
         defmodule DoubleDown.Test.SpecReturnMismatch.Facade do
-          use DoubleDown.Facade,
+          use DoubleDown.ContractFacade,
             contract: DoubleDown.Test.SpecReturnMismatch.Contract,
             otp_app: :double_down,
             test_dispatch?: false,
@@ -115,7 +115,7 @@ defmodule DoubleDown.Contract.SpecWarningsTest do
           end
 
           defmodule DoubleDown.Test.SpecWarnOnly.Facade do
-            use DoubleDown.Facade,
+            use DoubleDown.ContractFacade,
               contract: DoubleDown.Test.SpecWarnOnly.Contract,
               otp_app: :double_down,
               test_dispatch?: false,
@@ -146,7 +146,7 @@ defmodule DoubleDown.Contract.SpecWarningsTest do
       end
 
       defmodule DoubleDown.Test.SpecNoSpec.Facade do
-        use DoubleDown.Facade,
+        use DoubleDown.ContractFacade,
           contract: DoubleDown.Test.SpecNoSpec.Contract,
           otp_app: :double_down,
           test_dispatch?: false,
@@ -166,7 +166,7 @@ defmodule DoubleDown.Contract.SpecWarningsTest do
       end
 
       defmodule DoubleDown.Test.SpecTestDispatch.Facade do
-        use DoubleDown.Facade,
+        use DoubleDown.ContractFacade,
           contract: DoubleDown.Test.SpecTestDispatch.Contract,
           otp_app: :double_down,
           test_dispatch?: true,
@@ -192,7 +192,7 @@ defmodule DoubleDown.Contract.SpecWarningsTest do
       end
 
       defmodule DoubleDown.Test.SpecPartial.Facade do
-        use DoubleDown.Facade,
+        use DoubleDown.ContractFacade,
           contract: DoubleDown.Test.SpecPartial.Contract,
           otp_app: :double_down,
           test_dispatch?: false,
