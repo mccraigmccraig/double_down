@@ -71,12 +71,15 @@ defmodule DoubleDown.Facade.Codegen do
           return_type: return_type,
           pre_dispatch: pre_dispatch,
           user_doc: user_doc
-        },
+        } = operation,
         contract,
         otp_app,
         test_dispatch?,
         static_impl
       ) do
+    # when_constraints is present for vanilla behaviour specs with `when` clauses.
+    # defcallback operations don't have this field (always nil).
+    when_constraints = Map.get(operation, :when_constraints)
     param_vars = Enum.map(param_names, fn pname -> {pname, [], nil} end)
 
     doc_ast =
@@ -112,6 +115,8 @@ defmodule DoubleDown.Facade.Codegen do
         param_vars
       end
 
+    spec_ast = build_spec_ast(name, param_types, return_type, when_constraints)
+
     # Three dispatch paths, selected at compile time:
     #
     # 1. test_dispatch? true -> DoubleDown.Dispatch.call/4
@@ -126,7 +131,7 @@ defmodule DoubleDown.Facade.Codegen do
       test_dispatch? ->
         quote do
           unquote(doc_ast)
-          @spec unquote(name)(unquote_splicing(param_types)) :: unquote(return_type)
+          @spec unquote(spec_ast)
           def unquote(name)(unquote_splicing(param_vars)) do
             DoubleDown.Dispatch.call(
               unquote(otp_app),
@@ -143,7 +148,7 @@ defmodule DoubleDown.Facade.Codegen do
         quote do
           unquote(doc_ast)
           @compile {:inline, [{unquote(name), unquote(length(param_names))}]}
-          @spec unquote(name)(unquote_splicing(param_types)) :: unquote(return_type)
+          @spec unquote(spec_ast)
           def unquote(name)(unquote_splicing(param_vars)) do
             unquote(static_impl).unquote(name)(unquote_splicing(param_vars))
           end
@@ -154,7 +159,7 @@ defmodule DoubleDown.Facade.Codegen do
         # are transformed at runtime.
         quote do
           unquote(doc_ast)
-          @spec unquote(name)(unquote_splicing(param_types)) :: unquote(return_type)
+          @spec unquote(spec_ast)
           def unquote(name)(unquote_splicing(param_vars)) do
             apply(unquote(static_impl), unquote(name), unquote(dispatch_args))
           end
@@ -163,7 +168,7 @@ defmodule DoubleDown.Facade.Codegen do
       true ->
         quote do
           unquote(doc_ast)
-          @spec unquote(name)(unquote_splicing(param_types)) :: unquote(return_type)
+          @spec unquote(spec_ast)
           def unquote(name)(unquote_splicing(param_vars)) do
             DoubleDown.Dispatch.call_config(
               unquote(otp_app),
@@ -193,6 +198,30 @@ defmodule DoubleDown.Facade.Codegen do
         DoubleDown.Dispatch.key(unquote(contract), unquote(name), unquote(param_vars))
       end
     end
+  end
+
+  # -------------------------------------------------------------------
+  # Code Generation: @spec AST
+  # -------------------------------------------------------------------
+
+  # Build a @spec AST, optionally including `when` constraints for
+  # vanilla behaviour specs with bounded type variables.
+  #
+  # Without constraints: name(param_types) :: return_type
+  # With constraints:    name(param_types) :: return_type when var: type, ...
+  defp build_spec_ast(name, param_types, return_type, nil) do
+    quote do
+      unquote(name)(unquote_splicing(param_types)) :: unquote(return_type)
+    end
+  end
+
+  defp build_spec_ast(name, param_types, return_type, when_constraints) do
+    base_spec =
+      quote do
+        unquote(name)(unquote_splicing(param_types)) :: unquote(return_type)
+      end
+
+    {:when, [], [base_spec, when_constraints]}
   end
 
   # -------------------------------------------------------------------

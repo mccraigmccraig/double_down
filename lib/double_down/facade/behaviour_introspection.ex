@@ -27,7 +27,7 @@ defmodule DoubleDown.Facade.BehaviourIntrospection do
 
       quoted_spec = Code.Typespec.spec_to_quoted(name, first_clause)
 
-      {param_types, return_type} = destructure_spec(quoted_spec)
+      {param_types, return_type, when_constraints} = destructure_spec(quoted_spec)
       param_names = extract_param_names(param_types)
       bare_param_types = strip_annotations(param_types)
 
@@ -36,6 +36,7 @@ defmodule DoubleDown.Facade.BehaviourIntrospection do
         params: param_names,
         param_types: bare_param_types,
         return_type: return_type,
+        when_constraints: when_constraints,
         pre_dispatch: nil,
         user_doc: nil,
         arity: length(param_names)
@@ -87,16 +88,18 @@ defmodule DoubleDown.Facade.BehaviourIntrospection do
 
   # Spec with `when` clause:
   #   {:when, _, [{:"::", _, [{:name, _, params}, return]}, constraints]}
-  defp destructure_spec({:when, _meta, [{:"::", _meta2, [call, return_type]}, _constraints]}) do
+  # Returns {param_types, return_type, constraints} where constraints
+  # is a keyword list like [input: {:term, _, []}, output: {:term, _, []}].
+  defp destructure_spec({:when, _meta, [{:"::", _meta2, [call, return_type]}, constraints]}) do
     param_types = extract_call_params(call)
-    {param_types, return_type}
+    {param_types, return_type, constraints}
   end
 
   # Normal spec:
   #   {:"::", _, [{:name, _, params}, return]}
   defp destructure_spec({:"::", _meta, [call, return_type]}) do
     param_types = extract_call_params(call)
-    {param_types, return_type}
+    {param_types, return_type, nil}
   end
 
   # Extract params from the function call part of the spec.
