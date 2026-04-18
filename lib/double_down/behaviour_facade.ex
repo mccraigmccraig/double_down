@@ -19,9 +19,13 @@ defmodule DoubleDown.BehaviourFacade do
           otp_app: :my_app
       end
 
-  The behaviour module must be compiled before the facade module.
-  Combined contract + facade in a single module is not supported —
-  use `DoubleDown.Facade` for that.
+  The behaviour module must be compiled **in a prior compilation
+  unit** — its `.beam` file must be on disk before the facade
+  compiles. In a Mix project, this means the behaviour and facade
+  must be in separate `elixirc_paths` directories (e.g. behaviour
+  in `lib/` or an earlier test support directory, facade in a
+  later one). Combined contract + facade in a single module is
+  not supported — use `DoubleDown.Facade` for that.
 
   ## Options
 
@@ -117,26 +121,15 @@ defmodule DoubleDown.BehaviourFacade do
         Mix.env() == :prod
       )
 
-    quote do
-      @double_down_behaviour unquote(behaviour)
-      @double_down_otp_app unquote(otp_app)
-      @double_down_test_dispatch unquote(test_dispatch?)
-      @double_down_static_dispatch unquote(static_dispatch?)
-      @before_compile {DoubleDown.BehaviourFacade, :__before_compile__}
-    end
-  end
-
-  @doc false
-  defmacro __before_compile__(env) do
-    behaviour = Module.get_attribute(env.module, :double_down_behaviour)
-    otp_app = Module.get_attribute(env.module, :double_down_otp_app)
-    test_dispatch? = Module.get_attribute(env.module, :double_down_test_dispatch)
-    static_dispatch? = Module.get_attribute(env.module, :double_down_static_dispatch)
+    # Fetch operations NOW, in the macro context. Code.ensure_compiled!
+    # blocks until the behaviour module is compiled. We then read the
+    # callback specs from the in-memory module — this works because the
+    # macro runs during compilation, and the Elixir compiler guarantees
+    # the dependency module is fully available at this point.
+    operations = BehaviourIntrospection.fetch_operations!(behaviour, __CALLER__)
 
     static_impl =
       Codegen.resolve_static_impl(otp_app, behaviour, test_dispatch?, static_dispatch?)
-
-    operations = BehaviourIntrospection.fetch_operations!(behaviour, env)
 
     facades =
       Enum.map(

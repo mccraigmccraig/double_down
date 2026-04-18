@@ -1,6 +1,18 @@
 # BehaviourFacade facades and implementations for vanilla behaviour test modules.
-# These are in a separate file from the behaviours so that the behaviours
-# are fully compiled before the facades try to read their @callback specs.
+#
+# DoubleDown.BehaviourFacade uses Code.Typespec.fetch_callbacks/1 which needs
+# the behaviour's .beam file on disk. During mix compile, all files in the same
+# elixirc_paths are compiled in a single batch — .beam files aren't written
+# until the batch finishes. To work around this, we explicitly compile the
+# behaviour definitions here and write their .beam files before defining
+# the facades that depend on them.
+#
+# In a real application this isn't an issue — the behaviour module would
+# be in lib/ (or a dependency) and compiled in a prior batch.
+
+DoubleDown.BehaviourFacade.CompileHelper.ensure_compiled!(
+  "test/support/test_vanilla_behaviours.ex"
+)
 
 # -- Implementation for VanillaBehaviour --
 

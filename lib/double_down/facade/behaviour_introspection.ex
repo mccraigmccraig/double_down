@@ -60,7 +60,31 @@ defmodule DoubleDown.Facade.BehaviourIntrospection do
   end
 
   defp fetch_callbacks!(behaviour, env) do
-    case Code.Typespec.fetch_callbacks(behaviour) do
+    # Code.Typespec.fetch_callbacks/1 accepts a module atom (looks for
+    # .beam on disk) or a raw beam binary. Try the module atom first,
+    # fall back to :code.get_object_code/1 for the in-memory binary.
+    #
+    # Important: the behaviour module's .beam file must be on disk for
+    # this to work. If both modules are in the same compilation unit
+    # (e.g. same elixirc_paths directory), the .beam won't be written
+    # yet. The behaviour must be in a directory that compiles before
+    # the facade. See the @moduledoc for details.
+    result =
+      case Code.Typespec.fetch_callbacks(behaviour) do
+        {:ok, callbacks} ->
+          {:ok, callbacks}
+
+        :error ->
+          case :code.get_object_code(behaviour) do
+            {^behaviour, binary, _path} ->
+              Code.Typespec.fetch_callbacks(binary)
+
+            :error ->
+              :error
+          end
+      end
+
+    case result do
       {:ok, []} ->
         raise CompileError,
           description:
@@ -76,7 +100,9 @@ defmodule DoubleDown.Facade.BehaviourIntrospection do
         raise CompileError,
           description:
             "Could not fetch callback specs from #{inspect(behaviour)}. " <>
-              "Ensure it defines @callback declarations and has a .beam file.",
+              "Ensure it defines @callback declarations and that its .beam " <>
+              "file is on disk (the behaviour must compile in a prior " <>
+              "compilation unit — see DoubleDown.BehaviourFacade docs).",
           file: env.file,
           line: 0
     end
