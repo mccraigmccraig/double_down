@@ -193,9 +193,18 @@ defmodule MyApp.SomeTest do
 end
 ```
 
-This gives you the same developer experience as the Ecto sandbox —
+This gives you a similar developer experience to the Ecto sandbox —
 factories write records, reads find them — but without a database
 process, without sandbox checkout, and at pure-function speed.
+
+`Repo.InMemory` is not trying to replace the database for tests that
+exercise database-specific behaviour — query correctness, constraint
+validation, transaction isolation, index performance. It replaces
+the database for tests that are *using* the database as a slow but
+convenient way to get test data to the right place at the right
+time. If your test's purpose is "verify that the orchestration
+logic does the right thing given these inputs", `InMemory` handles
+the data plumbing so the test can focus on the logic.
 
 For a complete working example, see
 [`test/double_down/repo/ex_machina_test.exs`](https://github.com/mccraigmccraig/double_down/blob/main/test/double_down/repo/ex_machina_test.exs)
