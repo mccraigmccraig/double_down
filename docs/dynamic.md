@@ -25,7 +25,7 @@ the same test suite.
 
 ## Setup
 
-Call `Dynamic.setup/1` in `test/test_helper.exs` **before**
+Call `DynamicFacade.setup/1` in `test/test_helper.exs` **before**
 `ExUnit.start()`:
 
 ```elixir
@@ -44,7 +44,7 @@ as the first argument to all `Double` API calls:
 
 ```elixir
 # MyApp.EctoRepo is the contract — same module callers use
-DoubleDown.Double.fake(MyApp.EctoRepo, DoubleDown.Repo.OpenInMemory)
+DoubleDown.Double.fake(MyApp.EctoRepo, DoubleDown.Repo.InMemory)
 DoubleDown.Double.stub(SomeThirdPartyClient, fn :fetch, [id] -> {:ok, id} end)
 ```
 
@@ -63,7 +63,7 @@ responders, cross-contract state access, dispatch logging:
 ```elixir
 setup do
   # Stateful fake
-  DoubleDown.Double.fake(MyApp.EctoRepo, DoubleDown.Repo.OpenInMemory)
+  DoubleDown.Double.fake(MyApp.EctoRepo, DoubleDown.Repo.InMemory)
   :ok
 end
 
@@ -138,7 +138,7 @@ contract-based facades, and vice versa:
 
 ```elixir
 # Contract-based Repo with InMemory
-DoubleDown.Double.fake(DoubleDown.Repo, DoubleDown.Repo.OpenInMemory)
+DoubleDown.Double.fake(DoubleDown.Repo, DoubleDown.Repo.InMemory)
 
 # Dynamic module reads Repo state
 DoubleDown.Double.fake(MyApp.Legacy,
@@ -153,7 +153,7 @@ DoubleDown.Double.fake(MyApp.Legacy,
 
 ## Guardrails
 
-`Dynamic.setup/1` refuses to set up facades for:
+`DynamicFacade.setup/1` refuses to set up facades for:
 
 - **DoubleDown contract modules** — use `DoubleDown.ContractFacade` instead
 - **DoubleDown internal modules** — would break the dispatch machinery
@@ -163,22 +163,22 @@ DoubleDown.Double.fake(MyApp.Legacy,
 ## Comparison of facade types
 
 See [Choosing a facade type](getting-started.md#choosing-a-facade-type)
-for a full feature comparison table across `Facade`, `BehaviourFacade`,
-and Dynamic facades.
+for a full feature comparison table across `ContractFacade`,
+`BehaviourFacade`, and `DynamicFacade`.
 
 ## Migration path
 
 Start with dynamic facades for quick wins, then graduate to
 typed facades for boundaries you want to keep long-term:
 
-1. `Dynamic.setup(MyModule)` in test_helper.exs
+1. `DynamicFacade.setup(MyModule)` in test_helper.exs
 2. Write tests using Double APIs
 3. When the boundary stabilises, choose your facade type:
    - If the module already defines `@callback` declarations,
      use `DoubleDown.BehaviourFacade`
    - Otherwise, define a `defcallback` contract and use
      `DoubleDown.ContractFacade`
-4. Remove the `Dynamic.setup` call
+4. Remove the `DynamicFacade.setup` call
 
 ---
 
