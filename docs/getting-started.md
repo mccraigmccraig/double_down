@@ -113,6 +113,29 @@ This is how the built-in `DoubleDown.Repo` works — it defines
 the contract, and your app creates a facade that binds it to your
 `otp_app`. See [Repo](repo.md).
 
+### Facade for a vanilla behaviour
+
+If you have an existing `@behaviour` module — from a third-party
+library, a shared package, or legacy code — that you can't or don't
+want to convert to `defcallback`, use `DoubleDown.BehaviourFacade`
+to generate a dispatch facade directly from its `@callback`
+declarations:
+
+```elixir
+defmodule MyApp.Todos do
+  use DoubleDown.BehaviourFacade,
+    behaviour: MyApp.Todos.Behaviour,
+    otp_app: :my_app
+end
+```
+
+This reads `@callback` specs from the compiled behaviour module and
+generates the same dispatch facade, `@spec` declarations, and
+`__key__` helpers. The behaviour must be compiled before the facade
+(its `.beam` file must be on disk). See
+`DoubleDown.BehaviourFacade` for details and limitations compared
+to `defcallback`.
+
 ## `defcallback` syntax
 
 `defcallback` uses the same syntax as `@callback` — if your existing
@@ -319,35 +342,9 @@ captures richer metadata at compile time:
   DoubleDown cross-checks the implementation's `@spec` against the
   contract's `defcallback` types and warns on mismatches.
 
-### Vanilla behaviour facades
-
-If you have an existing `@behaviour` module — either from a
-third-party library or legacy code — that you can't or don't want
-to convert to `defcallback`, use `DoubleDown.BehaviourFacade`:
-
-```elixir
-defmodule MyApp.Todos do
-  use DoubleDown.BehaviourFacade,
-    behaviour: MyApp.Todos.Behaviour,
-    otp_app: :my_app
-end
-```
-
-This reads `@callback` declarations from the compiled behaviour
-module and generates the same dispatch facade. Limitations compared
-to `defcallback`:
-
-- **Must be a separate module.** The behaviour must be compiled
-  before the facade, so the combined contract + facade pattern is
-  not available.
-- **No `@doc` sync.** Facade functions get generic docs, not the
-  behaviour's callback documentation.
-- **No `pre_dispatch` transforms.**
-- **Synthesized parameter names.** For bare types like
-  `@callback get(String.t(), keyword())`, parameter names are
-  synthesized as `arg1`, `arg2`. Annotated types like
-  `@callback get(id :: String.t())` preserve the name.
-- **No compile-time spec mismatch warnings.**
+For vanilla behaviours where these features aren't needed, use
+`DoubleDown.BehaviourFacade` instead — see
+[Facade for a vanilla behaviour](#facade-for-a-vanilla-behaviour).
 
 ---
 
