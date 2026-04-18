@@ -1,4 +1,4 @@
-defmodule DoubleDown.BehaviourFacade.CompileHelper do
+defmodule DoubleDown.Facade.CompileHelper do
   @moduledoc false
 
   # Helper for ensuring behaviour modules are compiled and their .beam

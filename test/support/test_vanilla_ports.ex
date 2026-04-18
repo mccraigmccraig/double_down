@@ -10,9 +10,7 @@
 # In a real application this isn't an issue — the behaviour module would
 # be in lib/ (or a dependency) and compiled in a prior batch.
 
-DoubleDown.BehaviourFacade.CompileHelper.ensure_compiled!(
-  "test/support/test_vanilla_behaviours.ex"
-)
+DoubleDown.Facade.CompileHelper.ensure_compiled!("test/support/test_vanilla_behaviours.ex")
 
 # -- Implementation for VanillaBehaviour --
 
