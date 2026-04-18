@@ -392,37 +392,48 @@ Internally, `rollback` throws `{:rollback, value}`, which is caught
 by `transact`. This matches the Ecto.Repo pattern. Code after
 `rollback` is not executed.
 
-**Limitation:** In the test adapters, `rollback` does not undo state
-mutations from earlier operations within the transaction. If `insert`
-was called before `rollback`, the record remains in the InMemory
-store. This is a consequence of the deferred execution model — each
-sub-operation runs independently outside the lock. For tests that
-need true rollback semantics, use the Ecto adapter with a real
-database.
+In the stateful test adapters (`Repo.InMemory` and `Repo.OpenInMemory`),
+`rollback` restores the store to its state at the start of the
+transaction — inserts, updates, and deletes within the rolled-back
+transaction are undone. This is implemented by snapshotting the store
+before the transaction and restoring it on rollback. Only the Repo
+contract's state is restored; other contracts' state is unaffected.
+
+`Repo.Stub` is stateless, so rollback has no state to restore — it
+simply returns `{:error, value}`.
 
 ## Concurrency limitations of test adapters
 
 The **Ecto adapter** provides real database transactions with full
 ACID isolation — this is the production path.
 
-The **Stub**, **InMemory**, and **OpenInMemory** adapters do **not**
-provide true transaction isolation:
+The **Stub**, **InMemory**, and **OpenInMemory** adapters support
+rollback semantics but do **not** provide full ACID transaction
+isolation:
 
-- `Repo.Stub` calls the function directly without any locking.
+- `Repo.Stub` calls the function directly without any locking or
+  state (rollback returns `{:error, value}` but has no state to
+  restore).
 - `Repo.InMemory` and `Repo.OpenInMemory` use `%DoubleDown.Contract.Dispatch.Defer{}` to run the transaction
   function outside the NimbleOwnership lock — each sub-operation
   acquires the lock individually.
 
-This means:
+**What works:**
 
-- `rollback/1` is supported as an API (returns `{:error, value}` from
-  `transact`), but does not undo state mutations from earlier operations.
+- `rollback/1` restores the Repo state to its pre-transaction
+  snapshot. Inserts, updates, and deletes within the rolled-back
+  transaction are undone.
+
+**What doesn't:**
+
 - Concurrent writes within a transaction are not isolated from each
-  other.
+  other. Sub-operations are individually atomic but not grouped.
+- Other contracts' state modified during the transaction is not
+  rolled back — only the Repo contract's state is restored.
 
 This is acceptable for test-only adapters where transactions are
 typically exercised in serial, single-process tests. If you need true
-transaction isolation, use the Ecto adapter with a real database and
+ACID isolation, use the Ecto adapter with a real database and
 Ecto's sandbox.
 
 ## Testing failure scenarios with Double
