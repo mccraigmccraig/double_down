@@ -199,17 +199,19 @@ with the production module:
 DoubleDown.Double.fake(DoubleDown.Repo, MyApp.EctoRepo)
 ```
 
-## When to use InMemory vs Test
+## Choosing a Repo fake
 
-- **`Repo.Stub`** — when your function does writes and you just need
-  them to succeed. No state, no read-after-write. Fastest setup.
-- **`Repo.OpenInMemory`** — when your function inserts a record then
-  reads it back by PK within the same operation. Provides
-  read-after-write consistency.
-
-Most context functions that do `insert` then `get` in a transaction
-need `Repo.OpenInMemory`. Simple command-style functions that just write
-and return can use `Repo.Stub`.
+- **`Repo.InMemory`** (recommended) — closed-world stateful fake.
+  The state is the complete truth — all bare-schema reads work
+  without a fallback. Use this for most tests, especially with
+  ExMachina factories.
+- **`Repo.OpenInMemory`** — open-world stateful fake. The state may
+  be incomplete — reads for missing records fall through to a
+  fallback function. Use when you need fine-grained control over
+  which reads come from state vs fallback.
+- **`Repo.Stub`** — stateless stub. Writes succeed but store
+  nothing. No read-after-write. Fastest setup — use for simple
+  command-style functions that just write and return.
 
 ## What stays on the DB
 
