@@ -594,7 +594,7 @@ defmodule DoubleDown.DoubleTest do
     alias DoubleDown.Test.SimpleUser
 
     test "fake/2 with FakeHandler module uses default state" do
-      Double.fake(Repo, Repo.InMemory)
+      Double.fake(Repo, Repo.OpenInMemory)
 
       {:ok, user} = Repo.Port.insert(SimpleUser.changeset(%{name: "Alice"}))
       assert %SimpleUser{name: "Alice"} = Repo.Port.get(SimpleUser, user.id)
@@ -602,14 +602,14 @@ defmodule DoubleDown.DoubleTest do
 
     test "fake/3 with FakeHandler module passes seed as list" do
       alice = %SimpleUser{id: 1, name: "Alice"}
-      Double.fake(Repo, Repo.InMemory, [alice])
+      Double.fake(Repo, Repo.OpenInMemory, [alice])
 
       assert %SimpleUser{name: "Alice"} = Repo.Port.get(SimpleUser, 1)
     end
 
     test "fake/3 with FakeHandler module passes seed as map" do
       alice = %SimpleUser{id: 1, name: "Alice"}
-      Double.fake(Repo, Repo.InMemory, %{SimpleUser => %{1 => alice}})
+      Double.fake(Repo, Repo.OpenInMemory, %{SimpleUser => %{1 => alice}})
 
       assert %SimpleUser{name: "Alice"} = Repo.Port.get(SimpleUser, 1)
     end
@@ -617,7 +617,7 @@ defmodule DoubleDown.DoubleTest do
     test "fake/4 passes seed and opts to new/2" do
       alice = %SimpleUser{id: 1, name: "Alice"}
 
-      Double.fake(Repo, Repo.InMemory, [alice],
+      Double.fake(Repo, Repo.OpenInMemory, [alice],
         fallback_fn: fn :all, [SimpleUser], state ->
           state |> Map.get(SimpleUser, %{}) |> Map.values()
         end
@@ -628,7 +628,7 @@ defmodule DoubleDown.DoubleTest do
     end
 
     test "FakeHandler fake supports expects" do
-      Double.fake(Repo, Repo.InMemory)
+      Double.fake(Repo, Repo.OpenInMemory)
       |> Double.expect(:insert, fn [_changeset] ->
         {:error, :conflict}
       end)
@@ -654,7 +654,7 @@ defmodule DoubleDown.DoubleTest do
     end
 
     test "returns contract module for piping" do
-      result = Double.fake(Repo, Repo.InMemory)
+      result = Double.fake(Repo, Repo.OpenInMemory)
       assert result == Repo
     end
   end

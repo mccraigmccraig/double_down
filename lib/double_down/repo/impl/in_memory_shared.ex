@@ -4,8 +4,8 @@ if Code.ensure_loaded?(Ecto) do
 
     # Shared helpers for stateful in-memory Repo fakes.
     #
-    # Used by both `Repo.InMemory` (open-world: absence is inconclusive)
-    # and `Repo.ClosedInMemory` (closed-world: absence means not found).
+    # Used by both `Repo.OpenInMemory` (open-world: absence is inconclusive)
+    # and `Repo.InMemory` (closed-world: absence means not found).
     #
     # Provides:
     # - State construction (new, seed, build_store)

@@ -44,7 +44,7 @@ as the first argument to all `Double` API calls:
 
 ```elixir
 # MyApp.EctoRepo is the contract — same module callers use
-DoubleDown.Double.fake(MyApp.EctoRepo, DoubleDown.Repo.InMemory)
+DoubleDown.Double.fake(MyApp.EctoRepo, DoubleDown.Repo.OpenInMemory)
 DoubleDown.Double.stub(SomeThirdPartyClient, fn :fetch, [id] -> {:ok, id} end)
 ```
 
@@ -63,7 +63,7 @@ responders, cross-contract state access, dispatch logging:
 ```elixir
 setup do
   # Stateful fake
-  DoubleDown.Double.fake(MyApp.EctoRepo, DoubleDown.Repo.InMemory)
+  DoubleDown.Double.fake(MyApp.EctoRepo, DoubleDown.Repo.OpenInMemory)
   :ok
 end
 
@@ -138,7 +138,7 @@ contract-based facades, and vice versa:
 
 ```elixir
 # Contract-based Repo with InMemory
-DoubleDown.Double.fake(DoubleDown.Repo, DoubleDown.Repo.InMemory)
+DoubleDown.Double.fake(DoubleDown.Repo, DoubleDown.Repo.OpenInMemory)
 
 # Dynamic module reads Repo state
 DoubleDown.Double.fake(MyApp.Legacy,

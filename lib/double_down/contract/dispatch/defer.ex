@@ -8,7 +8,7 @@ defmodule DoubleDown.Contract.Dispatch.Defer do
   further dispatched calls (e.g. `transact` calling `insert` inside
   its body).
 
-  Used internally by `Repo.Test`, `Repo.InMemory`, and
+  Used internally by `Repo.Test`, `Repo.OpenInMemory`, and
   `DoubleDown.Double`'s canonical handler.
   """
 

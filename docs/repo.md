@@ -3,8 +3,8 @@
 [< Process Sharing](process-sharing.md) | [Up: README](../README.md) | [Migration >](migration.md)
 
 DoubleDown ships a ready-made Ecto Repo contract behaviour
-with three test double implementations (`Repo.Test`, `Repo.InMemory`,
-and `Repo.ClosedInMemory`).
+with three test double implementations (`Repo.Test`, `Repo.OpenInMemory`,
+and `Repo.InMemory`).
 In production, the dispatch facade passes through to your existing Ecto
 Repo with zero overhead (via static dispatch). The test doubles are
 sophisticated enough to support `Ecto.Multi` transactions and
@@ -49,8 +49,8 @@ implementation.
 |----------------|------|-------|----------|
 | **Your Ecto Repo** | Production | Real database | Production dispatch (zero-cost passthrough) |
 | **`Repo.Test`** | Stateless stub | None | Fire-and-forget writes, canned read responses |
-| **`Repo.InMemory`** | Stateful fake (open-world) | `%{Schema => %{pk => struct}}` | PK-based read-after-write; fallback for other reads |
-| **`Repo.ClosedInMemory`** | Stateful fake (closed-world) | `%{Schema => %{pk => struct}}` | Full in-memory store; ExMachina factories; all bare-schema reads without fallback |
+| **`Repo.OpenInMemory`** | Stateful fake (open-world) | `%{Schema => %{pk => struct}}` | PK-based read-after-write; fallback for other reads |
+| **`Repo.InMemory`** | Stateful fake (closed-world) | `%{Schema => %{pk => struct}}` | Full in-memory store; ExMachina factories; all bare-schema reads without fallback |
 
 ### Production — zero-cost passthrough to your Ecto Repo
 
@@ -96,11 +96,11 @@ DoubleDown.Double.stub(DoubleDown.Repo, DoubleDown.Repo.Test,
 
 Use `Repo.Test` when your test only needs fire-and-forget writes and
 a few canned read responses. For read-after-write consistency, use
-`Repo.InMemory`.
+`Repo.OpenInMemory`.
 
-### `Repo.InMemory` — stateful test double (open-world)
+### `Repo.OpenInMemory` — stateful test double (open-world)
 
-`Repo.InMemory` models a consistent in-memory store
+`Repo.OpenInMemory` models a consistent in-memory store
 with primary-key indexing, read-after-write consistency for PK lookups,
 and a fallback mechanism for operations the store can't answer
 authoritatively.
@@ -136,7 +136,7 @@ needed:
 
 ```elixir
 setup do
-  DoubleDown.Double.fake(DoubleDown.Repo, DoubleDown.Repo.InMemory)
+  DoubleDown.Double.fake(DoubleDown.Repo, DoubleDown.Repo.OpenInMemory)
   :ok
 end
 
@@ -186,7 +186,7 @@ Pre-populate the store with existing records by passing them as the
 third argument to `Double.fake`:
 
 ```elixir
-DoubleDown.Double.fake(DoubleDown.Repo, DoubleDown.Repo.InMemory,
+DoubleDown.Double.fake(DoubleDown.Repo, DoubleDown.Repo.OpenInMemory,
   [%User{id: 1, name: "Alice"}, %Item{id: 1, sku: "widget"}])
 ```
 
@@ -212,7 +212,7 @@ setup do
 
   DoubleDown.Double.fake(
     DoubleDown.Repo,
-    DoubleDown.Repo.InMemory,
+    DoubleDown.Repo.OpenInMemory,
     [alice],
     fallback_fn: fn
       :get_by, [User, [email: "alice@example.com"]], _state -> alice
@@ -238,11 +238,11 @@ as having no fallback at all.
 #### Error on unhandled operations
 
 When an operation can't be served by either state or fallback,
-`Repo.InMemory` raises `ArgumentError` with a message showing the
+`Repo.OpenInMemory` raises `ArgumentError` with a message showing the
 exact operation and suggesting how to add a fallback clause:
 
 ```
-** (ArgumentError) DoubleDown.Repo.InMemory cannot service :get_by
+** (ArgumentError) DoubleDown.Repo.OpenInMemory cannot service :get_by
    with args [User, [name: "Bob"]].
 
     The InMemory adapter can only answer authoritatively for:
@@ -251,7 +251,7 @@ exact operation and suggesting how to add a fallback clause:
 
     For all other operations, register a fallback function:
 
-        DoubleDown.Repo.InMemory.new(
+        DoubleDown.Repo.OpenInMemory.new(
           fallback_fn: fn
             :get_by, [User, [name: "Bob"]], _state -> # your result here
           end
@@ -261,9 +261,9 @@ exact operation and suggesting how to add a fallback clause:
 This fail-loud approach prevents tests from passing with silently
 wrong data.
 
-### `Repo.ClosedInMemory` — stateful test double (closed-world)
+### `Repo.InMemory` — stateful test double (closed-world)
 
-`Repo.ClosedInMemory` uses **closed-world semantics**: the state is
+`Repo.InMemory` uses **closed-world semantics**: the state is
 the complete truth. If a record isn't in the state, it doesn't
 exist. This makes the adapter authoritative for all bare schema
 operations without needing a fallback — the fallback becomes the
@@ -280,12 +280,12 @@ escape hatch for `Ecto.Query` queryables, not the default path:
 | **Transactions** | `transact`, `rollback` | Same as InMemory |
 | **Ecto.Query** | Any operation with `Ecto.Query` queryable | Fallback or error |
 
-Use `ClosedInMemory` when the state is the full picture — typically
+Use `InMemory` when the state is the full picture — typically
 when using factories (e.g. ExMachina) to build test data:
 
 ```elixir
 setup do
-  DoubleDown.Double.fake(DoubleDown.Repo, DoubleDown.Repo.ClosedInMemory)
+  DoubleDown.Double.fake(DoubleDown.Repo, DoubleDown.Repo.InMemory)
 
   # Factory-inserted records are the complete store
   insert(:user, name: "Alice", email: "alice@example.com")
@@ -313,7 +313,7 @@ The fallback function is still available as an escape hatch for
 ```elixir
 DoubleDown.Double.fake(
   DoubleDown.Repo,
-  DoubleDown.Repo.ClosedInMemory,
+  DoubleDown.Repo.InMemory,
   [],
   fallback_fn: fn
     :all, [%Ecto.Query{}], _state -> []
@@ -322,7 +322,7 @@ DoubleDown.Double.fake(
 ```
 
 Use `InMemory` (open-world) when the state is partial and missing
-records should fall through to a fallback. Use `ClosedInMemory`
+records should fall through to a fallback. Use `InMemory`
 (closed-world) when the state is the complete truth.
 
 ## Transactions
@@ -375,7 +375,7 @@ adapter — so `repo.insert(cs)` dispatches correctly in both cases.
 Bulk operations (`insert_all`, `update_all`, `delete_all`) go through
 the fallback function or raise in test adapters.
 
-Both `Repo.Test` and `Repo.InMemory` share a `MultiStepper` module
+Both `Repo.Test` and `Repo.OpenInMemory` share a `MultiStepper` module
 that walks through Multi operations without a real database.
 
 ### Rollback
@@ -417,7 +417,7 @@ The **Test** and **InMemory** adapters do **not** provide true
 transaction isolation:
 
 - `Repo.Test` calls the function directly without any locking.
-- `Repo.InMemory` uses `%DoubleDown.Contract.Dispatch.Defer{}` to run the transaction
+- `Repo.OpenInMemory` uses `%DoubleDown.Contract.Dispatch.Defer{}` to run the transaction
   function outside the NimbleOwnership lock — each sub-operation
   acquires the lock individually.
 
@@ -469,15 +469,15 @@ test "handles duplicate email gracefully" do
 end
 ```
 
-### Error simulation with `Repo.InMemory`
+### Error simulation with `Repo.OpenInMemory`
 
-Use a 3-arity stateful fallback with `Repo.InMemory` for tests that
+Use a 3-arity stateful fallback with `Repo.OpenInMemory` for tests that
 need read-after-write consistency alongside failure simulation:
 
 ```elixir
 setup do
   DoubleDown.Repo
-  |> DoubleDown.Double.fake(DoubleDown.Repo.InMemory)
+  |> DoubleDown.Double.fake(DoubleDown.Repo.OpenInMemory)
   |> DoubleDown.Double.expect(:insert, fn [changeset] ->
     {:error, Ecto.Changeset.add_error(changeset, :email, "has already been taken")}
   end)
@@ -509,7 +509,7 @@ expect is consumed for `verify!` counting:
 ```elixir
 setup do
   DoubleDown.Repo
-  |> DoubleDown.Double.fake(DoubleDown.Repo.InMemory)
+  |> DoubleDown.Double.fake(DoubleDown.Repo.OpenInMemory)
   |> DoubleDown.Double.expect(:insert, :passthrough, times: 2)
   :ok
 end
@@ -525,14 +525,14 @@ You can mix `:passthrough` and function expects — for example,
 
 ```elixir
 DoubleDown.Repo
-|> DoubleDown.Double.fake(DoubleDown.Repo.InMemory)
+|> DoubleDown.Double.fake(DoubleDown.Repo.OpenInMemory)
 |> DoubleDown.Double.expect(:insert, :passthrough)
 |> DoubleDown.Double.expect(:insert, fn [changeset] ->
   {:error, Ecto.Changeset.add_error(changeset, :email, "taken")}
 end)
 ```
 
-### Stateful expects and stubs with `Repo.InMemory`
+### Stateful expects and stubs with `Repo.OpenInMemory`
 
 Expects and per-operation stubs can be 2-arity or 3-arity to read
 and update the InMemory store directly. The state passed to the
@@ -541,7 +541,7 @@ responder is the InMemory store (`%{Schema => %{pk => record}}`):
 ```elixir
 # 2-arity expect: reject duplicate emails, otherwise passthrough
 DoubleDown.Repo
-|> DoubleDown.Double.fake(DoubleDown.Repo.InMemory)
+|> DoubleDown.Double.fake(DoubleDown.Repo.OpenInMemory)
 |> DoubleDown.Double.stub(:insert, fn [changeset], state ->
   existing_emails =
     state
@@ -582,7 +582,7 @@ including computed results:
 ```elixir
 setup do
   DoubleDown.Repo
-  |> DoubleDown.Double.fake(DoubleDown.Repo.InMemory)
+  |> DoubleDown.Double.fake(DoubleDown.Repo.OpenInMemory)
   |> DoubleDown.Double.expect(:insert, fn [changeset] ->
     {:error, Ecto.Changeset.add_error(changeset, :email, "taken")}
   end)
@@ -614,7 +614,7 @@ end
 The "two-contract" pattern separates write operations (through the
 `DoubleDown.Repo` contract) from domain-specific query operations
 (through a separate contract). In production, both hit the same
-database. In tests, the Repo uses `Repo.InMemory`, and the query
+database. In tests, the Repo uses `Repo.OpenInMemory`, and the query
 contract needs to see what Repo has written.
 
 4-arity stateful handlers enable this by providing a read-only
@@ -638,7 +638,7 @@ end
 setup do
   # Repo uses InMemory — writes land here
   DoubleDown.Repo
-  |> DoubleDown.Double.fake(DoubleDown.Repo.InMemory)
+  |> DoubleDown.Double.fake(DoubleDown.Repo.OpenInMemory)
 
   # Queries uses a 4-arity fake that reads Repo's InMemory state
   MyApp.UserQueries
@@ -718,7 +718,7 @@ You get:
 
 This is particularly valuable for domain logic that interleaves Ecto
 operations. The contract boundary lets you swap the real Repo for
-`Repo.InMemory` and verify business rules without database overhead —
+`Repo.OpenInMemory` and verify business rules without database overhead —
 then use the Ecto adapter in integration tests for the full stack.
 
 ---

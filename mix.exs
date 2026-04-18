@@ -62,7 +62,7 @@ defmodule DoubleDown.MixProject do
             DoubleDown.Repo,
             DoubleDown.Repo.Test,
             DoubleDown.Repo.InMemory,
-            DoubleDown.Repo.ClosedInMemory
+            DoubleDown.Repo.OpenInMemory
           ],
           Internals: [
             DoubleDown.Contract.Dispatch,

@@ -29,7 +29,7 @@ DoubleDown supports several kinds of test double, all configured via
 |---|---|---|
 | **Stub** | Returns canned responses, no verification | `Double.stub` |
 | **Mock** | Returns canned responses + verifies call counts/order | `Double.expect` + `verify!` |
-| **Fake** | Working logic, simpler than production but behaviourally realistic | `Double.fake`, `Repo.Test`, `Repo.InMemory` |
+| **Fake** | Working logic, simpler than production but behaviourally realistic | `Double.fake`, `Repo.Test`, `Repo.OpenInMemory` |
 
 **Stubs** are the simplest — register a function that returns what you
 need, don't bother checking how many times it was called.
@@ -39,7 +39,7 @@ is consumed in order, and `verify!` checks that all expected calls were
 made. This is the Mox model.
 
 **Fakes** are the most powerful — they have real logic. `Repo.Test`
-and `Repo.InMemory` are fakes: they validate changesets, autogenerate
+and `Repo.OpenInMemory` are fakes: they validate changesets, autogenerate
 primary keys and timestamps, handle `Ecto.Multi`, and support
 `transact(fn repo -> ... end)`. A fake can be wrong in different ways
 than the real implementation, but it exercises more of your code's

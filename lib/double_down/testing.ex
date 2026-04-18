@@ -149,7 +149,7 @@ defmodule DoubleDown.Testing do
 
       setup do
         DoubleDown.Testing.set_mode_to_global()
-        DoubleDown.Testing.set_handler(MyApp.Repo, MyApp.Repo.InMemory)
+        DoubleDown.Testing.set_handler(MyApp.Repo, MyApp.Repo.OpenInMemory)
         on_exit(fn -> DoubleDown.Testing.set_mode_to_private() end)
         :ok
       end

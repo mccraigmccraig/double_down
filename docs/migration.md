@@ -203,12 +203,12 @@ DoubleDown.Double.fake(DoubleDown.Repo, MyApp.EctoRepo)
 
 - **`Repo.Test`** — when your function does writes and you just need
   them to succeed. No state, no read-after-write. Fastest setup.
-- **`Repo.InMemory`** — when your function inserts a record then
+- **`Repo.OpenInMemory`** — when your function inserts a record then
   reads it back by PK within the same operation. Provides
   read-after-write consistency.
 
 Most context functions that do `insert` then `get` in a transaction
-need `Repo.InMemory`. Simple command-style functions that just write
+need `Repo.OpenInMemory`. Simple command-style functions that just write
 and return can use `Repo.Test`.
 
 ## What stays on the DB

@@ -6,10 +6,10 @@ defmodule DoubleDown.Contract.Dispatch.FakeHandler do
   name in `DoubleDown.Double.fake/2..4`:
 
       # Instead of:
-      Double.fake(Repo, &Repo.InMemory.dispatch/3, Repo.InMemory.new())
+      Double.fake(Repo, &Repo.OpenInMemory.dispatch/3, Repo.OpenInMemory.new())
 
       # Write:
-      Double.fake(Repo, Repo.InMemory)
+      Double.fake(Repo, Repo.OpenInMemory)
 
   ## Callbacks
 
@@ -40,7 +40,7 @@ defmodule DoubleDown.Contract.Dispatch.FakeHandler do
   Called by `Double.fake/2..4` to construct the initial state for the
   stateful handler.
 
-    * `seed` — seed data (e.g. `%{User => %{1 => %User{}}}` for Repo.InMemory)
+    * `seed` — seed data (e.g. `%{User => %{1 => %User{}}}` for Repo.OpenInMemory)
     * `opts` — additional options (e.g. `fallback_fn: fn ... end`)
   """
   @callback new(seed :: term(), opts :: keyword()) :: term()

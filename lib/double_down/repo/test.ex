@@ -33,7 +33,7 @@ if Code.ensure_loaded?(Ecto) do
     error.
 
     This applies the same "fail when consistency cannot be proven" approach
-    as `DoubleDown.Repo.InMemory` — reads never silently return `nil` or `[]`
+    as `DoubleDown.Repo.OpenInMemory` — reads never silently return `nil` or `[]`
     because the adapter has no basis for claiming a record does or doesn't
     exist.
 
@@ -57,13 +57,13 @@ if Code.ensure_loaded?(Ecto) do
         DoubleDown.Testing.set_fn_handler(DoubleDown.Repo, DoubleDown.Repo.Test.new())
         DoubleDown.Testing.enable_log(DoubleDown.Repo)
 
-    ## Differences from Repo.InMemory
+    ## Differences from Repo.OpenInMemory
 
     `Repo.Test` is stateless — writes apply changesets and return `{:ok, struct}`
     but nothing is stored. There is no read-after-write consistency.
 
-    `Repo.InMemory` is stateful — writes store records and PK-based reads can
-    find them. Use `Repo.InMemory` when your test needs read-after-write
+    `Repo.OpenInMemory` is stateful — writes store records and PK-based reads can
+    find them. Use `Repo.OpenInMemory` when your test needs read-after-write
     consistency. Use `Repo.Test` when you only need fire-and-forget writes.
     """
 

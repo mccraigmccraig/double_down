@@ -201,7 +201,7 @@ defmodule DoubleDown.DynamicFacadeTest do
       alias DoubleDown.Test.SimpleUser
 
       # Set up Repo with InMemory
-      Double.fake(Repo, Repo.InMemory)
+      Double.fake(Repo, Repo.OpenInMemory)
 
       # Insert a record via Repo
       {:ok, _user} = Repo.Port.insert(SimpleUser.changeset(%{name: "Alice"}))

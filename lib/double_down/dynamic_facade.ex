@@ -19,7 +19,7 @@ defmodule DoubleDown.DynamicFacade do
   ## Usage in tests
 
       setup do
-        DoubleDown.Double.fake(MyApp.EctoRepo, DoubleDown.Repo.InMemory)
+        DoubleDown.Double.fake(MyApp.EctoRepo, DoubleDown.Repo.OpenInMemory)
         :ok
       end
 

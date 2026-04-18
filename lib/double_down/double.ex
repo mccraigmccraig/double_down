@@ -70,14 +70,14 @@ defmodule DoubleDown.Double do
 
   A 3-arity `fn operation, args, state -> {result, new_state} end`
   or 4-arity `fn operation, args, state, all_states -> {result, new_state} end`
-  with real logic and state. Integrates fakes like `Repo.InMemory`
+  with real logic and state. Integrates fakes like `Repo.OpenInMemory`
   while allowing expects to override specific calls. 4-arity fakes
   receive a read-only snapshot of all contract states for
   cross-contract state access:
 
       # First insert fails, rest go through InMemory
       DoubleDown.Repo
-      |> DoubleDown.Double.fake(&Repo.InMemory.dispatch/3, Repo.InMemory.new())
+      |> DoubleDown.Double.fake(&Repo.OpenInMemory.dispatch/3, Repo.OpenInMemory.new())
       |> DoubleDown.Double.expect(:insert, fn [changeset] ->
         {:error, Ecto.Changeset.add_error(changeset, :email, "taken")}
       end)
@@ -131,7 +131,7 @@ defmodule DoubleDown.Double do
   ## Multi-contract
 
       DoubleDown.Repo
-      |> DoubleDown.Double.fake(&Repo.InMemory.dispatch/3, Repo.InMemory.new())
+      |> DoubleDown.Double.fake(&Repo.OpenInMemory.dispatch/3, Repo.OpenInMemory.new())
       |> DoubleDown.Double.expect(:insert, fn [cs] -> {:error, :taken} end)
 
       QueriesContract
@@ -174,7 +174,7 @@ defmodule DoubleDown.Double do
   the state and decide whether to handle the call or delegate:
 
       DoubleDown.Repo
-      |> Double.fake(&Repo.InMemory.dispatch/3, Repo.InMemory.new())
+      |> Double.fake(&Repo.OpenInMemory.dispatch/3, Repo.OpenInMemory.new())
       |> Double.expect(:insert, fn [changeset], state ->
         if duplicate?(state, changeset) do
           {{:error, add_error(changeset, :email, "taken")}, state}
@@ -446,13 +446,13 @@ defmodule DoubleDown.Double do
   handles operations:
 
       # Default state
-      DoubleDown.Double.fake(MyContract, Repo.InMemory)
+      DoubleDown.Double.fake(MyContract, Repo.OpenInMemory)
 
       # With seed data
-      DoubleDown.Double.fake(MyContract, Repo.InMemory, [%User{id: 1}])
+      DoubleDown.Double.fake(MyContract, Repo.OpenInMemory, [%User{id: 1}])
 
       # With seed data and options
-      DoubleDown.Double.fake(MyContract, Repo.InMemory, [%User{id: 1}],
+      DoubleDown.Double.fake(MyContract, Repo.OpenInMemory, [%User{id: 1}],
         fallback_fn: fn :all, [User], state -> Map.values(state[User]) end
       )
 

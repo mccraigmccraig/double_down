@@ -492,8 +492,8 @@ defmodule DoubleDown.TestDispatchTest do
       # Set up Repo with InMemory — insert a user
       DoubleDown.Testing.set_stateful_handler(
         Repo,
-        &Repo.InMemory.dispatch/3,
-        Repo.InMemory.new()
+        &Repo.OpenInMemory.dispatch/3,
+        Repo.OpenInMemory.new()
       )
 
       {:ok, _user} = Repo.Port.insert(SimpleUser.changeset(%{name: "Alice"}))
