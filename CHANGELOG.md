@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.45.0]
+
+### Added
+
+- In-memory transaction rollback support. `rollback/1` in the
+  stateful test adapters (`Repo.InMemory` and `Repo.OpenInMemory`)
+  now restores the store to its pre-transaction state — inserts,
+  updates, and deletes within a rolled-back transaction are undone.
+
+  Implemented by snapshotting the store at `transact` start and
+  restoring via `Contract.Dispatch.restore_state/2` on rollback.
+  Only the Repo contract's state is restored; other contracts are
+  unaffected.
+
+- `DoubleDown.Contract.Dispatch.get_state/1` — read the current
+  domain state for a contract. Returns `fallback_state` for
+  Double-managed handlers, raw state for `set_stateful_handler`.
+
+- `DoubleDown.Contract.Dispatch.restore_state/2` — replace a single
+  contract's state in NimbleOwnership, leaving the handler function
+  and all other contracts' state untouched. Scoped to a single
+  contract by design.
+
 ## [0.44.0]
 
 ### Added
@@ -965,7 +988,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `DoubleDown.Testing` with NimbleOwnership, `Repo.Test` stateless
   adapter, CI setup, Credo, Dialyzer.
 
-[Unreleased]: https://github.com/mccraigmccraig/double_down/compare/v0.44.0...HEAD
+[Unreleased]: https://github.com/mccraigmccraig/double_down/compare/v0.45.0...HEAD
+[0.45.0]: https://github.com/mccraigmccraig/double_down/compare/v0.44.0...v0.45.0
 [0.44.0]: https://github.com/mccraigmccraig/double_down/compare/v0.43.0...v0.44.0
 [0.43.0]: https://github.com/mccraigmccraig/double_down/compare/v0.42.0...v0.43.0
 [0.42.0]: https://github.com/mccraigmccraig/double_down/compare/v0.41.1...v0.42.0
