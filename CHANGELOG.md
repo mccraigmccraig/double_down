@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.41.1]
+
+### Fixed
+
+- `BehaviourFacade` compilation failure on clean builds when the
+  behaviour and facade are in the same `elixirc_paths` batch.
+  `Code.Typespec.fetch_callbacks/1` needs the behaviour's `.beam`
+  file on disk, but during `mix compile` all files in the same
+  batch are compiled together — `.beam` files aren't written until
+  the batch finishes.
+
+### Added
+
+- `DoubleDown.BehaviourFacade.CompileHelper.ensure_compiled!/1` —
+  explicitly compiles a behaviour source file and writes its `.beam`
+  to the build directory. Only needed when the behaviour and facade
+  are in the same compilation batch (e.g. both in `test/support/`).
+  In normal usage the behaviour would be in `lib/` or a dependency,
+  already compiled in a prior batch.
+
+- `BehaviourIntrospection` now falls back to `:code.get_object_code/1`
+  when `Code.Typespec.fetch_callbacks/1` can't find the `.beam` on the
+  standard code path.
+
 ## [0.41.0]
 
 ### Added
@@ -827,7 +851,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `DoubleDown.Testing` with NimbleOwnership, `Repo.Test` stateless
   adapter, CI setup, Credo, Dialyzer.
 
-[Unreleased]: https://github.com/mccraigmccraig/double_down/compare/v0.41.0...HEAD
+[Unreleased]: https://github.com/mccraigmccraig/double_down/compare/v0.41.1...HEAD
+[0.41.1]: https://github.com/mccraigmccraig/double_down/compare/v0.41.0...v0.41.1
 [0.41.0]: https://github.com/mccraigmccraig/double_down/compare/v0.40.0...v0.41.0
 [0.40.0]: https://github.com/mccraigmccraig/double_down/compare/v0.39.0...v0.40.0
 [0.39.0]: https://github.com/mccraigmccraig/double_down/compare/v0.38.0...v0.39.0
