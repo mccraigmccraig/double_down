@@ -231,12 +231,13 @@ defmodule DoubleDown.DoubleTest do
 
   describe "StubHandler module-based stub" do
     alias DoubleDown.Repo
+  alias DoubleDown.Test.Repo, as: TestRepo
     alias DoubleDown.Test.SimpleUser
 
     test "stub/2 with StubHandler module — writes only" do
       Double.stub(Repo, Repo.Stub)
 
-      {:ok, user} = Repo.Port.insert(SimpleUser.changeset(%{name: "Alice"}))
+      {:ok, user} = TestRepo.insert(SimpleUser.changeset(%{name: "Alice"}))
       assert %SimpleUser{name: "Alice"} = user
     end
 
@@ -244,7 +245,7 @@ defmodule DoubleDown.DoubleTest do
       Double.stub(Repo, Repo.Stub)
 
       assert_raise ArgumentError, ~r/cannot service :all/, fn ->
-        Repo.Port.all(SimpleUser)
+        TestRepo.all(SimpleUser)
       end
     end
 
@@ -253,7 +254,7 @@ defmodule DoubleDown.DoubleTest do
         [%SimpleUser{id: 1, name: "Alice"}]
       end)
 
-      assert [%SimpleUser{name: "Alice"}] = Repo.Port.all(SimpleUser)
+      assert [%SimpleUser{name: "Alice"}] = TestRepo.all(SimpleUser)
     end
 
     test "stub/3 with StubHandler supports expects" do
@@ -261,10 +262,10 @@ defmodule DoubleDown.DoubleTest do
       |> Double.stub(Repo.Stub)
       |> Double.expect(:insert, fn [_changeset] -> {:error, :conflict} end)
 
-      assert {:error, :conflict} = Repo.Port.insert(SimpleUser.changeset(%{name: "Bob"}))
+      assert {:error, :conflict} = TestRepo.insert(SimpleUser.changeset(%{name: "Bob"}))
 
       assert {:ok, %SimpleUser{name: "Bob"}} =
-               Repo.Port.insert(SimpleUser.changeset(%{name: "Bob"}))
+               TestRepo.insert(SimpleUser.changeset(%{name: "Bob"}))
     end
 
     test "stub/2 with non-StubHandler module raises" do
@@ -591,27 +592,28 @@ defmodule DoubleDown.DoubleTest do
 
   describe "FakeHandler module-based fake" do
     alias DoubleDown.Repo
+  alias DoubleDown.Test.Repo, as: TestRepo
     alias DoubleDown.Test.SimpleUser
 
     test "fake/2 with FakeHandler module uses default state" do
       Double.fake(Repo, Repo.OpenInMemory)
 
-      {:ok, user} = Repo.Port.insert(SimpleUser.changeset(%{name: "Alice"}))
-      assert %SimpleUser{name: "Alice"} = Repo.Port.get(SimpleUser, user.id)
+      {:ok, user} = TestRepo.insert(SimpleUser.changeset(%{name: "Alice"}))
+      assert %SimpleUser{name: "Alice"} = TestRepo.get(SimpleUser, user.id)
     end
 
     test "fake/3 with FakeHandler module passes seed as list" do
       alice = %SimpleUser{id: 1, name: "Alice"}
       Double.fake(Repo, Repo.OpenInMemory, [alice])
 
-      assert %SimpleUser{name: "Alice"} = Repo.Port.get(SimpleUser, 1)
+      assert %SimpleUser{name: "Alice"} = TestRepo.get(SimpleUser, 1)
     end
 
     test "fake/3 with FakeHandler module passes seed as map" do
       alice = %SimpleUser{id: 1, name: "Alice"}
       Double.fake(Repo, Repo.OpenInMemory, %{SimpleUser => %{1 => alice}})
 
-      assert %SimpleUser{name: "Alice"} = Repo.Port.get(SimpleUser, 1)
+      assert %SimpleUser{name: "Alice"} = TestRepo.get(SimpleUser, 1)
     end
 
     test "fake/4 passes seed and opts to new/2" do
@@ -623,8 +625,8 @@ defmodule DoubleDown.DoubleTest do
         end
       )
 
-      assert %SimpleUser{name: "Alice"} = Repo.Port.get(SimpleUser, 1)
-      assert [%SimpleUser{name: "Alice"}] = Repo.Port.all(SimpleUser)
+      assert %SimpleUser{name: "Alice"} = TestRepo.get(SimpleUser, 1)
+      assert [%SimpleUser{name: "Alice"}] = TestRepo.all(SimpleUser)
     end
 
     test "FakeHandler fake supports expects" do
@@ -633,11 +635,11 @@ defmodule DoubleDown.DoubleTest do
         {:error, :conflict}
       end)
 
-      assert {:error, :conflict} = Repo.Port.insert(SimpleUser.changeset(%{name: "Bob"}))
+      assert {:error, :conflict} = TestRepo.insert(SimpleUser.changeset(%{name: "Bob"}))
 
       # Second insert goes through InMemory
       assert {:ok, %SimpleUser{name: "Bob"}} =
-               Repo.Port.insert(SimpleUser.changeset(%{name: "Bob"}))
+               TestRepo.insert(SimpleUser.changeset(%{name: "Bob"}))
     end
 
     test "fake/2 with non-FakeHandler module uses module fake" do

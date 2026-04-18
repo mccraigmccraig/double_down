@@ -487,6 +487,7 @@ defmodule DoubleDown.TestDispatchTest do
 
     test "cross-contract state read: Queries handler reads Repo InMemory state" do
       alias DoubleDown.Repo
+  alias DoubleDown.Test.Repo, as: TestRepo
       alias DoubleDown.Test.SimpleUser
 
       # Set up Repo with InMemory — insert a user
@@ -496,7 +497,7 @@ defmodule DoubleDown.TestDispatchTest do
         Repo.OpenInMemory.new()
       )
 
-      {:ok, _user} = Repo.Port.insert(SimpleUser.changeset(%{name: "Alice"}))
+      {:ok, _user} = TestRepo.insert(SimpleUser.changeset(%{name: "Alice"}))
 
       # Set up Greeter with a 4-arity handler that reads Repo's InMemory state
       DoubleDown.Testing.set_stateful_handler(

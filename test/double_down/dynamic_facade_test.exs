@@ -198,13 +198,14 @@ defmodule DoubleDown.DynamicFacadeTest do
   describe "cross-contract state access with dynamic facade" do
     test "4-arity fake on dynamic module reads contract-based Repo state" do
       alias DoubleDown.Repo
+  alias DoubleDown.Test.Repo, as: TestRepo
       alias DoubleDown.Test.SimpleUser
 
       # Set up Repo with InMemory
       Double.fake(Repo, Repo.OpenInMemory)
 
       # Insert a record via Repo
-      {:ok, _user} = Repo.Port.insert(SimpleUser.changeset(%{name: "Alice"}))
+      {:ok, _user} = TestRepo.insert(SimpleUser.changeset(%{name: "Alice"}))
 
       # Set up dynamic module with 4-arity fake that reads Repo state
       Double.fake(

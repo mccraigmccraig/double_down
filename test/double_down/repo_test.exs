@@ -2,6 +2,7 @@ defmodule DoubleDown.RepoTest do
   use ExUnit.Case, async: true
 
   alias DoubleDown.Repo
+  alias DoubleDown.Test.Repo, as: TestRepo
 
   # -------------------------------------------------------------------
   # Test Schemas
@@ -64,37 +65,37 @@ defmodule DoubleDown.RepoTest do
     end
 
     test "Facade (defined via use DoubleDown.ContractFacade) has all operations" do
-      {:module, _} = Code.ensure_loaded(Repo.Port)
+      {:module, _} = Code.ensure_loaded(TestRepo)
 
       # Base arities
-      assert function_exported?(Repo.Port, :insert, 1)
-      assert function_exported?(Repo.Port, :update, 1)
-      assert function_exported?(Repo.Port, :delete, 1)
-      assert function_exported?(Repo.Port, :get, 2)
-      assert function_exported?(Repo.Port, :get!, 2)
-      assert function_exported?(Repo.Port, :get_by, 2)
-      assert function_exported?(Repo.Port, :get_by!, 2)
-      assert function_exported?(Repo.Port, :one, 1)
-      assert function_exported?(Repo.Port, :one!, 1)
-      assert function_exported?(Repo.Port, :all, 1)
-      assert function_exported?(Repo.Port, :exists?, 1)
-      assert function_exported?(Repo.Port, :aggregate, 3)
-      assert function_exported?(Repo.Port, :transact, 2)
-      assert function_exported?(Repo.Port, :rollback, 1)
+      assert function_exported?(TestRepo, :insert, 1)
+      assert function_exported?(TestRepo, :update, 1)
+      assert function_exported?(TestRepo, :delete, 1)
+      assert function_exported?(TestRepo, :get, 2)
+      assert function_exported?(TestRepo, :get!, 2)
+      assert function_exported?(TestRepo, :get_by, 2)
+      assert function_exported?(TestRepo, :get_by!, 2)
+      assert function_exported?(TestRepo, :one, 1)
+      assert function_exported?(TestRepo, :one!, 1)
+      assert function_exported?(TestRepo, :all, 1)
+      assert function_exported?(TestRepo, :exists?, 1)
+      assert function_exported?(TestRepo, :aggregate, 3)
+      assert function_exported?(TestRepo, :transact, 2)
+      assert function_exported?(TestRepo, :rollback, 1)
 
       # Opts-accepting arities
-      assert function_exported?(Repo.Port, :insert, 2)
-      assert function_exported?(Repo.Port, :update, 2)
-      assert function_exported?(Repo.Port, :delete, 2)
-      assert function_exported?(Repo.Port, :get, 3)
-      assert function_exported?(Repo.Port, :get!, 3)
-      assert function_exported?(Repo.Port, :get_by, 3)
-      assert function_exported?(Repo.Port, :get_by!, 3)
-      assert function_exported?(Repo.Port, :one, 2)
-      assert function_exported?(Repo.Port, :one!, 2)
-      assert function_exported?(Repo.Port, :all, 2)
-      assert function_exported?(Repo.Port, :exists?, 2)
-      assert function_exported?(Repo.Port, :aggregate, 4)
+      assert function_exported?(TestRepo, :insert, 2)
+      assert function_exported?(TestRepo, :update, 2)
+      assert function_exported?(TestRepo, :delete, 2)
+      assert function_exported?(TestRepo, :get, 3)
+      assert function_exported?(TestRepo, :get!, 3)
+      assert function_exported?(TestRepo, :get_by, 3)
+      assert function_exported?(TestRepo, :get_by!, 3)
+      assert function_exported?(TestRepo, :one, 2)
+      assert function_exported?(TestRepo, :one!, 2)
+      assert function_exported?(TestRepo, :all, 2)
+      assert function_exported?(TestRepo, :exists?, 2)
+      assert function_exported?(TestRepo, :aggregate, 4)
     end
 
     test "raise-on-not-found read operations are regular contract operations" do
@@ -178,77 +179,77 @@ defmodule DoubleDown.RepoTest do
 
     test "insert delegates to mock Repo" do
       cs = User.changeset(%{name: "Alice"})
-      assert {:ok, %User{name: "Alice"}} = Repo.Port.insert(cs)
+      assert {:ok, %User{name: "Alice"}} = TestRepo.insert(cs)
     end
 
     test "update delegates to mock Repo" do
       cs = User.changeset(%User{id: 1, name: "old"}, %{name: "new"})
-      assert {:ok, %User{name: "new"}} = Repo.Port.update(cs)
+      assert {:ok, %User{name: "new"}} = TestRepo.update(cs)
     end
 
     test "delete delegates to mock Repo" do
       record = %User{id: 1, name: "Alice"}
-      assert {:ok, ^record} = Repo.Port.delete(record)
+      assert {:ok, ^record} = TestRepo.delete(record)
     end
 
     test "get delegates to mock Repo" do
-      assert %User{id: 42, name: "found"} = Repo.Port.get(User, 42)
+      assert %User{id: 42, name: "found"} = TestRepo.get(User, 42)
     end
 
     test "get! delegates to mock Repo" do
-      assert %User{id: 42, name: "found!"} = Repo.Port.get!(User, 42)
+      assert %User{id: 42, name: "found!"} = TestRepo.get!(User, 42)
     end
 
     test "get_by delegates to mock Repo" do
-      assert %User{name: "Alice"} = Repo.Port.get_by(User, name: "Alice")
+      assert %User{name: "Alice"} = TestRepo.get_by(User, name: "Alice")
     end
 
     test "get_by! delegates to mock Repo" do
-      assert %User{name: "Alice"} = Repo.Port.get_by!(User, name: "Alice")
+      assert %User{name: "Alice"} = TestRepo.get_by!(User, name: "Alice")
     end
 
     test "one delegates to mock Repo" do
-      assert %User{name: "one"} = Repo.Port.one(User)
+      assert %User{name: "one"} = TestRepo.one(User)
     end
 
     test "one! delegates to mock Repo" do
-      assert %User{name: "one!"} = Repo.Port.one!(User)
+      assert %User{name: "one!"} = TestRepo.one!(User)
     end
 
     test "all delegates to mock Repo" do
-      assert [%User{id: 1}, %User{id: 2}] = Repo.Port.all(User)
+      assert [%User{id: 1}, %User{id: 2}] = TestRepo.all(User)
     end
 
     test "exists? delegates to mock Repo" do
-      assert Repo.Port.exists?(User) == true
+      assert TestRepo.exists?(User) == true
     end
 
     test "aggregate delegates to mock Repo" do
-      assert 42 = Repo.Port.aggregate(User, :count, :id)
+      assert 42 = TestRepo.aggregate(User, :count, :id)
     end
 
     test "insert_all delegates to mock Repo" do
-      assert {2, nil} = Repo.Port.insert_all(User, [%{name: "a"}, %{name: "b"}], [])
+      assert {2, nil} = TestRepo.insert_all(User, [%{name: "a"}, %{name: "b"}], [])
     end
 
     test "update_all delegates to mock Repo" do
-      assert {3, nil} = Repo.Port.update_all(User, [set: [name: "bulk"]], [])
+      assert {3, nil} = TestRepo.update_all(User, [set: [name: "bulk"]], [])
     end
 
     test "delete_all delegates to mock Repo" do
-      assert {5, nil} = Repo.Port.delete_all(User, [])
+      assert {5, nil} = TestRepo.delete_all(User, [])
     end
 
     test "transact with 0-arity fun delegates to mock Repo" do
-      result = Repo.Port.transact(fn -> {:ok, :committed} end, [])
+      result = TestRepo.transact(fn -> {:ok, :committed} end, [])
       assert {:ok, :committed} = result
     end
 
     test "transact with 1-arity fun delegates to mock Repo (receives facade module)" do
-      result = Repo.Port.transact(fn repo -> {:ok, repo} end, [])
+      result = TestRepo.transact(fn repo -> {:ok, repo} end, [])
       # 1-arity fns are wrapped into 0-arity thunks by the facade's pre_dispatch,
-      # so the fn receives the facade module (Repo.Port), not the impl (MockRepo).
-      assert {:ok, Repo.Port} = result
+      # so the fn receives the facade module (TestRepo), not the impl (MockRepo).
+      assert {:ok, TestRepo} = result
     end
 
     test "transact with Ecto.Multi delegates to mock Repo" do
@@ -256,7 +257,7 @@ defmodule DoubleDown.RepoTest do
         Ecto.Multi.new()
         |> Ecto.Multi.insert(:user, User.changeset(%{name: "Alice"}))
 
-      assert {:ok, %{user: %User{name: "Alice"}}} = Repo.Port.transact(multi, [])
+      assert {:ok, %{user: %User{name: "Alice"}}} = TestRepo.transact(multi, [])
     end
 
     test "transact with Ecto.Multi and :run receives the Ecto Repo (MockRepo)" do
@@ -268,7 +269,7 @@ defmodule DoubleDown.RepoTest do
 
       # In the Ecto adapter, :run callbacks receive the underlying Ecto Repo module,
       # not the Port facade. This mirrors real Ecto.Repo.transact/2 behaviour.
-      assert {:ok, %{check: MockRepo}} = Repo.Port.transact(multi, [])
+      assert {:ok, %{check: MockRepo}} = TestRepo.transact(multi, [])
     end
   end
 end

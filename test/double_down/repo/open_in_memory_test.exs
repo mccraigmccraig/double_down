@@ -2,6 +2,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
   use ExUnit.Case, async: true
 
   alias DoubleDown.Repo
+  alias DoubleDown.Test.Repo, as: TestRepo
 
   # -------------------------------------------------------------------
   # Test Schemas
@@ -265,17 +266,17 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
 
     test "insert stores a record and returns {:ok, struct}" do
       cs = User.changeset(%{name: "Alice", email: "alice@example.com"})
-      assert {:ok, %User{name: "Alice", email: "alice@example.com"}} = Repo.Port.insert(cs)
+      assert {:ok, %User{name: "Alice", email: "alice@example.com"}} = TestRepo.insert(cs)
     end
 
     test "insert auto-assigns id when nil" do
       cs = User.changeset(%{name: "Alice"})
-      assert {:ok, %User{id: 1, name: "Alice"}} = Repo.Port.insert(cs)
+      assert {:ok, %User{id: 1, name: "Alice"}} = TestRepo.insert(cs)
     end
 
     test "insert preserves explicit id" do
       cs = User.changeset(%User{id: 42}, %{name: "Alice"})
-      assert {:ok, %User{id: 42, name: "Alice"}} = Repo.Port.insert(cs)
+      assert {:ok, %User{id: 42, name: "Alice"}} = TestRepo.insert(cs)
     end
 
     test "insert auto-id increments based on existing records" do
@@ -287,21 +288,21 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
         initial
       )
 
-      assert {:ok, %User{id: 6, name: "New"}} = Repo.Port.insert(User.changeset(%{name: "New"}))
+      assert {:ok, %User{id: 6, name: "New"}} = TestRepo.insert(User.changeset(%{name: "New"}))
     end
 
     test "update updates an existing record in store" do
-      Repo.Port.insert(User.changeset(%User{id: 1}, %{name: "Alice", email: "old@example.com"}))
+      TestRepo.insert(User.changeset(%User{id: 1}, %{name: "Alice", email: "old@example.com"}))
       cs = User.changeset(%User{id: 1, name: "Alice"}, %{email: "new@example.com"})
-      assert {:ok, %User{id: 1, email: "new@example.com"}} = Repo.Port.update(cs)
+      assert {:ok, %User{id: 1, email: "new@example.com"}} = TestRepo.update(cs)
     end
 
     test "delete removes record from store and get raises for missing PK" do
-      {:ok, alice} = Repo.Port.insert(User.changeset(%User{id: 1}, %{name: "Alice"}))
-      assert {:ok, ^alice} = Repo.Port.delete(alice)
+      {:ok, alice} = TestRepo.insert(User.changeset(%User{id: 1}, %{name: "Alice"}))
+      assert {:ok, ^alice} = TestRepo.delete(alice)
 
       assert_raise ArgumentError, ~r/InMemory cannot service :get/, fn ->
-        Repo.Port.get(User, 1)
+        TestRepo.get(User, 1)
       end
     end
 
@@ -311,32 +312,32 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
         |> Ecto.Changeset.cast(%{name: "Alice"}, [:name])
         |> Ecto.Changeset.add_error(:name, "is invalid")
 
-      assert {:error, %Ecto.Changeset{valid?: false}} = Repo.Port.insert(cs)
+      assert {:error, %Ecto.Changeset{valid?: false}} = TestRepo.insert(cs)
 
       # Store is unchanged — no record was inserted
       assert_raise ArgumentError, ~r/InMemory cannot service :get/, fn ->
-        Repo.Port.get(User, 1)
+        TestRepo.get(User, 1)
       end
     end
 
     test "update returns {:error, changeset} for invalid changeset and leaves store unchanged" do
       {:ok, _alice} =
-        Repo.Port.insert(User.changeset(%User{id: 1}, %{name: "Alice"}))
+        TestRepo.insert(User.changeset(%User{id: 1}, %{name: "Alice"}))
 
       cs =
         %User{id: 1, name: "Alice"}
         |> Ecto.Changeset.cast(%{name: "Bad"}, [:name])
         |> Ecto.Changeset.add_error(:name, "is invalid")
 
-      assert {:error, %Ecto.Changeset{valid?: false}} = Repo.Port.update(cs)
+      assert {:error, %Ecto.Changeset{valid?: false}} = TestRepo.update(cs)
 
       # Store is unchanged — original record preserved
-      assert %User{id: 1, name: "Alice"} = Repo.Port.get(User, 1)
+      assert %User{id: 1, name: "Alice"} = TestRepo.get(User, 1)
     end
 
     test "insert populates inserted_at and updated_at for schemas with timestamps" do
       cs = TimestampUser.changeset(%{name: "Alice"})
-      assert {:ok, user} = Repo.Port.insert(cs)
+      assert {:ok, user} = TestRepo.insert(cs)
 
       assert %NaiveDateTime{} = user.inserted_at
       assert %NaiveDateTime{} = user.updated_at
@@ -344,10 +345,10 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
 
     test "update populates updated_at for schemas with timestamps" do
       cs = TimestampUser.changeset(%{name: "Alice"})
-      {:ok, user} = Repo.Port.insert(cs)
+      {:ok, user} = TestRepo.insert(cs)
 
       update_cs = TimestampUser.changeset(user, %{name: "Alicia"})
-      {:ok, updated} = Repo.Port.update(update_cs)
+      {:ok, updated} = TestRepo.update(update_cs)
 
       assert %NaiveDateTime{} = updated.updated_at
       assert updated.inserted_at == user.inserted_at
@@ -360,23 +361,23 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
         %TimestampUser{inserted_at: explicit_time, updated_at: explicit_time}
         |> Ecto.Changeset.cast(%{name: "Alice"}, [:name])
 
-      assert {:ok, user} = Repo.Port.insert(cs)
+      assert {:ok, user} = TestRepo.insert(cs)
       assert user.inserted_at == explicit_time
       assert user.updated_at == explicit_time
     end
 
     test "timestamps are persisted in store and available via get" do
       cs = TimestampUser.changeset(%{name: "Alice"})
-      {:ok, user} = Repo.Port.insert(cs)
+      {:ok, user} = TestRepo.insert(cs)
 
-      found = Repo.Port.get(TimestampUser, user.id)
+      found = TestRepo.get(TimestampUser, user.id)
       assert found.inserted_at == user.inserted_at
       assert found.updated_at == user.updated_at
     end
 
     test "schemas without timestamps are unaffected by autogeneration" do
       cs = User.changeset(%{name: "Alice"})
-      assert {:ok, %User{name: "Alice"}} = Repo.Port.insert(cs)
+      assert {:ok, %User{name: "Alice"}} = TestRepo.insert(cs)
     end
   end
 
@@ -396,18 +397,18 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
     end
 
     test "integer :id PK is auto-incremented" do
-      assert {:ok, %User{id: 1}} = Repo.Port.insert(User.changeset(%{name: "Alice"}))
-      assert {:ok, %User{id: 2}} = Repo.Port.insert(User.changeset(%{name: "Bob"}))
+      assert {:ok, %User{id: 1}} = TestRepo.insert(User.changeset(%{name: "Alice"}))
+      assert {:ok, %User{id: 2}} = TestRepo.insert(User.changeset(%{name: "Bob"}))
     end
 
     test "integer :id PK preserves explicit value" do
       cs = User.changeset(%User{id: 42}, %{name: "Alice"})
-      assert {:ok, %User{id: 42}} = Repo.Port.insert(cs)
+      assert {:ok, %User{id: 42}} = TestRepo.insert(cs)
     end
 
     test ":binary_id PK is auto-generated as UUID" do
       cs = BinaryIdUser.changeset(%{name: "Alice"})
-      assert {:ok, user} = Repo.Port.insert(cs)
+      assert {:ok, user} = TestRepo.insert(cs)
       assert is_binary(user.id)
       # Verify it's a valid UUID format (8-4-4-4-12 hex)
       assert user.id =~ ~r/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
@@ -416,17 +417,17 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
     test ":binary_id PK preserves explicit value" do
       explicit_id = Ecto.UUID.generate()
       cs = BinaryIdUser.changeset(%BinaryIdUser{id: explicit_id}, %{name: "Alice"})
-      assert {:ok, %BinaryIdUser{id: ^explicit_id}} = Repo.Port.insert(cs)
+      assert {:ok, %BinaryIdUser{id: ^explicit_id}} = TestRepo.insert(cs)
     end
 
     test ":binary_id PK is retrievable via get after insert" do
-      {:ok, user} = Repo.Port.insert(BinaryIdUser.changeset(%{name: "Alice"}))
-      assert user == Repo.Port.get(BinaryIdUser, user.id)
+      {:ok, user} = TestRepo.insert(BinaryIdUser.changeset(%{name: "Alice"}))
+      assert user == TestRepo.get(BinaryIdUser, user.id)
     end
 
     test "Ecto.UUID PK is auto-generated via autogenerate metadata" do
       cs = UuidUser.changeset(%{name: "Alice"})
-      assert {:ok, user} = Repo.Port.insert(cs)
+      assert {:ok, user} = TestRepo.insert(cs)
       assert is_binary(user.uuid)
       assert user.uuid =~ ~r/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
     end
@@ -434,31 +435,31 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
     test "Ecto.UUID PK preserves explicit value" do
       explicit_uuid = Ecto.UUID.generate()
       cs = UuidUser.changeset(%UuidUser{uuid: explicit_uuid}, %{name: "Alice"})
-      assert {:ok, %UuidUser{uuid: ^explicit_uuid}} = Repo.Port.insert(cs)
+      assert {:ok, %UuidUser{uuid: ^explicit_uuid}} = TestRepo.insert(cs)
     end
 
     test "Ecto.UUID PK is retrievable via get after insert" do
-      {:ok, user} = Repo.Port.insert(UuidUser.changeset(%{name: "Alice"}))
-      assert user == Repo.Port.get(UuidUser, user.uuid)
+      {:ok, user} = TestRepo.insert(UuidUser.changeset(%{name: "Alice"}))
+      assert user == TestRepo.get(UuidUser, user.uuid)
     end
 
     test "no autogenerate configured raises on nil PK" do
       cs = NoAutoIdUser.changeset(%{name: "Alice"})
 
       assert_raise ArgumentError, ~r/Cannot autogenerate primary key/, fn ->
-        Repo.Port.insert(cs)
+        TestRepo.insert(cs)
       end
     end
 
     test "no autogenerate works with explicit PK" do
       explicit_id = Ecto.UUID.generate()
       cs = NoAutoIdUser.changeset(%NoAutoIdUser{id: explicit_id}, %{name: "Alice"})
-      assert {:ok, %NoAutoIdUser{id: ^explicit_id}} = Repo.Port.insert(cs)
+      assert {:ok, %NoAutoIdUser{id: ^explicit_id}} = TestRepo.insert(cs)
     end
 
     test "@primary_key false schema inserts without error" do
       cs = NoPkEvent.changeset(%{name: "thing_happened"})
-      assert {:ok, %NoPkEvent{name: "thing_happened"}} = Repo.Port.insert(cs)
+      assert {:ok, %NoPkEvent{name: "thing_happened"}} = TestRepo.insert(cs)
     end
   end
 
@@ -486,12 +487,12 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
     end
 
     test "get returns record from state when found" do
-      assert %User{id: 1, name: "Alice"} = Repo.Port.get(User, 1)
+      assert %User{id: 1, name: "Alice"} = TestRepo.get(User, 1)
     end
 
     test "get raises when not found in state and no fallback" do
       assert_raise ArgumentError, ~r/InMemory cannot service :get/, fn ->
-        Repo.Port.get(User, 999)
+        TestRepo.get(User, 999)
       end
     end
 
@@ -507,9 +508,9 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
       DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/3, state)
 
       # Found in state
-      assert %User{id: 1, name: "Alice"} = Repo.Port.get(User, 1)
+      assert %User{id: 1, name: "Alice"} = TestRepo.get(User, 1)
       # Falls through to fallback
-      assert ^bob = Repo.Port.get(User, 99)
+      assert ^bob = TestRepo.get(User, 99)
     end
 
     test "get raises when fallback doesn't match" do
@@ -519,17 +520,17 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
       DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/3, state)
 
       assert_raise ArgumentError, ~r/InMemory cannot service :get/, fn ->
-        Repo.Port.get(User, 999)
+        TestRepo.get(User, 999)
       end
     end
 
     test "get! returns record from state when found" do
-      assert %User{id: 1, name: "Alice"} = Repo.Port.get!(User, 1)
+      assert %User{id: 1, name: "Alice"} = TestRepo.get!(User, 1)
     end
 
     test "get! raises when not found in state and no fallback" do
       assert_raise ArgumentError, ~r/InMemory cannot service :get!/, fn ->
-        Repo.Port.get!(User, 999)
+        TestRepo.get!(User, 999)
       end
     end
 
@@ -544,8 +545,8 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
 
       DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/3, state)
 
-      assert %User{id: 1, name: "Alice"} = Repo.Port.get!(User, 1)
-      assert ^bob = Repo.Port.get!(User, 99)
+      assert %User{id: 1, name: "Alice"} = TestRepo.get!(User, 1)
+      assert ^bob = TestRepo.get!(User, 99)
     end
   end
 
@@ -559,7 +560,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
       state = Repo.OpenInMemory.new(seed: [alice])
       DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/3, state)
 
-      assert %User{id: 1, name: "Alice"} = Repo.Port.get_by(User, id: 1)
+      assert %User{id: 1, name: "Alice"} = TestRepo.get_by(User, id: 1)
     end
 
     test "get_by with PK and extra fields matching returns record" do
@@ -567,7 +568,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
       state = Repo.OpenInMemory.new(seed: [alice])
       DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/3, state)
 
-      assert %User{id: 1, name: "Alice"} = Repo.Port.get_by(User, id: 1, name: "Alice")
+      assert %User{id: 1, name: "Alice"} = TestRepo.get_by(User, id: 1, name: "Alice")
     end
 
     test "get_by with PK and extra fields not matching returns nil" do
@@ -575,7 +576,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
       state = Repo.OpenInMemory.new(seed: [alice])
       DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/3, state)
 
-      assert nil == Repo.Port.get_by(User, id: 1, name: "NotAlice")
+      assert nil == TestRepo.get_by(User, id: 1, name: "NotAlice")
     end
 
     test "get_by with PK falls through to fallback when not in state" do
@@ -590,9 +591,9 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
       DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/3, state)
 
       # Found in state
-      assert %User{id: 1, name: "Alice"} = Repo.Port.get_by(User, id: 1)
+      assert %User{id: 1, name: "Alice"} = TestRepo.get_by(User, id: 1)
       # Falls through to fallback
-      assert ^bob = Repo.Port.get_by(User, id: 99)
+      assert ^bob = TestRepo.get_by(User, id: 99)
     end
 
     test "get_by with PK raises when not in state and no fallback" do
@@ -600,7 +601,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
       DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/3, state)
 
       assert_raise ArgumentError, ~r/InMemory cannot service :get_by/, fn ->
-        Repo.Port.get_by(User, id: 999)
+        TestRepo.get_by(User, id: 999)
       end
     end
 
@@ -609,9 +610,9 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
       state = Repo.OpenInMemory.new(seed: [alice])
       DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/3, state)
 
-      assert %User{id: 1, name: "Alice"} = Repo.Port.get_by(User, %{id: 1})
-      assert %User{id: 1, name: "Alice"} = Repo.Port.get_by(User, %{id: 1, name: "Alice"})
-      assert nil == Repo.Port.get_by(User, %{id: 1, name: "NotAlice"})
+      assert %User{id: 1, name: "Alice"} = TestRepo.get_by(User, %{id: 1})
+      assert %User{id: 1, name: "Alice"} = TestRepo.get_by(User, %{id: 1, name: "Alice"})
+      assert nil == TestRepo.get_by(User, %{id: 1, name: "NotAlice"})
     end
 
     test "get_by with binary_id PK returns record from state" do
@@ -620,7 +621,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
       state = Repo.OpenInMemory.new(seed: [user])
       DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/3, state)
 
-      assert %BinaryIdUser{name: "Alice"} = Repo.Port.get_by(BinaryIdUser, id: uuid)
+      assert %BinaryIdUser{name: "Alice"} = TestRepo.get_by(BinaryIdUser, id: uuid)
     end
 
     test "get_by without PK in clauses delegates to fallback" do
@@ -634,7 +635,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
 
       DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/3, state)
 
-      assert %User{name: "Alice"} = Repo.Port.get_by(User, name: "Alice")
+      assert %User{name: "Alice"} = TestRepo.get_by(User, name: "Alice")
     end
 
     test "get_by with Ecto.Query delegates to fallback" do
@@ -648,7 +649,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
 
       DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/3, state)
 
-      assert %User{name: "Alice"} = Repo.Port.get_by(query, name: "Alice")
+      assert %User{name: "Alice"} = TestRepo.get_by(query, name: "Alice")
     end
 
     test "get_by with composite PK returns record when all PK fields present" do
@@ -657,7 +658,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
       DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/3, state)
 
       assert %CompositePkMembership{role: "admin"} =
-               Repo.Port.get_by(CompositePkMembership, user_id: 1, org_id: 10)
+               TestRepo.get_by(CompositePkMembership, user_id: 1, org_id: 10)
     end
 
     test "get_by with composite PK and extra fields matching" do
@@ -666,7 +667,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
       DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/3, state)
 
       assert %CompositePkMembership{role: "admin"} =
-               Repo.Port.get_by(CompositePkMembership, user_id: 1, org_id: 10, role: "admin")
+               TestRepo.get_by(CompositePkMembership, user_id: 1, org_id: 10, role: "admin")
     end
 
     test "get_by with composite PK and extra fields not matching returns nil" do
@@ -675,7 +676,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
       DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/3, state)
 
       assert nil ==
-               Repo.Port.get_by(CompositePkMembership, user_id: 1, org_id: 10, role: "member")
+               TestRepo.get_by(CompositePkMembership, user_id: 1, org_id: 10, role: "member")
     end
 
     test "get_by with partial composite PK delegates to fallback" do
@@ -693,7 +694,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
 
       # Only one PK field — must delegate to fallback
       assert %CompositePkMembership{role: "admin"} =
-               Repo.Port.get_by(CompositePkMembership, user_id: 1)
+               TestRepo.get_by(CompositePkMembership, user_id: 1)
     end
   end
 
@@ -703,7 +704,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
       state = Repo.OpenInMemory.new(seed: [alice])
       DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/3, state)
 
-      assert %User{id: 1, name: "Alice"} = Repo.Port.get_by!(User, id: 1)
+      assert %User{id: 1, name: "Alice"} = TestRepo.get_by!(User, id: 1)
     end
 
     test "get_by! with PK falls through to fallback when not in state" do
@@ -714,7 +715,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
 
       DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/3, state)
 
-      assert ^bob = Repo.Port.get_by!(User, id: 99)
+      assert ^bob = TestRepo.get_by!(User, id: 99)
     end
 
     test "get_by! with PK raises when not in state and no fallback" do
@@ -722,7 +723,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
       DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/3, state)
 
       assert_raise ArgumentError, ~r/InMemory cannot service :get_by!/, fn ->
-        Repo.Port.get_by!(User, id: 999)
+        TestRepo.get_by!(User, id: 999)
       end
     end
 
@@ -733,7 +734,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
 
       # get_by! returns nil when PK found but extra fields don't match
       # (this mirrors get_by behaviour — the bang is about "no fallback", not "must find")
-      assert nil == Repo.Port.get_by!(User, id: 1, name: "NotAlice")
+      assert nil == TestRepo.get_by!(User, id: 1, name: "NotAlice")
     end
   end
 
@@ -758,13 +759,13 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
 
       DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/3, state)
 
-      assert %User{name: "Alice"} = Repo.Port.get_by(User, name: "Alice")
+      assert %User{name: "Alice"} = TestRepo.get_by(User, name: "Alice")
 
       assert %User{name: "Alice"} =
-               Repo.Port.get_by(User, name: "Alice", email: "alice@example.com")
+               TestRepo.get_by(User, name: "Alice", email: "alice@example.com")
 
-      assert %User{name: "Alice"} = Repo.Port.get_by(User, %{name: "Alice"})
-      assert nil == Repo.Port.get_by(User, name: "Nobody")
+      assert %User{name: "Alice"} = TestRepo.get_by(User, %{name: "Alice"})
+      assert nil == TestRepo.get_by(User, name: "Nobody")
     end
 
     test "get_by raises without fallback" do
@@ -775,7 +776,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
       )
 
       assert_raise ArgumentError, ~r/InMemory cannot service :get_by/, fn ->
-        Repo.Port.get_by(User, name: "Alice")
+        TestRepo.get_by(User, name: "Alice")
       end
     end
 
@@ -786,7 +787,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
         Repo.OpenInMemory.new(fallback_fn: fn :get_by!, [User, [name: "Bob"]], _state -> bob end)
 
       DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/3, state)
-      assert %User{name: "Bob"} = Repo.Port.get_by!(User, name: "Bob")
+      assert %User{name: "Bob"} = TestRepo.get_by!(User, name: "Bob")
     end
 
     test "one requires fallback" do
@@ -796,7 +797,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
         Repo.OpenInMemory.new(fallback_fn: fn :one, [User], _state -> alice end)
 
       DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/3, state)
-      assert %User{name: "Alice"} = Repo.Port.one(User)
+      assert %User{name: "Alice"} = TestRepo.one(User)
     end
 
     test "one raises without fallback" do
@@ -807,7 +808,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
       )
 
       assert_raise ArgumentError, ~r/InMemory cannot service :one/, fn ->
-        Repo.Port.one(User)
+        TestRepo.one(User)
       end
     end
 
@@ -818,7 +819,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
         Repo.OpenInMemory.new(fallback_fn: fn :one!, [User], _state -> alice end)
 
       DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/3, state)
-      assert %User{name: "Alice"} = Repo.Port.one!(User)
+      assert %User{name: "Alice"} = TestRepo.one!(User)
     end
 
     test "all requires fallback" do
@@ -829,7 +830,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
 
       DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/3, state)
 
-      result = Repo.Port.all(User)
+      result = TestRepo.all(User)
       assert length(result) == 2
       assert Enum.all?(result, &match?(%User{}, &1))
     end
@@ -842,7 +843,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
       )
 
       assert_raise ArgumentError, ~r/InMemory cannot service :all/, fn ->
-        Repo.Port.all(User)
+        TestRepo.all(User)
       end
     end
 
@@ -855,7 +856,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
         )
 
       DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/3, state)
-      assert Repo.Port.exists?(User) == true
+      assert TestRepo.exists?(User) == true
     end
 
     test "exists? raises without fallback" do
@@ -866,7 +867,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
       )
 
       assert_raise ArgumentError, ~r/InMemory cannot service :exists\?/, fn ->
-        Repo.Port.exists?(User)
+        TestRepo.exists?(User)
       end
     end
   end
@@ -889,10 +890,10 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
 
       DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/3, state)
 
-      assert 3 = Repo.Port.aggregate(User, :count, :id)
-      assert 55 = Repo.Port.aggregate(User, :sum, :age)
-      assert 25 = Repo.Port.aggregate(User, :min, :age)
-      assert 30 = Repo.Port.aggregate(User, :max, :age)
+      assert 3 = TestRepo.aggregate(User, :count, :id)
+      assert 55 = TestRepo.aggregate(User, :sum, :age)
+      assert 25 = TestRepo.aggregate(User, :min, :age)
+      assert 30 = TestRepo.aggregate(User, :max, :age)
     end
 
     test "aggregate raises without fallback" do
@@ -903,7 +904,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
       )
 
       assert_raise ArgumentError, ~r/InMemory cannot service :aggregate/, fn ->
-        Repo.Port.aggregate(User, :count, :id)
+        TestRepo.aggregate(User, :count, :id)
       end
     end
   end
@@ -922,7 +923,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
         )
 
       DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/3, state)
-      assert {2, nil} = Repo.Port.insert_all(User, entries, [])
+      assert {2, nil} = TestRepo.insert_all(User, entries, [])
     end
 
     test "insert_all raises without fallback" do
@@ -933,7 +934,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
       )
 
       assert_raise ArgumentError, ~r/InMemory cannot service :insert_all/, fn ->
-        Repo.Port.insert_all(User, [%{name: "a"}], [])
+        TestRepo.insert_all(User, [%{name: "a"}], [])
       end
     end
 
@@ -942,7 +943,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
         Repo.OpenInMemory.new(fallback_fn: fn :delete_all, [User, []], _state -> {2, nil} end)
 
       DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/3, state)
-      assert {2, nil} = Repo.Port.delete_all(User, [])
+      assert {2, nil} = TestRepo.delete_all(User, [])
     end
 
     test "delete_all raises without fallback" do
@@ -953,7 +954,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
       )
 
       assert_raise ArgumentError, ~r/InMemory cannot service :delete_all/, fn ->
-        Repo.Port.delete_all(User, [])
+        TestRepo.delete_all(User, [])
       end
     end
 
@@ -964,7 +965,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
         )
 
       DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/3, state)
-      assert {3, nil} = Repo.Port.update_all(User, [set: [name: "bulk"]], [])
+      assert {3, nil} = TestRepo.update_all(User, [set: [name: "bulk"]], [])
     end
 
     test "update_all raises without fallback" do
@@ -975,7 +976,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
       )
 
       assert_raise ArgumentError, ~r/InMemory cannot service :update_all/, fn ->
-        Repo.Port.update_all(User, [set: [name: "bulk"]], [])
+        TestRepo.update_all(User, [set: [name: "bulk"]], [])
       end
     end
   end
@@ -996,16 +997,16 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
     end
 
     test "transact with 0-arity fun calls function and returns result" do
-      assert {:ok, :committed} = Repo.Port.transact(fn -> {:ok, :committed} end, [])
+      assert {:ok, :committed} = TestRepo.transact(fn -> {:ok, :committed} end, [])
     end
 
     test "transact with 1-arity fun receives facade module" do
-      assert {:ok, Repo.Port} = Repo.Port.transact(fn repo -> {:ok, repo} end, [])
+      assert {:ok, TestRepo} = TestRepo.transact(fn repo -> {:ok, repo} end, [])
     end
 
     test "transact with 1-arity fun can call back into facade" do
       result =
-        Repo.Port.transact(
+        TestRepo.transact(
           fn repo ->
             {:ok, user} = repo.insert(User.changeset(%{name: "Alice"}))
             found = repo.get(User, user.id)
@@ -1019,15 +1020,15 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
     end
 
     test "transact propagates error tuples" do
-      assert {:error, :rollback} = Repo.Port.transact(fn -> {:error, :rollback} end, [])
+      assert {:error, :rollback} = TestRepo.transact(fn -> {:error, :rollback} end, [])
     end
 
     test "transact with insert gives read-after-write within transaction" do
       result =
-        Repo.Port.transact(
+        TestRepo.transact(
           fn ->
-            {:ok, user} = Repo.Port.insert(User.changeset(%{name: "Alice"}))
-            found = Repo.Port.get(User, user.id)
+            {:ok, user} = TestRepo.insert(User.changeset(%{name: "Alice"}))
+            found = TestRepo.get(User, user.id)
             {:ok, {user, found}}
           end,
           []
@@ -1044,7 +1045,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
         |> Ecto.Multi.insert(:post, Post.changeset(%{title: "Hello"}))
 
       assert {:ok, %{user: %User{name: "Alice"}, post: %Post{title: "Hello"}}} =
-               Repo.Port.transact(multi, [])
+               TestRepo.transact(multi, [])
     end
 
     test "transact with Ecto.Multi gives read-after-write via :run" do
@@ -1056,7 +1057,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
         end)
 
       assert {:ok, %{user: %User{name: "Alice"} = user, found: %User{name: "Alice"} = found}} =
-               Repo.Port.transact(multi, [])
+               TestRepo.transact(multi, [])
 
       assert user == found
     end
@@ -1069,7 +1070,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
         |> Ecto.Multi.insert(:user, invalid)
 
       assert {:error, :user, %Ecto.Changeset{valid?: false}, %{}} =
-               Repo.Port.transact(multi, [])
+               TestRepo.transact(multi, [])
     end
 
     test "transact with Ecto.Multi :run failure returns 4-tuple error" do
@@ -1079,15 +1080,15 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
         |> Ecto.Multi.run(:fail, fn _repo, _changes -> {:error, :boom} end)
 
       assert {:error, :fail, :boom, %{user: %User{name: "Alice"}}} =
-               Repo.Port.transact(multi, [])
+               TestRepo.transact(multi, [])
     end
 
-    test "transact with Ecto.Multi :run receives Repo.Port as facade" do
+    test "transact with Ecto.Multi :run receives TestRepo as facade" do
       multi =
         Ecto.Multi.new()
         |> Ecto.Multi.run(:repo_check, fn repo, _changes -> {:ok, repo} end)
 
-      assert {:ok, %{repo_check: Repo.Port}} = Repo.Port.transact(multi, [])
+      assert {:ok, %{repo_check: TestRepo}} = TestRepo.transact(multi, [])
     end
 
     test "transact with Ecto.Multi :merge composes sub-Multis" do
@@ -1100,7 +1101,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
         end)
 
       assert {:ok, %{user: %User{name: "Alice"}, post: %Post{title: "by Alice"}}} =
-               Repo.Port.transact(multi, [])
+               TestRepo.transact(multi, [])
     end
 
     test "transact with Ecto.Multi :put adds static values" do
@@ -1108,7 +1109,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
         Ecto.Multi.new()
         |> Ecto.Multi.put(:greeting, "hello")
 
-      assert {:ok, %{greeting: "hello"}} = Repo.Port.transact(multi, [])
+      assert {:ok, %{greeting: "hello"}} = TestRepo.transact(multi, [])
     end
 
     test "transact with Ecto.Multi persists insert to InMemory store" do
@@ -1116,10 +1117,10 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
         Ecto.Multi.new()
         |> Ecto.Multi.insert(:user, User.changeset(%{name: "Alice"}))
 
-      {:ok, %{user: user}} = Repo.Port.transact(multi, [])
+      {:ok, %{user: user}} = TestRepo.transact(multi, [])
 
       # Verify the record is accessible via PK read outside the Multi
-      assert user == Repo.Port.get(User, user.id)
+      assert user == TestRepo.get(User, user.id)
     end
   end
 
@@ -1140,27 +1141,27 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
 
     test "insert then get returns the same record" do
       cs = User.changeset(%{name: "Alice", email: "alice@example.com"})
-      {:ok, user} = Repo.Port.insert(cs)
+      {:ok, user} = TestRepo.insert(cs)
 
-      found = Repo.Port.get(User, user.id)
+      found = TestRepo.get(User, user.id)
       assert user == found
     end
 
     test "insert then delete then get raises (no fallback)" do
       cs = User.changeset(%{name: "Alice"})
-      {:ok, user} = Repo.Port.insert(cs)
-      Repo.Port.delete(user)
+      {:ok, user} = TestRepo.insert(cs)
+      TestRepo.delete(user)
 
       assert_raise ArgumentError, ~r/InMemory cannot service :get/, fn ->
-        Repo.Port.get(User, user.id)
+        TestRepo.get(User, user.id)
       end
     end
 
     test "insert, update, then get returns updated record" do
-      {:ok, user} = Repo.Port.insert(User.changeset(%{name: "Alice"}))
-      {:ok, updated} = Repo.Port.update(User.changeset(user, %{name: "Alicia"}))
+      {:ok, user} = TestRepo.insert(User.changeset(%{name: "Alice"}))
+      {:ok, updated} = TestRepo.update(User.changeset(user, %{name: "Alicia"}))
 
-      found = Repo.Port.get(User, user.id)
+      found = TestRepo.get(User, user.id)
       assert updated == found
       assert %User{name: "Alicia"} = found
     end
@@ -1178,11 +1179,11 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
         Repo.OpenInMemory.new()
       )
 
-      {:ok, user} = Repo.Port.insert(User.changeset(%{name: "Alice"}))
-      {:ok, post} = Repo.Port.insert(Post.changeset(%{title: "Hello"}))
+      {:ok, user} = TestRepo.insert(User.changeset(%{name: "Alice"}))
+      {:ok, post} = TestRepo.insert(Post.changeset(%{title: "Hello"}))
 
-      assert ^user = Repo.Port.get(User, user.id)
-      assert ^post = Repo.Port.get(Post, post.id)
+      assert ^user = TestRepo.get(User, user.id)
+      assert ^post = TestRepo.get(Post, post.id)
     end
   end
 
@@ -1198,17 +1199,17 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
 
       DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/3, state)
 
-      assert ^alice = Repo.Port.get(User, 1)
-      assert ^bob = Repo.Port.get(User, 2)
+      assert ^alice = TestRepo.get(User, 1)
+      assert ^bob = TestRepo.get(User, 2)
     end
 
     test "can add to seeded state and read back by PK" do
       state = Repo.OpenInMemory.new(seed: [%User{id: 1, name: "Alice"}])
       DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/3, state)
 
-      {:ok, bob} = Repo.Port.insert(User.changeset(%{name: "Bob"}))
-      assert ^bob = Repo.Port.get(User, bob.id)
-      assert %User{name: "Alice"} = Repo.Port.get(User, 1)
+      {:ok, bob} = TestRepo.insert(User.changeset(%{name: "Bob"}))
+      assert ^bob = TestRepo.get(User, bob.id)
+      assert %User{name: "Alice"} = TestRepo.get(User, 1)
     end
   end
 
@@ -1227,8 +1228,8 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
       DoubleDown.Testing.enable_log(Repo)
 
       cs = User.changeset(%{name: "Alice"})
-      {:ok, user} = Repo.Port.insert(cs)
-      Repo.Port.get(User, user.id)
+      {:ok, user} = TestRepo.insert(cs)
+      TestRepo.get(User, user.id)
 
       log = DoubleDown.Testing.get_log(Repo)
       assert length(log) == 2
@@ -1250,7 +1251,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
 
       DoubleDown.Testing.enable_log(Repo)
 
-      Repo.Port.all(User)
+      TestRepo.all(User)
 
       log = DoubleDown.Testing.get_log(Repo)
       assert length(log) == 1
@@ -1268,7 +1269,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
 
       cs = User.changeset(%{name: "Alice"})
 
-      Repo.Port.transact(
+      TestRepo.transact(
         fn repo ->
           {:ok, user} = repo.insert(cs)
           found = repo.get(User, user.id)
@@ -1308,11 +1309,11 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
 
       # The RuntimeError is re-raised in the calling process, not in the GenServer
       assert_raise RuntimeError, ~r/boom from fallback/, fn ->
-        Repo.Port.all(User)
+        TestRepo.all(User)
       end
 
       # The ownership server is still alive — subsequent operations work
-      assert {:ok, %User{name: "Alice"}} = Repo.Port.insert(User.changeset(%{name: "Alice"}))
+      assert {:ok, %User{name: "Alice"}} = TestRepo.insert(User.changeset(%{name: "Alice"}))
     end
 
     test "fallback raising ArgumentError does not crash the ownership server" do
@@ -1326,11 +1327,11 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
       DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/3, state)
 
       assert_raise ArgumentError, ~r/bad argument in fallback/, fn ->
-        Repo.Port.get_by(User, name: "Alice")
+        TestRepo.get_by(User, name: "Alice")
       end
 
       # Ownership server still works
-      assert {:ok, %User{name: "Bob"}} = Repo.Port.insert(User.changeset(%{name: "Bob"}))
+      assert {:ok, %User{name: "Bob"}} = TestRepo.insert(User.changeset(%{name: "Bob"}))
     end
 
     test "FunctionClauseError from fallback still treated as missing clause" do
@@ -1342,11 +1343,11 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
       DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/3, state)
 
       # Matching clause works
-      assert [%User{name: "Alice"}] = Repo.Port.all(User)
+      assert [%User{name: "Alice"}] = TestRepo.all(User)
 
       # Non-matching clause raises the "cannot service" error, not FunctionClauseError
       assert_raise ArgumentError, ~r/InMemory cannot service :exists\?/, fn ->
-        Repo.Port.exists?(User)
+        TestRepo.exists?(User)
       end
     end
   end
@@ -1368,7 +1369,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
 
     test "nested transact with inner function" do
       result =
-        Repo.Port.transact(
+        TestRepo.transact(
           fn repo ->
             repo.transact(fn -> {:ok, :inner_done} end, [])
           end,
@@ -1380,7 +1381,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
 
     test "nested transact with read-after-write across nesting" do
       result =
-        Repo.Port.transact(
+        TestRepo.transact(
           fn repo ->
             {:ok, user} = repo.insert(User.changeset(%User{}, %{name: "Alice"}))
 
@@ -1403,7 +1404,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
 
     test "nested transact with inner Multi" do
       result =
-        Repo.Port.transact(
+        TestRepo.transact(
           fn repo ->
             multi =
               Ecto.Multi.new()
@@ -1427,7 +1428,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
       )
 
       result =
-        Repo.Port.transact(
+        TestRepo.transact(
           fn repo ->
             {:ok, user} = repo.insert(User.changeset(%User{}, %{name: "Alice"}))
 
@@ -1466,7 +1467,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
 
     test "rollback inside transact returns {:error, value}" do
       result =
-        Repo.Port.transact(
+        TestRepo.transact(
           fn repo ->
             repo.rollback(:something_went_wrong)
           end,
@@ -1480,7 +1481,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
       test_pid = self()
 
       result =
-        Repo.Port.transact(
+        TestRepo.transact(
           fn repo ->
             repo.rollback(:early_exit)
             send(test_pid, :should_not_reach)
@@ -1495,7 +1496,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
 
     test "rollback after insert — insert is NOT rolled back (documented limitation)" do
       result =
-        Repo.Port.transact(
+        TestRepo.transact(
           fn repo ->
             {:ok, _user} = repo.insert(User.changeset(%User{}, %{name: "Alice"}))
             repo.rollback(:oops)
@@ -1519,7 +1520,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
       )
 
       result =
-        Repo.Port.transact(
+        TestRepo.transact(
           fn repo ->
             repo.rollback(:fake_rollback)
           end,

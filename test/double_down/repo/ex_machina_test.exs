@@ -7,7 +7,7 @@ defmodule DoubleDown.Repo.ExMachinaTest do
   alias DoubleDown.Test.Factory.Post
 
   # In a real app this would be MyApp.Repo — here we use the test facade
-  alias DoubleDown.Repo.Port, as: Repo
+  alias DoubleDown.Test.Repo
 
   setup do
     DoubleDown.Double.fake(DoubleDown.Repo, DoubleDown.Repo.InMemory)

@@ -1,10 +1,10 @@
 # ExMachina factory for DoubleDown.Repo.InMemory integration tests.
 #
-# Uses the test Repo.Port facade module as the repo, so factory inserts
+# Uses the test DoubleDown.Test.Repo facade module as the repo, so factory inserts
 # go through DoubleDown dispatch and land in the InMemory store.
 
 defmodule DoubleDown.Test.Factory do
-  use ExMachina.Ecto, repo: DoubleDown.Repo.Port
+  use ExMachina.Ecto, repo: DoubleDown.Test.Repo
 
   defmodule User do
     use Ecto.Schema

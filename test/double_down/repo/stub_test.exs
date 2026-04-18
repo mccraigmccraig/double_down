@@ -2,6 +2,7 @@ defmodule DoubleDown.Repo.StubTest do
   use ExUnit.Case, async: true
 
   alias DoubleDown.Repo
+  alias DoubleDown.Test.Repo, as: TestRepo
 
   # -------------------------------------------------------------------
   # Test Schemas
@@ -118,17 +119,17 @@ defmodule DoubleDown.Repo.StubTest do
 
     test "insert applies changeset and returns {:ok, struct}" do
       cs = User.changeset(%{name: "Alice"})
-      assert {:ok, %User{name: "Alice"}} = Repo.Port.insert(cs)
+      assert {:ok, %User{name: "Alice"}} = TestRepo.insert(cs)
     end
 
     test "update applies changeset and returns {:ok, struct}" do
       cs = User.changeset(%User{id: 1, name: "old"}, %{name: "new"})
-      assert {:ok, %User{id: 1, name: "new"}} = Repo.Port.update(cs)
+      assert {:ok, %User{id: 1, name: "new"}} = TestRepo.update(cs)
     end
 
     test "delete returns {:ok, record}" do
       record = %User{id: 1, name: "Alice"}
-      assert {:ok, ^record} = Repo.Port.delete(record)
+      assert {:ok, ^record} = TestRepo.delete(record)
     end
 
     test "insert returns {:error, changeset} for invalid changeset" do
@@ -137,7 +138,7 @@ defmodule DoubleDown.Repo.StubTest do
         |> Ecto.Changeset.cast(%{name: "Alice"}, [:name])
         |> Ecto.Changeset.add_error(:name, "is invalid")
 
-      assert {:error, %Ecto.Changeset{valid?: false}} = Repo.Port.insert(cs)
+      assert {:error, %Ecto.Changeset{valid?: false}} = TestRepo.insert(cs)
     end
 
     test "update returns {:error, changeset} for invalid changeset" do
@@ -146,12 +147,12 @@ defmodule DoubleDown.Repo.StubTest do
         |> Ecto.Changeset.cast(%{name: "new"}, [:name])
         |> Ecto.Changeset.add_error(:name, "is invalid")
 
-      assert {:error, %Ecto.Changeset{valid?: false}} = Repo.Port.update(cs)
+      assert {:error, %Ecto.Changeset{valid?: false}} = TestRepo.update(cs)
     end
 
     test "insert populates inserted_at and updated_at for schemas with timestamps" do
       cs = TimestampUser.changeset(%{name: "Alice"})
-      assert {:ok, user} = Repo.Port.insert(cs)
+      assert {:ok, user} = TestRepo.insert(cs)
 
       assert %NaiveDateTime{} = user.inserted_at
       assert %NaiveDateTime{} = user.updated_at
@@ -159,11 +160,11 @@ defmodule DoubleDown.Repo.StubTest do
 
     test "update populates updated_at for schemas with timestamps" do
       cs = TimestampUser.changeset(%{name: "Alice"})
-      {:ok, user} = Repo.Port.insert(cs)
+      {:ok, user} = TestRepo.insert(cs)
 
       # Ensure some time passes so updated_at can differ
       update_cs = TimestampUser.changeset(user, %{name: "Alicia"})
-      {:ok, updated} = Repo.Port.update(update_cs)
+      {:ok, updated} = TestRepo.update(update_cs)
 
       assert %NaiveDateTime{} = updated.updated_at
       assert updated.inserted_at == user.inserted_at
@@ -176,33 +177,33 @@ defmodule DoubleDown.Repo.StubTest do
         %TimestampUser{inserted_at: explicit_time, updated_at: explicit_time}
         |> Ecto.Changeset.cast(%{name: "Alice"}, [:name])
 
-      assert {:ok, user} = Repo.Port.insert(cs)
+      assert {:ok, user} = TestRepo.insert(cs)
       assert user.inserted_at == explicit_time
       assert user.updated_at == explicit_time
     end
 
     test "schemas without timestamps are unaffected by autogeneration" do
       cs = User.changeset(%{name: "Alice"})
-      assert {:ok, %User{name: "Alice"}} = Repo.Port.insert(cs)
+      assert {:ok, %User{name: "Alice"}} = TestRepo.insert(cs)
     end
 
     test "integer :id PK is auto-assigned" do
       cs = User.changeset(%{name: "Alice"})
-      assert {:ok, %User{name: "Alice", id: id}} = Repo.Port.insert(cs)
+      assert {:ok, %User{name: "Alice", id: id}} = TestRepo.insert(cs)
       assert is_integer(id)
       assert id > 0
     end
 
     test ":binary_id PK is auto-generated as UUID" do
       cs = BinaryIdUser.changeset(%{name: "Alice"})
-      assert {:ok, user} = Repo.Port.insert(cs)
+      assert {:ok, user} = TestRepo.insert(cs)
       assert is_binary(user.id)
       assert user.id =~ ~r/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
     end
 
     test "Ecto.UUID PK is auto-generated" do
       cs = UuidUser.changeset(%{name: "Alice"})
-      assert {:ok, user} = Repo.Port.insert(cs)
+      assert {:ok, user} = TestRepo.insert(cs)
       assert is_binary(user.uuid)
       assert user.uuid =~ ~r/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
     end
@@ -211,19 +212,19 @@ defmodule DoubleDown.Repo.StubTest do
       cs = NoAutoIdUser.changeset(%{name: "Alice"})
 
       assert_raise ArgumentError, ~r/Cannot autogenerate primary key/, fn ->
-        Repo.Port.insert(cs)
+        TestRepo.insert(cs)
       end
     end
 
     test "no autogenerate works with explicit PK" do
       explicit_id = Ecto.UUID.generate()
       cs = NoAutoIdUser.changeset(%NoAutoIdUser{id: explicit_id}, %{name: "Alice"})
-      assert {:ok, %NoAutoIdUser{id: ^explicit_id}} = Repo.Port.insert(cs)
+      assert {:ok, %NoAutoIdUser{id: ^explicit_id}} = TestRepo.insert(cs)
     end
 
     test "@primary_key false schema inserts without error" do
       cs = NoPkEvent.changeset(%{name: "thing_happened"})
-      assert {:ok, %NoPkEvent{name: "thing_happened"}} = Repo.Port.insert(cs)
+      assert {:ok, %NoPkEvent{name: "thing_happened"}} = TestRepo.insert(cs)
     end
   end
 
@@ -239,73 +240,73 @@ defmodule DoubleDown.Repo.StubTest do
 
     test "get raises without fallback" do
       assert_raise ArgumentError, ~r/Repo.Stub cannot service :get/, fn ->
-        Repo.Port.get(User, 1)
+        TestRepo.get(User, 1)
       end
     end
 
     test "get! raises without fallback" do
       assert_raise ArgumentError, ~r/Repo.Stub cannot service :get!/, fn ->
-        Repo.Port.get!(User, 1)
+        TestRepo.get!(User, 1)
       end
     end
 
     test "get_by raises without fallback" do
       assert_raise ArgumentError, ~r/Repo.Stub cannot service :get_by/, fn ->
-        Repo.Port.get_by(User, name: "Alice")
+        TestRepo.get_by(User, name: "Alice")
       end
     end
 
     test "get_by! raises without fallback" do
       assert_raise ArgumentError, ~r/Repo.Stub cannot service :get_by!/, fn ->
-        Repo.Port.get_by!(User, name: "Alice")
+        TestRepo.get_by!(User, name: "Alice")
       end
     end
 
     test "one raises without fallback" do
       assert_raise ArgumentError, ~r/Repo.Stub cannot service :one/, fn ->
-        Repo.Port.one(User)
+        TestRepo.one(User)
       end
     end
 
     test "one! raises without fallback" do
       assert_raise ArgumentError, ~r/Repo.Stub cannot service :one!/, fn ->
-        Repo.Port.one!(User)
+        TestRepo.one!(User)
       end
     end
 
     test "all raises without fallback" do
       assert_raise ArgumentError, ~r/Repo.Stub cannot service :all/, fn ->
-        Repo.Port.all(User)
+        TestRepo.all(User)
       end
     end
 
     test "exists? raises without fallback" do
       assert_raise ArgumentError, ~r/Repo.Stub cannot service :exists\?/, fn ->
-        Repo.Port.exists?(User)
+        TestRepo.exists?(User)
       end
     end
 
     test "aggregate raises without fallback" do
       assert_raise ArgumentError, ~r/Repo.Stub cannot service :aggregate/, fn ->
-        Repo.Port.aggregate(User, :count, :id)
+        TestRepo.aggregate(User, :count, :id)
       end
     end
 
     test "insert_all raises without fallback" do
       assert_raise ArgumentError, ~r/Repo.Stub cannot service :insert_all/, fn ->
-        Repo.Port.insert_all(User, [%{name: "a"}], [])
+        TestRepo.insert_all(User, [%{name: "a"}], [])
       end
     end
 
     test "update_all raises without fallback" do
       assert_raise ArgumentError, ~r/Repo.Stub cannot service :update_all/, fn ->
-        Repo.Port.update_all(User, [set: [name: "bulk"]], [])
+        TestRepo.update_all(User, [set: [name: "bulk"]], [])
       end
     end
 
     test "delete_all raises without fallback" do
       assert_raise ArgumentError, ~r/Repo.Stub cannot service :delete_all/, fn ->
-        Repo.Port.delete_all(User, [])
+        TestRepo.delete_all(User, [])
       end
     end
   end
@@ -328,8 +329,8 @@ defmodule DoubleDown.Repo.StubTest do
 
       DoubleDown.Testing.set_fn_handler(Repo, handler)
 
-      assert ^alice = Repo.Port.get(User, 1)
-      assert nil == Repo.Port.get(User, 999)
+      assert ^alice = TestRepo.get(User, 1)
+      assert nil == TestRepo.get(User, 999)
     end
 
     test "get! dispatches to fallback" do
@@ -339,7 +340,7 @@ defmodule DoubleDown.Repo.StubTest do
         Repo.Stub.new(fallback_fn: fn :get!, [User, 1] -> alice end)
 
       DoubleDown.Testing.set_fn_handler(Repo, handler)
-      assert ^alice = Repo.Port.get!(User, 1)
+      assert ^alice = TestRepo.get!(User, 1)
     end
 
     test "get_by dispatches to fallback" do
@@ -349,7 +350,7 @@ defmodule DoubleDown.Repo.StubTest do
         Repo.Stub.new(fallback_fn: fn :get_by, [User, [name: "Alice"]] -> alice end)
 
       DoubleDown.Testing.set_fn_handler(Repo, handler)
-      assert ^alice = Repo.Port.get_by(User, name: "Alice")
+      assert ^alice = TestRepo.get_by(User, name: "Alice")
     end
 
     test "all dispatches to fallback" do
@@ -359,7 +360,7 @@ defmodule DoubleDown.Repo.StubTest do
         Repo.Stub.new(fallback_fn: fn :all, [User] -> users end)
 
       DoubleDown.Testing.set_fn_handler(Repo, handler)
-      assert ^users = Repo.Port.all(User)
+      assert ^users = TestRepo.all(User)
     end
 
     test "exists? dispatches to fallback" do
@@ -367,7 +368,7 @@ defmodule DoubleDown.Repo.StubTest do
         Repo.Stub.new(fallback_fn: fn :exists?, [User] -> true end)
 
       DoubleDown.Testing.set_fn_handler(Repo, handler)
-      assert Repo.Port.exists?(User) == true
+      assert TestRepo.exists?(User) == true
     end
 
     test "aggregate dispatches to fallback" do
@@ -375,7 +376,7 @@ defmodule DoubleDown.Repo.StubTest do
         Repo.Stub.new(fallback_fn: fn :aggregate, [User, :count, :id] -> 42 end)
 
       DoubleDown.Testing.set_fn_handler(Repo, handler)
-      assert 42 = Repo.Port.aggregate(User, :count, :id)
+      assert 42 = TestRepo.aggregate(User, :count, :id)
     end
 
     test "fallback raises on unmatched clause" do
@@ -385,7 +386,7 @@ defmodule DoubleDown.Repo.StubTest do
       DoubleDown.Testing.set_fn_handler(Repo, handler)
 
       assert_raise ArgumentError, ~r/Repo.Stub cannot service :get/, fn ->
-        Repo.Port.get(User, 999)
+        TestRepo.get(User, 999)
       end
     end
   end
@@ -401,16 +402,16 @@ defmodule DoubleDown.Repo.StubTest do
     end
 
     test "transact with 0-arity fun calls the function" do
-      assert {:ok, :done} = Repo.Port.transact(fn -> {:ok, :done} end, [])
+      assert {:ok, :done} = TestRepo.transact(fn -> {:ok, :done} end, [])
     end
 
     test "transact with 1-arity fun receives facade module" do
-      assert {:ok, Repo.Port} = Repo.Port.transact(fn repo -> {:ok, repo} end, [])
+      assert {:ok, TestRepo} = TestRepo.transact(fn repo -> {:ok, repo} end, [])
     end
 
     test "transact with 1-arity fun can call back into facade" do
       result =
-        Repo.Port.transact(
+        TestRepo.transact(
           fn repo ->
             {:ok, user} = repo.insert(User.changeset(%{name: "Alice"}))
             {:ok, user}
@@ -422,7 +423,7 @@ defmodule DoubleDown.Repo.StubTest do
     end
 
     test "transact propagates error tuples" do
-      assert {:error, :rollback} = Repo.Port.transact(fn -> {:error, :rollback} end, [])
+      assert {:error, :rollback} = TestRepo.transact(fn -> {:error, :rollback} end, [])
     end
 
     test "transact with Ecto.Multi executes insert operations" do
@@ -432,7 +433,7 @@ defmodule DoubleDown.Repo.StubTest do
         |> Ecto.Multi.insert(:post, Post.changeset(%{title: "Hello"}))
 
       assert {:ok, %{user: %User{name: "Alice"}, post: %Post{title: "Hello"}}} =
-               Repo.Port.transact(multi, [])
+               TestRepo.transact(multi, [])
     end
 
     test "transact with Ecto.Multi rejects invalid changesets" do
@@ -443,7 +444,7 @@ defmodule DoubleDown.Repo.StubTest do
         |> Ecto.Multi.insert(:user, invalid)
 
       assert {:error, :user, %Ecto.Changeset{valid?: false}, %{}} =
-               Repo.Port.transact(multi, [])
+               TestRepo.transact(multi, [])
     end
 
     test "transact with Ecto.Multi handles :run operations" do
@@ -451,7 +452,7 @@ defmodule DoubleDown.Repo.StubTest do
         Ecto.Multi.new()
         |> Ecto.Multi.run(:value, fn _repo, _changes -> {:ok, 42} end)
 
-      assert {:ok, %{value: 42}} = Repo.Port.transact(multi, [])
+      assert {:ok, %{value: 42}} = TestRepo.transact(multi, [])
     end
 
     test "transact with Ecto.Multi :run receives repo facade" do
@@ -459,7 +460,7 @@ defmodule DoubleDown.Repo.StubTest do
         Ecto.Multi.new()
         |> Ecto.Multi.run(:repo_check, fn repo, _changes -> {:ok, repo} end)
 
-      assert {:ok, %{repo_check: Repo.Port}} = Repo.Port.transact(multi, [])
+      assert {:ok, %{repo_check: TestRepo}} = TestRepo.transact(multi, [])
     end
 
     test "transact with Ecto.Multi :run failure returns 4-tuple error" do
@@ -469,7 +470,7 @@ defmodule DoubleDown.Repo.StubTest do
         |> Ecto.Multi.run(:fail, fn _repo, _changes -> {:error, :boom} end)
 
       assert {:error, :fail, :boom, %{user: %User{name: "Alice"}}} =
-               Repo.Port.transact(multi, [])
+               TestRepo.transact(multi, [])
     end
 
     test "transact with Ecto.Multi :put adds static values" do
@@ -477,7 +478,7 @@ defmodule DoubleDown.Repo.StubTest do
         Ecto.Multi.new()
         |> Ecto.Multi.put(:greeting, "hello")
 
-      assert {:ok, %{greeting: "hello"}} = Repo.Port.transact(multi, [])
+      assert {:ok, %{greeting: "hello"}} = TestRepo.transact(multi, [])
     end
 
     test "transact with Ecto.Multi :merge composes sub-Multis" do
@@ -490,7 +491,7 @@ defmodule DoubleDown.Repo.StubTest do
         end)
 
       assert {:ok, %{user: %User{name: "Alice"}, post: %Post{title: "by Alice"}}} =
-               Repo.Port.transact(multi, [])
+               TestRepo.transact(multi, [])
     end
 
     test "transact with Ecto.Multi :error causes immediate failure" do
@@ -499,7 +500,7 @@ defmodule DoubleDown.Repo.StubTest do
         |> Ecto.Multi.error(:fail, :forced_error)
         |> Ecto.Multi.insert(:user, User.changeset(%{name: "Alice"}))
 
-      assert {:error, :fail, :forced_error, %{}} = Repo.Port.transact(multi, [])
+      assert {:error, :fail, :forced_error, %{}} = TestRepo.transact(multi, [])
     end
 
     test "transact with Ecto.Multi passes changes to dependent :run operations" do
@@ -511,7 +512,7 @@ defmodule DoubleDown.Repo.StubTest do
         end)
 
       assert {:ok, %{user: %User{name: "Alice"}, greeting: "Hello, Alice!"}} =
-               Repo.Port.transact(multi, [])
+               TestRepo.transact(multi, [])
     end
   end
 
@@ -525,7 +526,7 @@ defmodule DoubleDown.Repo.StubTest do
       DoubleDown.Testing.enable_log(Repo)
       cs = User.changeset(%{name: "Alice"})
 
-      Repo.Port.insert(cs)
+      TestRepo.insert(cs)
 
       log = DoubleDown.Testing.get_log(Repo)
       assert length(log) == 1
@@ -542,7 +543,7 @@ defmodule DoubleDown.Repo.StubTest do
 
       DoubleDown.Testing.enable_log(Repo)
 
-      Repo.Port.get(User, 1)
+      TestRepo.get(User, 1)
 
       log = DoubleDown.Testing.get_log(Repo)
       assert length(log) == 1
@@ -555,7 +556,7 @@ defmodule DoubleDown.Repo.StubTest do
 
       cs = User.changeset(%{name: "Alice"})
 
-      Repo.Port.transact(
+      TestRepo.transact(
         fn repo ->
           {:ok, _user} = repo.insert(cs)
           {:ok, :done}
@@ -584,14 +585,14 @@ defmodule DoubleDown.Repo.StubTest do
     test "transact with 0-arity fun works via Double.stub (no deadlock)" do
       DoubleDown.Double.stub(Repo, Repo.Stub.new())
 
-      assert {:ok, :done} = Repo.Port.transact(fn -> {:ok, :done} end, [])
+      assert {:ok, :done} = TestRepo.transact(fn -> {:ok, :done} end, [])
     end
 
     test "transact with nested Repo calls works via Double.stub" do
       DoubleDown.Double.stub(Repo, Repo.Stub.new())
 
       result =
-        Repo.Port.transact(
+        TestRepo.transact(
           fn repo ->
             {:ok, user} = repo.insert(User.changeset(%{name: "Alice"}))
             {:ok, user}
@@ -609,7 +610,7 @@ defmodule DoubleDown.Repo.StubTest do
         Ecto.Multi.new()
         |> Ecto.Multi.insert(:user, User.changeset(%{name: "Alice"}))
 
-      assert {:ok, %{user: %User{name: "Alice"}}} = Repo.Port.transact(multi, [])
+      assert {:ok, %{user: %User{name: "Alice"}}} = TestRepo.transact(multi, [])
     end
   end
 
@@ -625,7 +626,7 @@ defmodule DoubleDown.Repo.StubTest do
 
     test "nested transact with inner Multi" do
       result =
-        Repo.Port.transact(
+        TestRepo.transact(
           fn repo ->
             multi =
               Ecto.Multi.new()
@@ -641,7 +642,7 @@ defmodule DoubleDown.Repo.StubTest do
 
     test "nested transact with inner function" do
       result =
-        Repo.Port.transact(
+        TestRepo.transact(
           fn repo ->
             repo.transact(fn -> {:ok, :inner_done} end, [])
           end,
@@ -653,7 +654,7 @@ defmodule DoubleDown.Repo.StubTest do
 
     test "nested transact with insert in outer and inner" do
       result =
-        Repo.Port.transact(
+        TestRepo.transact(
           fn repo ->
             {:ok, user} = repo.insert(User.changeset(%{name: "Alice"}))
 
@@ -680,7 +681,7 @@ defmodule DoubleDown.Repo.StubTest do
       DoubleDown.Double.stub(Repo, Repo.Stub.new())
 
       result =
-        Repo.Port.transact(
+        TestRepo.transact(
           fn repo ->
             multi =
               Ecto.Multi.new()
@@ -707,7 +708,7 @@ defmodule DoubleDown.Repo.StubTest do
 
     test "rollback inside transact returns {:error, value}" do
       result =
-        Repo.Port.transact(
+        TestRepo.transact(
           fn repo ->
             repo.rollback(:something_went_wrong)
           end,
@@ -721,7 +722,7 @@ defmodule DoubleDown.Repo.StubTest do
       test_pid = self()
 
       result =
-        Repo.Port.transact(
+        TestRepo.transact(
           fn repo ->
             repo.rollback(:early_exit)
             send(test_pid, :should_not_reach)
@@ -736,7 +737,7 @@ defmodule DoubleDown.Repo.StubTest do
 
     test "rollback with arbitrary value" do
       result =
-        Repo.Port.transact(
+        TestRepo.transact(
           fn repo ->
             repo.rollback(%{reason: :conflict, details: "duplicate key"})
           end,
@@ -752,7 +753,7 @@ defmodule DoubleDown.Repo.StubTest do
       DoubleDown.Double.stub(Repo, Repo.Stub.new())
 
       result =
-        Repo.Port.transact(
+        TestRepo.transact(
           fn repo ->
             repo.rollback(:stub_rollback)
           end,

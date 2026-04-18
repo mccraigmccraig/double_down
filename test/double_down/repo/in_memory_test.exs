@@ -514,11 +514,11 @@ defmodule DoubleDown.Repo.InMemoryTest do
       DoubleDown.Double.fake(DoubleDown.Repo, InMemory)
 
       cs = User.changeset(%{name: "Alice", email: "alice@example.com"})
-      assert {:ok, user} = DoubleDown.Repo.Port.insert(cs)
+      assert {:ok, user} = DoubleDown.Test.Repo.insert(cs)
       assert user.name == "Alice"
 
       # Closed-world read
-      assert [^user] = DoubleDown.Repo.Port.all(User)
+      assert [^user] = DoubleDown.Test.Repo.all(User)
     end
 
     test "works with Double.fake/3 and seed data" do
@@ -527,9 +527,9 @@ defmodule DoubleDown.Repo.InMemoryTest do
         %User{id: 2, name: "Bob"}
       ])
 
-      assert [_, _] = DoubleDown.Repo.Port.all(User)
-      assert %User{name: "Alice"} = DoubleDown.Repo.Port.get(User, 1)
-      assert nil == DoubleDown.Repo.Port.get(User, 999)
+      assert [_, _] = DoubleDown.Test.Repo.all(User)
+      assert %User{name: "Alice"} = DoubleDown.Test.Repo.get(User, 1)
+      assert nil == DoubleDown.Test.Repo.get(User, 999)
     end
 
     test "layering expects over InMemory" do
@@ -544,8 +544,8 @@ defmodule DoubleDown.Repo.InMemoryTest do
       end)
 
       cs = User.changeset(%{name: "Alice", email: "alice@example.com"})
-      assert {:ok, _} = DoubleDown.Repo.Port.insert(cs)
-      assert {:error, _} = DoubleDown.Repo.Port.insert(cs)
+      assert {:ok, _} = DoubleDown.Test.Repo.insert(cs)
+      assert {:error, _} = DoubleDown.Test.Repo.insert(cs)
     end
   end
 

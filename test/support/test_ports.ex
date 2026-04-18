@@ -8,8 +8,8 @@ end
 
 # Facade for DoubleDown.Repo (library-provided contract).
 # In a real app this would be defined in the application's namespace,
-# e.g. MyApp.Repo. Here we use DoubleDown.Repo.Port for test purposes.
-defmodule DoubleDown.Repo.Port do
+# e.g. MyApp.Repo. Here we use DoubleDown.Test.Repo for test purposes.
+defmodule DoubleDown.Test.Repo do
   use DoubleDown.ContractFacade, contract: DoubleDown.Repo, otp_app: :double_down
 end
 

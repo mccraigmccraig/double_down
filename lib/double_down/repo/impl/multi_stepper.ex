@@ -3,7 +3,7 @@
 # Shared logic for Test and InMemory adapters. Iterates
 # through Multi operations using Ecto.Multi.to_list/1 and
 # dispatches each operation to the given `repo_facade` module
-# (typically the Repo.Port facade so that :run callbacks can
+# (typically the Repo facade so that :run callbacks can
 # call repo.insert/1, repo.get/2, etc.).
 #
 if Code.ensure_loaded?(Ecto) do
@@ -30,7 +30,7 @@ if Code.ensure_loaded?(Ecto) do
     Execute all operations in the given `Ecto.Multi`.
 
     `repo_facade` is the module passed to `:run` callbacks as the repo
-    argument — typically the `Repo.Port` module so callbacks can call
+    argument — typically the `Repo facade` module so callbacks can call
     `repo.insert/1`, `repo.get/2`, etc.
     """
     @spec run(Ecto.Multi.t(), module()) ::
