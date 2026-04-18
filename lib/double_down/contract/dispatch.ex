@@ -74,6 +74,63 @@ defmodule DoubleDown.Contract.Dispatch do
     {contract, operation, normalize_args(args)}
   end
 
+  @doc """
+  Read the current stateful handler state for a contract.
+
+  Returns the domain state — for Double-managed handlers this is
+  the `fallback_state` field; for raw stateful handlers this is
+  the entire state value. Used to snapshot state before a transaction.
+  """
+  @spec get_state(module()) :: term()
+  def get_state(contract) do
+    state_key = Module.concat(DoubleDown.State, contract)
+
+    case NimbleOwnership.get_owned(@ownership_server, self()) do
+      %{^state_key => %{fallback_state: fallback_state}} ->
+        fallback_state
+
+      %{^state_key => state} ->
+        state
+
+      _ ->
+        nil
+    end
+  end
+
+  @doc """
+  Restore a single contract's stateful handler state.
+
+  Replaces the state for the given contract in NimbleOwnership,
+  leaving the handler function and all other contracts' state
+  untouched. Used by transaction rollback to restore the pre-
+  transaction snapshot.
+
+  Handles both Double-managed handlers (restores the `fallback_state`
+  field within the Double's internal map) and raw stateful handlers
+  installed via `set_stateful_handler` (replaces the entire state).
+  """
+  @spec restore_state(module(), term()) :: :ok
+  def restore_state(contract, snapshot) do
+    state_key = Module.concat(DoubleDown.State, contract)
+
+    NimbleOwnership.get_and_update(@ownership_server, self(), state_key, fn state ->
+      new_state =
+        case state do
+          %{fallback_state: _} ->
+            # Double-managed: restore only the fallback_state
+            %{state | fallback_state: snapshot}
+
+          _ ->
+            # Raw stateful handler: replace entire state
+            snapshot
+        end
+
+      {:ok, new_state}
+    end)
+
+    :ok
+  end
+
   # -- Test handler resolution --
 
   @doc false
