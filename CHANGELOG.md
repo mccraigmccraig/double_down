@@ -7,6 +7,56 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.41.0]
+
+### Added
+
+- `DoubleDown.BehaviourFacade` — generates dispatch facades for vanilla
+  Elixir `@behaviour` modules. Reads `@callback` declarations from
+  compiled behaviour modules via `Code.Typespec.fetch_callbacks/1` and
+  generates the same dispatch facade, `@spec` declarations, and
+  `__key__` helpers as `DoubleDown.Facade`. Supports all dispatch
+  paths (`test_dispatch?`, `static_dispatch?`, config-based).
+
+      defmodule MyApp.Todos do
+        use DoubleDown.BehaviourFacade,
+          behaviour: MyApp.Todos.Behaviour,
+          otp_app: :my_app
+      end
+
+  Use this for behaviours you don't control — third-party libraries,
+  existing `@behaviour` modules, or any module with `@callback`
+  declarations that you don't want to convert to `defcallback`.
+  For behaviours you do control, `DoubleDown.Facade` with
+  `defcallback` remains recommended (richer features: pre_dispatch
+  transforms, `@doc` tag sync, combined contract + facade,
+  compile-time spec mismatch warnings).
+
+- `DoubleDown.Facade.Codegen` — extracted shared code generation
+  (`generate_facade`, `generate_key_helper`, dispatch option
+  resolution, static impl resolution, moduledoc generation) from
+  `DoubleDown.Facade` into a shared module. Used by both `Facade`
+  and `BehaviourFacade`. Pure refactor — no behaviour change.
+
+- `DoubleDown.Facade.BehaviourIntrospection` — reads `@callback`
+  declarations from compiled vanilla behaviour modules and converts
+  them to the operation map format used by `Facade.Codegen`. Handles
+  annotated params (`id :: String.t()`), bare types (`map()`), type
+  variables from `when` clauses, zero-arg callbacks, and mixed
+  param styles.
+
+- `when` clause support in generated `@spec` declarations. Specs
+  with bounded type variables (e.g.
+  `@callback transform(input) :: output when input: term(), output: term()`)
+  now preserve the `when` constraints in the facade's `@spec`.
+
+- `DoubleDown.BehaviourFacade` and `DoubleDown.Dynamic` added to
+  `groups_for_modules` in ex_doc config.
+
+- Updated documentation across README, getting-started.md,
+  dynamic.md, and all facade module `@moduledoc`s with the
+  three-facade taxonomy and comparison tables.
+
 ## [0.40.0]
 
 ### Added
@@ -777,7 +827,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `DoubleDown.Testing` with NimbleOwnership, `Repo.Test` stateless
   adapter, CI setup, Credo, Dialyzer.
 
-[Unreleased]: https://github.com/mccraigmccraig/double_down/compare/v0.28.1...HEAD
+[Unreleased]: https://github.com/mccraigmccraig/double_down/compare/v0.41.0...HEAD
+[0.41.0]: https://github.com/mccraigmccraig/double_down/compare/v0.40.0...v0.41.0
+[0.40.0]: https://github.com/mccraigmccraig/double_down/compare/v0.39.0...v0.40.0
+[0.39.0]: https://github.com/mccraigmccraig/double_down/compare/v0.38.0...v0.39.0
+[0.38.0]: https://github.com/mccraigmccraig/double_down/compare/v0.37.2...v0.38.0
+[0.37.2]: https://github.com/mccraigmccraig/double_down/compare/v0.37.1...v0.37.2
+[0.37.1]: https://github.com/mccraigmccraig/double_down/compare/v0.37.0...v0.37.1
+[0.37.0]: https://github.com/mccraigmccraig/double_down/compare/v0.36.0...v0.37.0
+[0.36.0]: https://github.com/mccraigmccraig/double_down/compare/v0.35.0...v0.36.0
+[0.35.0]: https://github.com/mccraigmccraig/double_down/compare/v0.34.0...v0.35.0
+[0.34.0]: https://github.com/mccraigmccraig/double_down/compare/v0.33.0...v0.34.0
+[0.33.0]: https://github.com/mccraigmccraig/double_down/compare/v0.32.0...v0.33.0
+[0.32.0]: https://github.com/mccraigmccraig/double_down/compare/v0.31.1...v0.32.0
+[0.31.1]: https://github.com/mccraigmccraig/double_down/compare/v0.31.0...v0.31.1
+[0.31.0]: https://github.com/mccraigmccraig/double_down/compare/v0.30.1...v0.31.0
+[0.30.1]: https://github.com/mccraigmccraig/double_down/compare/v0.30.0...v0.30.1
+[0.30.0]: https://github.com/mccraigmccraig/double_down/compare/v0.29.0...v0.30.0
+[0.29.0]: https://github.com/mccraigmccraig/double_down/compare/v0.28.1...v0.29.0
 [0.28.1]: https://github.com/mccraigmccraig/double_down/compare/v0.28.0...v0.28.1
 [0.28.0]: https://github.com/mccraigmccraig/double_down/compare/v0.27.0...v0.28.0
 [0.27.0]: https://github.com/mccraigmccraig/double_down/compare/v0.26.0...v0.27.0
