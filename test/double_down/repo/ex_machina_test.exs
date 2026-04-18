@@ -6,6 +6,9 @@ defmodule DoubleDown.Repo.ExMachinaTest do
   alias DoubleDown.Test.Factory.User
   alias DoubleDown.Test.Factory.Post
 
+  # In a real app this would be MyApp.Repo — here we use the test facade
+  alias DoubleDown.Repo.Port, as: Repo
+
   setup do
     DoubleDown.Double.fake(DoubleDown.Repo, DoubleDown.Repo.InMemory)
     :ok
@@ -22,7 +25,7 @@ defmodule DoubleDown.Repo.ExMachinaTest do
       assert user.id != nil
       assert user.name == "Alice"
 
-      found = DoubleDown.Repo.Port.get(User, user.id)
+      found = Repo.get(User, user.id)
       assert found.name == "Alice"
     end
 
@@ -31,7 +34,7 @@ defmodule DoubleDown.Repo.ExMachinaTest do
       insert(:user, name: "Bob")
       insert(:user, name: "Carol")
 
-      users = DoubleDown.Repo.Port.all(User)
+      users = Repo.all(User)
       assert length(users) == 3
       names = Enum.map(users, & &1.name) |> Enum.sort()
       assert names == ["Alice", "Bob", "Carol"]
@@ -41,17 +44,17 @@ defmodule DoubleDown.Repo.ExMachinaTest do
       insert(:user, name: "Alice", email: "alice@example.com")
       insert(:user, name: "Bob", email: "bob@example.com")
 
-      found = DoubleDown.Repo.Port.get_by(User, email: "alice@example.com")
+      found = Repo.get_by(User, email: "alice@example.com")
       assert found.name == "Alice"
     end
 
     test "exists? returns true for factory-inserted records" do
       insert(:user)
-      assert DoubleDown.Repo.Port.exists?(User)
+      assert Repo.exists?(User)
     end
 
     test "exists? returns false when no records" do
-      refute DoubleDown.Repo.Port.exists?(User)
+      refute Repo.exists?(User)
     end
   end
 
@@ -65,7 +68,7 @@ defmodule DoubleDown.Repo.ExMachinaTest do
       insert(:user)
       insert(:user)
 
-      assert 3 == DoubleDown.Repo.Port.aggregate(User, :count, :id)
+      assert 3 == Repo.aggregate(User, :count, :id)
     end
 
     test "avg age" do
@@ -73,15 +76,15 @@ defmodule DoubleDown.Repo.ExMachinaTest do
       insert(:user, age: 30)
       insert(:user, age: 40)
 
-      assert 30.0 == DoubleDown.Repo.Port.aggregate(User, :avg, :age)
+      assert 30.0 == Repo.aggregate(User, :avg, :age)
     end
 
     test "min/max" do
       insert(:user, age: 18)
       insert(:user, age: 65)
 
-      assert 18 == DoubleDown.Repo.Port.aggregate(User, :min, :age)
-      assert 65 == DoubleDown.Repo.Port.aggregate(User, :max, :age)
+      assert 18 == Repo.aggregate(User, :min, :age)
+      assert 65 == Repo.aggregate(User, :max, :age)
     end
   end
 
@@ -94,8 +97,8 @@ defmodule DoubleDown.Repo.ExMachinaTest do
       insert(:user, name: "Alice")
       insert(:post, title: "Hello World")
 
-      assert length(DoubleDown.Repo.Port.all(User)) == 1
-      assert length(DoubleDown.Repo.Port.all(Post)) == 1
+      assert length(Repo.all(User)) == 1
+      assert length(Repo.all(Post)) == 1
     end
   end
 
@@ -106,26 +109,26 @@ defmodule DoubleDown.Repo.ExMachinaTest do
   describe "read-after-write" do
     test "insert then immediate read" do
       user = insert(:user, name: "Alice")
-      assert ^user = DoubleDown.Repo.Port.get(User, user.id)
+      assert ^user = Repo.get(User, user.id)
     end
 
     test "insert then update then read" do
       user = insert(:user, name: "Alice")
 
       cs = Ecto.Changeset.cast(user, %{name: "Alicia"}, [:name])
-      {:ok, updated} = DoubleDown.Repo.Port.update(cs)
+      {:ok, updated} = Repo.update(cs)
 
-      found = DoubleDown.Repo.Port.get(User, user.id)
+      found = Repo.get(User, user.id)
       assert found.name == "Alicia"
       assert found.name == updated.name
     end
 
     test "insert then delete then read" do
       user = insert(:user, name: "Alice")
-      {:ok, _} = DoubleDown.Repo.Port.delete(user)
+      {:ok, _} = Repo.delete(user)
 
-      assert nil == DoubleDown.Repo.Port.get(User, user.id)
-      assert [] == DoubleDown.Repo.Port.all(User)
+      assert nil == Repo.get(User, user.id)
+      assert [] == Repo.all(User)
     end
   end
 
@@ -149,7 +152,7 @@ defmodule DoubleDown.Repo.ExMachinaTest do
       end
 
       # Existing records still there
-      assert length(DoubleDown.Repo.Port.all(User)) == 2
+      assert length(Repo.all(User)) == 2
     end
   end
 
