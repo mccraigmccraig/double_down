@@ -1,5 +1,8 @@
 # Dynamic facades must be set up before ExUnit starts
 DoubleDown.DynamicFacade.setup(DoubleDown.Test.DynamicTarget)
 
+# Start ExMachina's sequence server for factory tests
+{:ok, _} = Application.ensure_all_started(:ex_machina)
+
 ExUnit.start()
 {:ok, _} = DoubleDown.Testing.start()
