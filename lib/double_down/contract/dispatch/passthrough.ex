@@ -1,4 +1,4 @@
-defmodule DoubleDown.Dispatch.Passthrough do
+defmodule DoubleDown.Contract.Dispatch.Passthrough do
   @moduledoc """
   Sentinel value returned from expect responders to delegate to the
   fallback/fake instead of returning a result directly.

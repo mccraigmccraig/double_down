@@ -100,10 +100,10 @@ defmodule DoubleDown.Dynamic do
   """
   @spec dispatch(module(), atom(), [term()]) :: term()
   def dispatch(module, operation, args) do
-    case DoubleDown.Dispatch.resolve_test_handler(module) do
+    case DoubleDown.Contract.Dispatch.resolve_test_handler(module) do
       {:ok, owner_pid, handler} ->
-        result = DoubleDown.Dispatch.invoke_handler(handler, owner_pid, operation, args)
-        DoubleDown.Dispatch.maybe_log(owner_pid, module, operation, args, result)
+        result = DoubleDown.Contract.Dispatch.invoke_handler(handler, owner_pid, operation, args)
+        DoubleDown.Contract.Dispatch.maybe_log(owner_pid, module, operation, args, result)
         result
 
       :none ->

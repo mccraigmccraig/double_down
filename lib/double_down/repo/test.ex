@@ -21,7 +21,7 @@
 #
 if Code.ensure_loaded?(Ecto) do
   defmodule DoubleDown.Repo.Test do
-    @behaviour DoubleDown.Dispatch.StubHandler
+    @behaviour DoubleDown.Contract.Dispatch.StubHandler
 
     @moduledoc """
     Stateless test handler for `DoubleDown.Repo`.
@@ -99,7 +99,7 @@ if Code.ensure_loaded?(Ecto) do
 
         DoubleDown.Repo.Test.new(fallback_fn: fn :get, [User, 1] -> %User{} end)
     """
-    @impl DoubleDown.Dispatch.StubHandler
+    @impl DoubleDown.Contract.Dispatch.StubHandler
     @spec new((atom(), [term()] -> term()) | nil, keyword()) :: (atom(), [term()] -> term())
     def new(fallback_fn \\ nil, opts \\ [])
 
@@ -232,13 +232,13 @@ if Code.ensure_loaded?(Ecto) do
     # -----------------------------------------------------------------
 
     defp dispatch(:transact, [fun, _opts], _fallback_fn) when is_function(fun, 0) do
-      %DoubleDown.Dispatch.Defer{fn: fn -> run_in_transaction(fun) end}
+      %DoubleDown.Contract.Dispatch.Defer{fn: fn -> run_in_transaction(fun) end}
     end
 
     defp dispatch(:transact, [%Ecto.Multi{} = multi, opts], _fallback_fn) do
       repo_facade = Keyword.get(opts, DoubleDown.Repo.Facade)
 
-      %DoubleDown.Dispatch.Defer{
+      %DoubleDown.Contract.Dispatch.Defer{
         fn: fn ->
           run_in_transaction(fn -> DoubleDown.Repo.MultiStepper.run(multi, repo_facade) end)
         end
@@ -246,7 +246,7 @@ if Code.ensure_loaded?(Ecto) do
     end
 
     defp dispatch(:rollback, [value], _fallback_fn) do
-      %DoubleDown.Dispatch.Defer{fn: fn -> throw({:rollback, value}) end}
+      %DoubleDown.Contract.Dispatch.Defer{fn: fn -> throw({:rollback, value}) end}
     end
 
     defp run_in_transaction(fun) do

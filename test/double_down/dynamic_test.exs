@@ -245,7 +245,7 @@ defmodule DoubleDown.DynamicTest do
 
     test "refuses DoubleDown internal modules" do
       assert_raise ArgumentError, ~r/DoubleDown internal/, fn ->
-        DoubleDown.Dynamic.setup(DoubleDown.Dispatch)
+        DoubleDown.Dynamic.setup(DoubleDown.Contract.Dispatch)
       end
     end
 

@@ -1,4 +1,4 @@
-defmodule DoubleDown.DispatchTest do
+defmodule DoubleDown.Contract.DispatchTest do
   use ExUnit.Case, async: true
 
   alias DoubleDown.Test.Greeter
@@ -155,18 +155,18 @@ defmodule DoubleDown.DispatchTest do
 
   describe "key/3" do
     test "builds a canonical key" do
-      assert {Greeter, :greet, ["Alice"]} = DoubleDown.Dispatch.key(Greeter, :greet, ["Alice"])
+      assert {Greeter, :greet, ["Alice"]} = DoubleDown.Contract.Dispatch.key(Greeter, :greet, ["Alice"])
     end
 
     test "normalizes map argument order" do
-      key1 = DoubleDown.Dispatch.key(Greeter, :greet, [%{b: 2, a: 1}])
-      key2 = DoubleDown.Dispatch.key(Greeter, :greet, [%{a: 1, b: 2}])
+      key1 = DoubleDown.Contract.Dispatch.key(Greeter, :greet, [%{b: 2, a: 1}])
+      key2 = DoubleDown.Contract.Dispatch.key(Greeter, :greet, [%{a: 1, b: 2}])
       assert key1 == key2
     end
 
     test "normalizes keyword list order" do
-      key1 = DoubleDown.Dispatch.key(Greeter, :greet, [[b: 2, a: 1]])
-      key2 = DoubleDown.Dispatch.key(Greeter, :greet, [[a: 1, b: 2]])
+      key1 = DoubleDown.Contract.Dispatch.key(Greeter, :greet, [[b: 2, a: 1]])
+      key2 = DoubleDown.Contract.Dispatch.key(Greeter, :greet, [[a: 1, b: 2]])
       assert key1 == key2
     end
   end

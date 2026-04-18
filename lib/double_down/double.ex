@@ -158,7 +158,7 @@ defmodule DoubleDown.Double do
   those remain for cases that don't fit the expect/stub pattern.
   """
 
-  @ownership_server DoubleDown.Dispatch.Ownership
+  @ownership_server DoubleDown.Contract.Dispatch.Ownership
   @contracts_key DoubleDown.Double.Contracts
 
   # -- Public API: passthrough sentinel --
@@ -183,8 +183,8 @@ defmodule DoubleDown.Double do
         end
       end)
   """
-  @spec passthrough() :: DoubleDown.Dispatch.Passthrough.t()
-  def passthrough, do: %DoubleDown.Dispatch.Passthrough{}
+  @spec passthrough() :: DoubleDown.Contract.Dispatch.Passthrough.t()
+  def passthrough, do: %DoubleDown.Contract.Dispatch.Passthrough{}
 
   # -- Public API: expect --
 
@@ -316,7 +316,7 @@ defmodule DoubleDown.Double do
 
   ## StubHandler module
 
-  A module implementing `DoubleDown.Dispatch.StubHandler`. The module's
+  A module implementing `DoubleDown.Contract.Dispatch.StubHandler`. The module's
   `new/2` builds a dispatch function from an optional fallback:
 
       # Writes only — reads will raise
@@ -406,10 +406,10 @@ defmodule DoubleDown.Double do
   defp do_stub_handler(contract, module, fallback_fn, opts) do
     unless stub_handler?(module) do
       raise ArgumentError, """
-      #{inspect(module)} does not implement the DoubleDown.Dispatch.StubHandler behaviour.
+      #{inspect(module)} does not implement the DoubleDown.Contract.Dispatch.StubHandler behaviour.
 
       To use a module with Double.stub/2..4, it must implement:
-        @behaviour DoubleDown.Dispatch.StubHandler
+        @behaviour DoubleDown.Contract.Dispatch.StubHandler
         @callback new(fallback_fn, opts) :: (atom(), [term()] -> term())
       """
     end
@@ -427,7 +427,7 @@ defmodule DoubleDown.Double do
 
   defp stub_handler?(module) do
     Code.ensure_loaded?(module) and
-      implements_behaviour?(module, DoubleDown.Dispatch.StubHandler)
+      implements_behaviour?(module, DoubleDown.Contract.Dispatch.StubHandler)
   end
 
   # -- Public API: fake --
@@ -441,7 +441,7 @@ defmodule DoubleDown.Double do
 
   ## FakeHandler module (recommended for stateful fakes)
 
-  A module implementing `DoubleDown.Dispatch.FakeHandler`. The module's
+  A module implementing `DoubleDown.Contract.Dispatch.FakeHandler`. The module's
   `new/2` builds initial state, and its `dispatch/3` or `dispatch/4`
   handles operations:
 
@@ -535,10 +535,10 @@ defmodule DoubleDown.Double do
   defp do_fake_handler(contract, module, seed, opts) do
     unless fake_handler?(module) do
       raise ArgumentError, """
-      #{inspect(module)} does not implement the DoubleDown.Dispatch.FakeHandler behaviour.
+      #{inspect(module)} does not implement the DoubleDown.Contract.Dispatch.FakeHandler behaviour.
 
       To use a module with Double.fake/3..4, it must implement:
-        @behaviour DoubleDown.Dispatch.FakeHandler
+        @behaviour DoubleDown.Contract.Dispatch.FakeHandler
         @callback new(seed, opts) :: state
         @callback dispatch(operation, args, state) :: {result, new_state}
       """
@@ -558,7 +558,7 @@ defmodule DoubleDown.Double do
 
   defp fake_handler?(module) do
     Code.ensure_loaded?(module) and
-      implements_behaviour?(module, DoubleDown.Dispatch.FakeHandler)
+      implements_behaviour?(module, DoubleDown.Contract.Dispatch.FakeHandler)
   end
 
   # Prefer dispatch/4 (cross-contract) over dispatch/3
@@ -756,12 +756,12 @@ defmodule DoubleDown.Double do
   # Invoke an expect responder. 1-arity is stateless (bare result).
   # 2-arity and 3-arity are stateful (return {result, new_fallback_state}).
   #
-  # Any arity may return %DoubleDown.Dispatch.Passthrough{} to delegate to the
+  # Any arity may return %DoubleDown.Contract.Dispatch.Passthrough{} to delegate to the
   # fallback/fake. The expect is still consumed for verify! counting.
   defp invoke_expect(fun, args, state, all_states, operation)
        when is_function(fun, 1) do
     case fun.(args) do
-      %DoubleDown.Dispatch.Passthrough{} ->
+      %DoubleDown.Contract.Dispatch.Passthrough{} ->
         invoke_fallback_or_raise(state, operation, args, all_states)
 
       result ->
@@ -772,7 +772,7 @@ defmodule DoubleDown.Double do
   defp invoke_expect(fun, args, state, all_states, operation)
        when is_function(fun, 2) do
     case fun.(args, state.fallback_state) do
-      %DoubleDown.Dispatch.Passthrough{} ->
+      %DoubleDown.Contract.Dispatch.Passthrough{} ->
         invoke_fallback_or_raise(state, operation, args, all_states)
 
       {result, new_fallback_state} ->
@@ -786,7 +786,7 @@ defmodule DoubleDown.Double do
   defp invoke_expect(fun, args, state, all_states, operation)
        when is_function(fun, 3) do
     case fun.(args, state.fallback_state, all_states) do
-      %DoubleDown.Dispatch.Passthrough{} ->
+      %DoubleDown.Contract.Dispatch.Passthrough{} ->
         invoke_fallback_or_raise(state, operation, args, all_states)
 
       {result, new_fallback_state} ->
@@ -801,7 +801,7 @@ defmodule DoubleDown.Double do
   defp invoke_stub(fun, args, state, all_states, operation)
        when is_function(fun, 1) do
     case fun.(args) do
-      %DoubleDown.Dispatch.Passthrough{} ->
+      %DoubleDown.Contract.Dispatch.Passthrough{} ->
         invoke_fallback_or_raise(state, operation, args, all_states)
 
       result ->
@@ -812,7 +812,7 @@ defmodule DoubleDown.Double do
   defp invoke_stub(fun, args, state, all_states, operation)
        when is_function(fun, 2) do
     case fun.(args, state.fallback_state) do
-      %DoubleDown.Dispatch.Passthrough{} ->
+      %DoubleDown.Contract.Dispatch.Passthrough{} ->
         invoke_fallback_or_raise(state, operation, args, all_states)
 
       {result, new_fallback_state} ->
@@ -826,7 +826,7 @@ defmodule DoubleDown.Double do
   defp invoke_stub(fun, args, state, all_states, operation)
        when is_function(fun, 3) do
     case fun.(args, state.fallback_state, all_states) do
-      %DoubleDown.Dispatch.Passthrough{} ->
+      %DoubleDown.Contract.Dispatch.Passthrough{} ->
         invoke_fallback_or_raise(state, operation, args, all_states)
 
       {result, new_fallback_state} ->
@@ -863,7 +863,7 @@ defmodule DoubleDown.Double do
     case state.fallback do
       nil ->
         msg = unexpected_call_message(state.contract, state, operation, args)
-        {%DoubleDown.Dispatch.Defer{fn: fn -> raise msg end}, state}
+        {%DoubleDown.Contract.Dispatch.Defer{fn: fn -> raise msg end}, state}
 
       {:fn, fallback_fn} ->
         invoke_fn_fallback(fallback_fn, state, operation, args)
@@ -882,7 +882,7 @@ defmodule DoubleDown.Double do
   rescue
     FunctionClauseError ->
       msg = unexpected_call_message(state.contract, state, operation, args)
-      {%DoubleDown.Dispatch.Defer{fn: fn -> reraise msg, __STACKTRACE__ end}, state}
+      {%DoubleDown.Contract.Dispatch.Defer{fn: fn -> reraise msg, __STACKTRACE__ end}, state}
   end
 
   defp invoke_stateful_fallback(fallback_fn, state, operation, args, all_states) do
@@ -908,7 +908,7 @@ defmodule DoubleDown.Double do
   rescue
     FunctionClauseError ->
       msg = unexpected_call_message(state.contract, state, operation, args)
-      {%DoubleDown.Dispatch.Defer{fn: fn -> reraise msg, __STACKTRACE__ end}, state}
+      {%DoubleDown.Contract.Dispatch.Defer{fn: fn -> reraise msg, __STACKTRACE__ end}, state}
   end
 
   # Module fallback: defer the apply to the calling process via %Defer{}.
@@ -918,7 +918,7 @@ defmodule DoubleDown.Double do
   # checkout, process dictionary, etc.). %Defer{} moves the apply outside
   # the lock, same mechanism transact uses.
   defp invoke_module_fallback(module, state, operation, args) do
-    {%DoubleDown.Dispatch.Defer{fn: fn -> apply(module, operation, args) end}, state}
+    {%DoubleDown.Contract.Dispatch.Defer{fn: fn -> apply(module, operation, args) end}, state}
   end
 
   defp unexpected_call_message(contract, %{expects: expects}, operation, args) do

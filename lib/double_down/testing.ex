@@ -17,7 +17,7 @@ defmodule DoubleDown.Testing do
   tests are isolated. Use `allow/3` to share handlers with child processes.
   """
 
-  @ownership_server DoubleDown.Dispatch.Ownership
+  @ownership_server DoubleDown.Contract.Dispatch.Ownership
 
   @doc """
   Start the DoubleDown ownership server.

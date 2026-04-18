@@ -28,7 +28,7 @@
 #
 if Code.ensure_loaded?(Ecto) do
   defmodule DoubleDown.Repo.InMemory do
-    @behaviour DoubleDown.Dispatch.FakeHandler
+    @behaviour DoubleDown.Contract.Dispatch.FakeHandler
 
     @moduledoc """
     Stateful in-memory Repo implementation for tests (open-world).
@@ -217,7 +217,7 @@ if Code.ensure_loaded?(Ecto) do
 
         DoubleDown.Repo.InMemory.new(seed: [%User{id: 1}], fallback_fn: fn ...)
     """
-    @impl DoubleDown.Dispatch.FakeHandler
+    @impl DoubleDown.Contract.Dispatch.FakeHandler
     @spec new(term(), keyword()) :: store()
     defdelegate new(seed \\ %{}, opts \\ []), to: Shared
 
@@ -248,7 +248,7 @@ if Code.ensure_loaded?(Ecto) do
     reads go directly to the fallback function. If no fallback is registered
     or the fallback doesn't handle the operation, an error is raised.
     """
-    @impl DoubleDown.Dispatch.FakeHandler
+    @impl DoubleDown.Contract.Dispatch.FakeHandler
     @spec dispatch(atom(), list(), store()) :: {term(), store()}
 
     # -----------------------------------------------------------------

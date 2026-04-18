@@ -1,4 +1,4 @@
-defmodule DoubleDown.Dispatch.FakeHandler do
+defmodule DoubleDown.Contract.Dispatch.FakeHandler do
   @moduledoc """
   Behaviour for stateful fake handler modules.
 
@@ -23,7 +23,7 @@ defmodule DoubleDown.Dispatch.FakeHandler do
   ## Example
 
       defmodule MyApp.InMemoryStore do
-        @behaviour DoubleDown.Dispatch.FakeHandler
+        @behaviour DoubleDown.Contract.Dispatch.FakeHandler
 
         @impl true
         def new(seed, _opts), do: seed

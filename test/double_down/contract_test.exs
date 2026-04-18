@@ -57,7 +57,7 @@ defmodule DoubleDown.ContractTest do
       assert function_exported?(DoubleDown.Test.Greeter.Port, :fetch_greeting, 1)
     end
 
-    test "Port facade dispatches through DoubleDown.Dispatch" do
+    test "Port facade dispatches through DoubleDown.Contract.Dispatch" do
       DoubleDown.Testing.set_fn_handler(DoubleDown.Test.Greeter, fn
         :greet, [name] -> "Dispatched: #{name}"
       end)

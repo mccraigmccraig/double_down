@@ -106,19 +106,19 @@ defmodule DoubleDown.BehaviourFacadeTest do
   describe "key helpers" do
     test "generates __key__ for single-param callback" do
       key = VanillaBehaviour.Port.__key__(:get_item, "42")
-      assert key == DoubleDown.Dispatch.key(VanillaBehaviour, :get_item, ["42"])
+      assert key == DoubleDown.Contract.Dispatch.key(VanillaBehaviour, :get_item, ["42"])
     end
 
     test "generates __key__ for multi-param callback" do
       key = VanillaBehaviour.Port.__key__(:create_item, %{a: 1}, verbose: true)
 
       assert key ==
-               DoubleDown.Dispatch.key(VanillaBehaviour, :create_item, [%{a: 1}, [verbose: true]])
+               DoubleDown.Contract.Dispatch.key(VanillaBehaviour, :create_item, [%{a: 1}, [verbose: true]])
     end
 
     test "generates __key__ for zero-arg callback" do
       key = ZeroArgBehaviour.Port.__key__(:ping)
-      assert key == DoubleDown.Dispatch.key(ZeroArgBehaviour, :ping, [])
+      assert key == DoubleDown.Contract.Dispatch.key(ZeroArgBehaviour, :ping, [])
     end
   end
 
@@ -222,7 +222,7 @@ defmodule DoubleDown.BehaviourFacadeTest do
       # We can't easily test config dispatch through the Port module because
       # test_dispatch? is true in test env. Instead, test via Dispatch directly.
       result =
-        DoubleDown.Dispatch.call_config(
+        DoubleDown.Contract.Dispatch.call_config(
           :double_down,
           VanillaBehaviour,
           :get_item,

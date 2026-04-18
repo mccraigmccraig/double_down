@@ -122,7 +122,7 @@ defmodule DoubleDown.Repo.ClosedInMemoryTest do
     test "raises when absent" do
       store = ClosedInMemory.new()
 
-      {%DoubleDown.Dispatch.Defer{fn: raise_fn}, _} =
+      {%DoubleDown.Contract.Dispatch.Defer{fn: raise_fn}, _} =
         ClosedInMemory.dispatch(:get!, [User, 999], store)
 
       assert_raise ArgumentError, ~r/not found/, fn -> raise_fn.() end
@@ -179,7 +179,7 @@ defmodule DoubleDown.Repo.ClosedInMemoryTest do
     test "raises when no match" do
       store = ClosedInMemory.new()
 
-      {%DoubleDown.Dispatch.Defer{fn: raise_fn}, _} =
+      {%DoubleDown.Contract.Dispatch.Defer{fn: raise_fn}, _} =
         ClosedInMemory.dispatch(:get_by!, [User, [name: "Nobody"]], store)
 
       assert_raise ArgumentError, ~r/no matching record/, fn -> raise_fn.() end
@@ -192,7 +192,7 @@ defmodule DoubleDown.Repo.ClosedInMemoryTest do
           %User{id: 2, name: "Alice"}
         ])
 
-      {%DoubleDown.Dispatch.Defer{fn: raise_fn}, _} =
+      {%DoubleDown.Contract.Dispatch.Defer{fn: raise_fn}, _} =
         ClosedInMemory.dispatch(:get_by!, [User, [name: "Alice"]], store)
 
       assert_raise ArgumentError, ~r/found 2 records/, fn -> raise_fn.() end
@@ -239,7 +239,7 @@ defmodule DoubleDown.Repo.ClosedInMemoryTest do
 
     test "raises when multiple records" do
       store = ClosedInMemory.new([%User{id: 1, name: "Alice"}, %User{id: 2, name: "Bob"}])
-      {%DoubleDown.Dispatch.Defer{fn: raise_fn}, _} = ClosedInMemory.dispatch(:one, [User], store)
+      {%DoubleDown.Contract.Dispatch.Defer{fn: raise_fn}, _} = ClosedInMemory.dispatch(:one, [User], store)
       assert_raise ArgumentError, ~r/found 2/, fn -> raise_fn.() end
     end
   end
@@ -254,7 +254,7 @@ defmodule DoubleDown.Repo.ClosedInMemoryTest do
     test "raises when no records" do
       store = ClosedInMemory.new()
 
-      {%DoubleDown.Dispatch.Defer{fn: raise_fn}, _} =
+      {%DoubleDown.Contract.Dispatch.Defer{fn: raise_fn}, _} =
         ClosedInMemory.dispatch(:one!, [User], store)
 
       assert_raise ArgumentError, ~r/found none/, fn -> raise_fn.() end
@@ -263,7 +263,7 @@ defmodule DoubleDown.Repo.ClosedInMemoryTest do
     test "raises when multiple records" do
       store = ClosedInMemory.new([%User{id: 1, name: "Alice"}, %User{id: 2, name: "Bob"}])
 
-      {%DoubleDown.Dispatch.Defer{fn: raise_fn}, _} =
+      {%DoubleDown.Contract.Dispatch.Defer{fn: raise_fn}, _} =
         ClosedInMemory.dispatch(:one!, [User], store)
 
       assert_raise ArgumentError, ~r/found 2/, fn -> raise_fn.() end
@@ -414,7 +414,7 @@ defmodule DoubleDown.Repo.ClosedInMemoryTest do
     test "non-set updates fall to fallback" do
       store = ClosedInMemory.new()
 
-      {%DoubleDown.Dispatch.Defer{fn: raise_fn}, _} =
+      {%DoubleDown.Contract.Dispatch.Defer{fn: raise_fn}, _} =
         ClosedInMemory.dispatch(:update_all, [User, [inc: [age: 1]]], store)
 
       assert_raise ArgumentError, ~r/cannot service/, fn -> raise_fn.() end
@@ -442,7 +442,7 @@ defmodule DoubleDown.Repo.ClosedInMemoryTest do
       query = Ecto.Query.from(u in User)
       store = ClosedInMemory.new()
 
-      {%DoubleDown.Dispatch.Defer{fn: raise_fn}, _} =
+      {%DoubleDown.Contract.Dispatch.Defer{fn: raise_fn}, _} =
         ClosedInMemory.dispatch(:all, [query], store)
 
       assert_raise ArgumentError, ~r/cannot service/, fn -> raise_fn.() end

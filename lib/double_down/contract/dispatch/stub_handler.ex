@@ -1,4 +1,4 @@
-defmodule DoubleDown.Dispatch.StubHandler do
+defmodule DoubleDown.Contract.Dispatch.StubHandler do
   @moduledoc """
   Behaviour for stateless stub handler modules.
 
@@ -23,7 +23,7 @@ defmodule DoubleDown.Dispatch.StubHandler do
   ## Example
 
       defmodule MyApp.TestStore do
-        @behaviour DoubleDown.Dispatch.StubHandler
+        @behaviour DoubleDown.Contract.Dispatch.StubHandler
 
         @impl true
         def new(fallback_fn, _opts) do

@@ -1,4 +1,4 @@
-defmodule DoubleDown.Dispatch do
+defmodule DoubleDown.Contract.Dispatch do
   @moduledoc """
   Dispatch resolution for DoubleDown contracts.
 
@@ -110,14 +110,14 @@ defmodule DoubleDown.Dispatch do
   @doc false
   def invoke_handler(%{type: :module, impl: impl}, _owner_pid, operation, args) do
     case apply(impl, operation, args) do
-      %DoubleDown.Dispatch.Defer{fn: deferred_fn} -> deferred_fn.()
+      %DoubleDown.Contract.Dispatch.Defer{fn: deferred_fn} -> deferred_fn.()
       result -> result
     end
   end
 
   def invoke_handler(%{type: :fn, fun: fun}, _owner_pid, operation, args) do
     case fun.(operation, args) do
-      %DoubleDown.Dispatch.Defer{fn: deferred_fn} -> deferred_fn.()
+      %DoubleDown.Contract.Dispatch.Defer{fn: deferred_fn} -> deferred_fn.()
       result -> result
     end
   end
@@ -131,7 +131,7 @@ defmodule DoubleDown.Dispatch do
     # Atomically read state, call handler, update state.
     # Must use owner_pid so allowed child processes can update state.
     #
-    # If the handler returns %DoubleDown.Dispatch.Defer{fn: deferred_fn}, we skip
+    # If the handler returns %DoubleDown.Contract.Dispatch.Defer{fn: deferred_fn}, we skip
     # the state update and call deferred_fn outside the lock. This supports
     # operations like `transact` whose body re-enters the dispatch system
     # (which would otherwise deadlock on the NimbleOwnership GenServer).
@@ -165,7 +165,7 @@ defmodule DoubleDown.Dispatch do
             end
 
           case handler_result do
-            {%DoubleDown.Dispatch.Defer{} = defer, new_state} ->
+            {%DoubleDown.Contract.Dispatch.Defer{} = defer, new_state} ->
               validate_not_global_state!(new_state)
               {defer, new_state}
 
@@ -176,18 +176,18 @@ defmodule DoubleDown.Dispatch do
         rescue
           exception ->
             stacktrace = __STACKTRACE__
-            {%DoubleDown.Dispatch.Defer{fn: fn -> reraise exception, stacktrace end}, state}
+            {%DoubleDown.Contract.Dispatch.Defer{fn: fn -> reraise exception, stacktrace end}, state}
         catch
           :throw, value ->
-            {%DoubleDown.Dispatch.Defer{fn: fn -> throw(value) end}, state}
+            {%DoubleDown.Contract.Dispatch.Defer{fn: fn -> throw(value) end}, state}
 
           :exit, reason ->
-            {%DoubleDown.Dispatch.Defer{fn: fn -> exit(reason) end}, state}
+            {%DoubleDown.Contract.Dispatch.Defer{fn: fn -> exit(reason) end}, state}
         end
       end)
 
     case result do
-      %DoubleDown.Dispatch.Defer{fn: deferred_fn} -> deferred_fn.()
+      %DoubleDown.Contract.Dispatch.Defer{fn: deferred_fn} -> deferred_fn.()
       result -> result
     end
   end

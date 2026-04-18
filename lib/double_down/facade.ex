@@ -4,7 +4,7 @@ defmodule DoubleDown.Facade do
 
   `use DoubleDown.Facade` reads a contract's `__callbacks__/0` metadata
   and generates facade functions and key helpers that
-  dispatch via `DoubleDown.Dispatch`.
+  dispatch via `DoubleDown.Contract.Dispatch`.
 
   ## Combined contract + facade (simplest)
 

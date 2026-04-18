@@ -51,8 +51,7 @@ defmodule DoubleDown.MixProject do
             DoubleDown.Contract,
             DoubleDown.Facade,
             DoubleDown.BehaviourFacade,
-            DoubleDown.Dynamic,
-            DoubleDown.Dispatch
+            DoubleDown.Dynamic
           ],
           Testing: [
             DoubleDown.Testing,
@@ -65,6 +64,9 @@ defmodule DoubleDown.MixProject do
             DoubleDown.Repo.InMemory,
             DoubleDown.Repo.ClosedInMemory,
             DoubleDown.Repo.MultiStepper
+          ],
+          Internals: [
+            DoubleDown.Contract.Dispatch
           ]
         ]
       ]

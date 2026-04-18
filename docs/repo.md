@@ -77,7 +77,7 @@ and return `{:ok, struct}`, but nothing is stored. Read operations
 delegate to an optional fallback function, or raise with an actionable
 error message.
 
-`Repo.Test` implements `DoubleDown.Dispatch.StubHandler` and can be
+`Repo.Test` implements `DoubleDown.Contract.Dispatch.StubHandler` and can be
 used by module name with `Double.stub`:
 
 ```elixir
@@ -417,7 +417,7 @@ The **Test** and **InMemory** adapters do **not** provide true
 transaction isolation:
 
 - `Repo.Test` calls the function directly without any locking.
-- `Repo.InMemory` uses `%DoubleDown.Dispatch.Defer{}` to run the transaction
+- `Repo.InMemory` uses `%DoubleDown.Contract.Dispatch.Defer{}` to run the transaction
   function outside the NimbleOwnership lock — each sub-operation
   acquires the lock individually.
 

@@ -105,7 +105,7 @@ if Code.ensure_loaded?(Ecto) do
              |> Enum.filter(&is_integer/1)
            end) do
         {:error, {:no_autogenerate, message}} ->
-          {%DoubleDown.Dispatch.Defer{fn: fn -> raise ArgumentError, message end}, store}
+          {%DoubleDown.Contract.Dispatch.Defer{fn: fn -> raise ArgumentError, message end}, store}
 
         {id, record} ->
           {{:ok, record}, put_record(store, schema, id, record)}
@@ -137,13 +137,13 @@ if Code.ensure_loaded?(Ecto) do
 
     @doc false
     def dispatch_transact([fun, _opts], store) when is_function(fun, 0) do
-      {%DoubleDown.Dispatch.Defer{fn: fn -> run_in_transaction(fun) end}, store}
+      {%DoubleDown.Contract.Dispatch.Defer{fn: fn -> run_in_transaction(fun) end}, store}
     end
 
     def dispatch_transact([%Ecto.Multi{} = multi, opts], store) do
       repo_facade = Keyword.get(opts, DoubleDown.Repo.Facade)
 
-      {%DoubleDown.Dispatch.Defer{
+      {%DoubleDown.Contract.Dispatch.Defer{
          fn: fn ->
            run_in_transaction(fn -> DoubleDown.Repo.MultiStepper.run(multi, repo_facade) end)
          end
@@ -152,7 +152,7 @@ if Code.ensure_loaded?(Ecto) do
 
     @doc false
     def dispatch_rollback([value], store) do
-      {%DoubleDown.Dispatch.Defer{fn: fn -> throw({:rollback, value}) end}, store}
+      {%DoubleDown.Contract.Dispatch.Defer{fn: fn -> throw({:rollback, value}) end}, store}
     end
 
     defp run_in_transaction(fun) do
@@ -166,7 +166,7 @@ if Code.ensure_loaded?(Ecto) do
     #
     # Because dispatch/3 runs inside NimbleOwnership.get_and_update
     # (a GenServer call), we must not raise here — that would crash
-    # the ownership server. Instead, we use %DoubleDown.Dispatch.Defer{}
+    # the ownership server. Instead, we use %DoubleDown.Contract.Dispatch.Defer{}
     # to move the raise outside the lock.
     # -------------------------------------------------------------------
 
@@ -191,14 +191,14 @@ if Code.ensure_loaded?(Ecto) do
             # then defer the reraise to the calling test process.
             exception ->
               stacktrace = __STACKTRACE__
-              {%DoubleDown.Dispatch.Defer{fn: fn -> reraise exception, stacktrace end}, store}
+              {%DoubleDown.Contract.Dispatch.Defer{fn: fn -> reraise exception, stacktrace end}, store}
           end
       end
     end
 
     @doc false
     def defer_raise(message, store) do
-      {%DoubleDown.Dispatch.Defer{fn: fn -> raise ArgumentError, message end}, store}
+      {%DoubleDown.Contract.Dispatch.Defer{fn: fn -> raise ArgumentError, message end}, store}
     end
 
     # -------------------------------------------------------------------

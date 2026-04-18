@@ -393,7 +393,7 @@ defmodule DoubleDown.DoubleTest do
 
       caller_pid = Greeter.Port.greet("Alice")
       assert caller_pid == test_pid
-      refute caller_pid == GenServer.whereis(DoubleDown.Dispatch.Ownership)
+      refute caller_pid == GenServer.whereis(DoubleDown.Contract.Dispatch.Ownership)
     end
 
     test "validates module at stub time — not loaded" do

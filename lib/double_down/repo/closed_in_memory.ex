@@ -1,6 +1,6 @@
 if Code.ensure_loaded?(Ecto) do
   defmodule DoubleDown.Repo.ClosedInMemory do
-    @behaviour DoubleDown.Dispatch.FakeHandler
+    @behaviour DoubleDown.Contract.Dispatch.FakeHandler
 
     @moduledoc """
     Stateful in-memory Repo implementation for tests (closed-world).
@@ -99,7 +99,7 @@ if Code.ensure_loaded?(Ecto) do
     @doc """
     Create a new ClosedInMemory state map. Same API as `Repo.InMemory.new/2`.
     """
-    @impl DoubleDown.Dispatch.FakeHandler
+    @impl DoubleDown.Contract.Dispatch.FakeHandler
     @spec new(term(), keyword()) :: store()
     defdelegate new(seed \\ %{}, opts \\ []), to: Shared
 
@@ -115,7 +115,7 @@ if Code.ensure_loaded?(Ecto) do
     Bare schema reads are authoritative — the state is the full truth.
     `Ecto.Query` reads fall through to the fallback function.
     """
-    @impl DoubleDown.Dispatch.FakeHandler
+    @impl DoubleDown.Contract.Dispatch.FakeHandler
     @spec dispatch(atom(), list(), store()) :: {term(), store()}
 
     # -----------------------------------------------------------------
