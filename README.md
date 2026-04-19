@@ -25,9 +25,9 @@ pattern:
   bytecode to `DirectImpl.do_thing(args)` — the facade disappears
   entirely after BEAM inlining. Contract boundaries have no
   runtime cost.
-- **Stateful fakes with rollback** — in-memory state with atomic
-  updates, read-after-write consistency, `Ecto.Multi` transactions,
-  and rollback that restores pre-transaction state. Fast enough for
+- **When mocks are not enough: stateful fakes** — in-memory
+  state with atomic updates, read-after-write consistency,
+  `Ecto.Multi` transactions,  and rollback. Fast enough for
   property-based testing.
 - **ExMachina factory integration** — `Repo.InMemory` works as a
   drop-in replacement for the Ecto sandbox. Factory-inserted records
@@ -46,37 +46,37 @@ pattern:
 
 ### Contracts and dispatch
 
-| Feature                         | Description                                                                        |
-|---------------------------------|------------------------------------------------------------------------------------|
-| `defcallback` contracts         | Typed signatures with parameter names, `@doc` sync, pre-dispatch transforms        |
-| Vanilla behaviour facades       | `BehaviourFacade` — dispatch facade from any existing `@behaviour` module          |
-| Dynamic facades                 | `DynamicFacade` — Mimic-style bytecode shim, module becomes ad-hoc contract        |
-| Zero-cost static dispatch       | Inlined direct calls in production — no overhead vs calling the impl directly      |
-| Generated `@spec` + `@doc`      | LSP-friendly on `defcallback` and `BehaviourFacade` facades                        |
-| Standard `@behaviour`           | All contracts are Mox-compatible — `@behaviour` + `@callback`                      |
+| Feature                    | Description                                                                   |
+|----------------------------|-------------------------------------------------------------------------------|
+| `defcallback` contracts    | Typed signatures with parameter names, `@doc` sync, pre-dispatch transforms   |
+| Vanilla behaviour facades  | `BehaviourFacade` — dispatch facade from any existing `@behaviour` module     |
+| Dynamic facades            | `DynamicFacade` — Mimic-style bytecode shim, module becomes ad-hoc contract   |
+| Zero-cost static dispatch  | Inlined direct calls in production — no overhead vs calling the impl directly |
+| Generated `@spec` + `@doc` | LSP-friendly on `defcallback` and `BehaviourFacade` facades                   |
+| Standard `@behaviour`      | All contracts are Mox-compatible — `@behaviour` + `@callback`                 |
 
 ### Test doubles
 
-| Feature                            | Description                                                                |
-|------------------------------------|----------------------------------------------------------------------------|
-| Mox-style expect/stub              | `DoubleDown.Double` — ordered expectations, call counting, `verify!`      |
-| Stateful fakes                     | In-memory state with atomic updates via NimbleOwnership                    |
-| Expect + fake composition          | Layer expects over a stateful fake for failure simulation                  |
-| `:passthrough` expects             | Count calls without changing behaviour                                     |
-| Transaction rollback               | `rollback/1` restores pre-transaction state in InMemory fakes              |
-| Dispatch logging                   | Record `{contract, op, args, result}` for every call                       |
-| Structured log matching            | `DoubleDown.Log` — pattern-match on logged results                         |
-| Async-safe                         | Process-scoped isolation via NimbleOwnership, `async: true` out of the box |
+| Feature                   | Description                                                                |
+|---------------------------|----------------------------------------------------------------------------|
+| Mox-style expect/stub     | `DoubleDown.Double` — ordered expectations, call counting, `verify!`       |
+| Stateful fakes            | In-memory state with atomic updates via NimbleOwnership                    |
+| Expect + fake composition | Layer expects over a stateful fake for failure simulation                  |
+| `:passthrough` expects    | Count calls without changing behaviour                                     |
+| Transaction rollback      | `rollback/1` restores pre-transaction state in InMemory fakes              |
+| Dispatch logging          | Record `{contract, op, args, result}` for every call                       |
+| Structured log matching   | `DoubleDown.Log` — pattern-match on logged results                         |
+| Async-safe                | Process-scoped isolation via NimbleOwnership, `async: true` out of the box |
 
 ### Built-in Ecto Repo
 
 Full `Ecto.Repo` contract (`DoubleDown.Repo`) with three test doubles:
 
-| Double | Type | Best for |
-|------|------|----------|
-| `Repo.Stub` | Stateless stub | Fire-and-forget writes, canned read responses |
-| `Repo.InMemory` | Closed-world fake | Full in-memory store; all bare-schema reads; ExMachina factories |
-| `Repo.OpenInMemory` | Open-world fake | PK-based read-after-write; fallback for other reads |
+| Double              | Type              | Best for                                                         |
+|---------------------|-------------------|------------------------------------------------------------------|
+| `Repo.Stub`         | Stateless stub    | Fire-and-forget writes, canned read responses                    |
+| `Repo.InMemory`     | Closed-world fake | Full in-memory store; all bare-schema reads; ExMachina factories |
+| `Repo.OpenInMemory` | Open-world fake   | PK-based read-after-write; fallback for other reads              |
 
 All three support `Ecto.Multi` transactions with rollback, PK
 autogeneration, changeset validation, timestamps, and both changeset
