@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.46.1]
+
+### Fixed
+
+- FK backfill now explicitly skips `%Ecto.Association.NotLoaded{}`
+  associations rather than relying on `Map.get` returning nil.
+  Defensive fix for a reported FK backfill failure via the ExMachina
+  `insert!` path.
+
+- Added integration test for `insert!` bare struct through the
+  `Double.fake` facade dispatch path to verify FK backfill works
+  end-to-end.
+
 ## [0.46.0]
 
 ### Added
@@ -1023,7 +1036,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `DoubleDown.Testing` with NimbleOwnership, `Repo.Test` stateless
   adapter, CI setup, Credo, Dialyzer.
 
-[Unreleased]: https://github.com/mccraigmccraig/double_down/compare/v0.46.0...HEAD
+[Unreleased]: https://github.com/mccraigmccraig/double_down/compare/v0.46.1...HEAD
+[0.46.1]: https://github.com/mccraigmccraig/double_down/compare/v0.46.0...v0.46.1
 [0.46.0]: https://github.com/mccraigmccraig/double_down/compare/v0.45.0...v0.46.0
 [0.45.0]: https://github.com/mccraigmccraig/double_down/compare/v0.44.0...v0.45.0
 [0.44.0]: https://github.com/mccraigmccraig/double_down/compare/v0.43.0...v0.44.0
