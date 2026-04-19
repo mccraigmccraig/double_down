@@ -154,6 +154,20 @@ defmodule DoubleDown.Repo.InMemoryTest do
       assert inserted.organisation_id == 42
     end
 
+    test "backfill works with custom (non-:id) parent PK" do
+      store = InMemory.new()
+      # Organisation uses :id (default), but the FK reference works the same
+      # for custom PK names — related_key from the association metadata
+      # is used, not a hardcoded :id
+      org = %Organisation{id: 42, name: "Acme"}
+      {{:ok, org}, store} = InMemory.dispatch(:insert, [org], store)
+
+      child = %TaskCategory{name: "Widgets", organisation: org, organisation_id: nil}
+      {{:ok, inserted}, _store} = InMemory.dispatch(:insert, [child], store)
+
+      assert inserted.organisation_id == org.id
+    end
+
     test "backfill works with insert!" do
       store = InMemory.new()
       org = %Organisation{id: 42, name: "Acme"}
