@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.46.2]
+
+### Fixed
+
+- Added test coverage for FK backfill with parent struct returned
+  from a prior insert (the exact ExMachina factory pattern). Confirms
+  backfill correctly uses `related_key` from association metadata,
+  not a hardcoded `:id` field.
+
 ## [0.46.1]
 
 ### Fixed
@@ -1036,7 +1045,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `DoubleDown.Testing` with NimbleOwnership, `Repo.Test` stateless
   adapter, CI setup, Credo, Dialyzer.
 
-[Unreleased]: https://github.com/mccraigmccraig/double_down/compare/v0.46.1...HEAD
+[Unreleased]: https://github.com/mccraigmccraig/double_down/compare/v0.46.2...HEAD
+[0.46.2]: https://github.com/mccraigmccraig/double_down/compare/v0.46.1...v0.46.2
 [0.46.1]: https://github.com/mccraigmccraig/double_down/compare/v0.46.0...v0.46.1
 [0.46.0]: https://github.com/mccraigmccraig/double_down/compare/v0.45.0...v0.46.0
 [0.45.0]: https://github.com/mccraigmccraig/double_down/compare/v0.44.0...v0.45.0
