@@ -102,8 +102,13 @@ if Code.ensure_loaded?(Ecto) do
 
     defp do_insert(record, action, store) do
       alias DoubleDown.Repo.Impl.Autogenerate
+      alias DoubleDown.Repo.Impl.EctoParity
 
-      record = Autogenerate.apply_timestamps(record, action)
+      record =
+        record
+        |> EctoParity.backfill_foreign_keys()
+        |> Autogenerate.apply_timestamps(action)
+
       schema = record.__struct__
 
       case Autogenerate.maybe_autogenerate_id(record, schema, fn s ->

@@ -29,6 +29,23 @@ defmodule DoubleDown.Repo.InMemoryTest do
     end
   end
 
+  defmodule Organisation do
+    use Ecto.Schema
+
+    schema "organisations" do
+      field(:name, :string)
+    end
+  end
+
+  defmodule TaskCategory do
+    use Ecto.Schema
+
+    schema "task_categories" do
+      field(:name, :string)
+      belongs_to(:organisation, Organisation)
+    end
+  end
+
   # -------------------------------------------------------------------
   # Write operations
   # -------------------------------------------------------------------
@@ -79,6 +96,72 @@ defmodule DoubleDown.Repo.InMemoryTest do
 
       {found, _} = InMemory.dispatch(:get, [User, 1], store)
       assert found == nil
+    end
+  end
+
+  # -------------------------------------------------------------------
+  # FK backfill on insert
+  # -------------------------------------------------------------------
+
+  describe "FK backfill" do
+    test "belongs_to FK is backfilled from loaded association struct" do
+      store = InMemory.new()
+      org = %Organisation{id: 42, name: "Acme"}
+
+      # Insert with association struct but no FK set
+      record = %TaskCategory{name: "Widgets", organisation: org, organisation_id: nil}
+      {{:ok, inserted}, store} = InMemory.dispatch(:insert, [record], store)
+
+      # FK should have been backfilled from the association
+      assert inserted.organisation_id == 42
+
+      # Should be findable by FK
+      {found, _} = InMemory.dispatch(:get_by, [TaskCategory, [organisation_id: 42]], store)
+      assert found.name == "Widgets"
+    end
+
+    test "explicit FK is preserved (not overwritten by association)" do
+      store = InMemory.new()
+      org = %Organisation{id: 42, name: "Acme"}
+
+      # Insert with both FK and association set — FK takes precedence
+      record = %TaskCategory{name: "Widgets", organisation: org, organisation_id: 99}
+      {{:ok, inserted}, _store} = InMemory.dispatch(:insert, [record], store)
+
+      assert inserted.organisation_id == 99
+    end
+
+    test "no backfill when association is not loaded" do
+      store = InMemory.new()
+
+      # Insert with no association loaded
+      record = %TaskCategory{name: "Widgets", organisation_id: nil}
+      {{:ok, inserted}, _store} = InMemory.dispatch(:insert, [record], store)
+
+      assert inserted.organisation_id == nil
+    end
+
+    test "backfill works with changeset insert" do
+      store = InMemory.new()
+      org = %Organisation{id: 42, name: "Acme"}
+
+      cs =
+        %TaskCategory{organisation: org}
+        |> Ecto.Changeset.cast(%{name: "Widgets"}, [:name])
+
+      {{:ok, inserted}, _store} = InMemory.dispatch(:insert, [cs], store)
+
+      assert inserted.organisation_id == 42
+    end
+
+    test "backfill works with insert!" do
+      store = InMemory.new()
+      org = %Organisation{id: 42, name: "Acme"}
+
+      record = %TaskCategory{name: "Widgets", organisation: org, organisation_id: nil}
+      {inserted, _store} = InMemory.dispatch(:insert!, [record], store)
+
+      assert inserted.organisation_id == 42
     end
   end
 
