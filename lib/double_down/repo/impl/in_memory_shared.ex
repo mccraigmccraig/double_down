@@ -107,6 +107,7 @@ if Code.ensure_loaded?(Ecto) do
       record =
         record
         |> EctoParity.backfill_foreign_keys()
+        |> EctoParity.reset_associations()
         |> Autogenerate.apply_timestamps(action)
 
       schema = record.__struct__

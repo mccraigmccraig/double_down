@@ -49,5 +49,28 @@ if Code.ensure_loaded?(Ecto) do
           record
       end
     end
+
+    # -------------------------------------------------------------------
+    # Association reset
+    # -------------------------------------------------------------------
+
+    @doc false
+    @spec reset_associations(struct()) :: struct()
+    def reset_associations(%{__struct__: schema} = record) do
+      if function_exported?(schema, :__schema__, 1) do
+        schema.__schema__(:associations)
+        |> Enum.reduce(record, fn assoc_name, acc ->
+          assoc = schema.__schema__(:association, assoc_name)
+
+          Map.put(acc, assoc.field, %Ecto.Association.NotLoaded{
+            __field__: assoc.field,
+            __owner__: schema,
+            __cardinality__: assoc.cardinality
+          })
+        end)
+      else
+        record
+      end
+    end
   end
 end

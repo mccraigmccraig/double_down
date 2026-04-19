@@ -166,6 +166,54 @@ defmodule DoubleDown.Repo.InMemoryTest do
   end
 
   # -------------------------------------------------------------------
+  # Association reset on insert
+  # -------------------------------------------------------------------
+
+  describe "association reset" do
+    test "associations are reset to NotLoaded after insert" do
+      store = InMemory.new()
+      org = %Organisation{id: 42, name: "Acme"}
+
+      record = %TaskCategory{name: "Widgets", organisation: org, organisation_id: nil}
+      {{:ok, inserted}, _store} = InMemory.dispatch(:insert, [record], store)
+
+      # FK was backfilled
+      assert inserted.organisation_id == 42
+
+      # Association was reset to NotLoaded
+      assert %Ecto.Association.NotLoaded{} = inserted.organisation
+      assert inserted.organisation.__field__ == :organisation
+      assert inserted.organisation.__owner__ == TaskCategory
+      assert inserted.organisation.__cardinality__ == :one
+    end
+
+    test "stored record has NotLoaded associations" do
+      store = InMemory.new()
+      org = %Organisation{id: 42, name: "Acme"}
+
+      record = %TaskCategory{name: "Widgets", organisation: org, organisation_id: nil}
+      {{:ok, inserted}, store} = InMemory.dispatch(:insert, [record], store)
+
+      # Reading back from the store also has NotLoaded
+      {found, _} = InMemory.dispatch(:get, [TaskCategory, inserted.id], store)
+      assert %Ecto.Association.NotLoaded{} = found.organisation
+    end
+
+    test "struct equality works after insert (matching Ecto behaviour)" do
+      store = InMemory.new()
+      org = %Organisation{id: 42, name: "Acme"}
+
+      record = %TaskCategory{name: "Widgets", organisation: org, organisation_id: nil}
+      {{:ok, inserted}, store} = InMemory.dispatch(:insert, [record], store)
+
+      {found, _} = InMemory.dispatch(:get, [TaskCategory, inserted.id], store)
+
+      # The inserted record and the read-back record should be equal
+      assert inserted == found
+    end
+  end
+
+  # -------------------------------------------------------------------
   # Bang write operations
   # -------------------------------------------------------------------
 
