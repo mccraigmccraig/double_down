@@ -663,6 +663,22 @@ defmodule DoubleDown.Repo.InMemoryTest do
       assert nil == DoubleDown.Test.Repo.get(User, 999)
     end
 
+    test "insert! bare struct through facade backfills FK" do
+      DoubleDown.Double.fake(DoubleDown.Repo, InMemory)
+
+      org = DoubleDown.Test.Repo.insert!(%Organisation{name: "Acme"})
+
+      child =
+        DoubleDown.Test.Repo.insert!(%TaskCategory{
+          name: "Widgets",
+          organisation: org,
+          organisation_id: nil
+        })
+
+      assert child.organisation_id == org.id
+      assert child.organisation_id != nil
+    end
+
     test "layering expects over InMemory" do
       DoubleDown.Double.fake(DoubleDown.Repo, InMemory)
 

@@ -40,12 +40,16 @@ if Code.ensure_loaded?(Ecto) do
       fk_value = Map.get(record, fk_field)
 
       case {assoc_value, fk_value} do
+        {%Ecto.Association.NotLoaded{}, _} ->
+          # Association not loaded — leave as-is
+          record
+
         {%{__struct__: _} = parent, nil} ->
-          # Association is loaded but FK is nil — copy parent's PK
+          # Association is loaded and FK is nil — copy parent's PK
           Map.put(record, fk_field, Map.get(parent, pk_field))
 
         _ ->
-          # FK already set, or association not loaded — leave as-is
+          # FK already set, or no association value — leave as-is
           record
       end
     end
