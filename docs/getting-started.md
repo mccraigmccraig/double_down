@@ -2,12 +2,16 @@
 
 [Up: README](../README.md) | [Testing >](testing.md)
 
-DoubleDown generates Mox-compatible contract behaviours and dispatch
-facades from `defcallback` declarations — less boilerplate, always in
-sync. The test double system goes beyond Mox with stateful fakes and
-structured log assertions, making it easy to introduce boundaries
-into existing code and realistic to test Ecto-heavy domain logic without
-a database.
+DoubleDown helps you define contract boundaries — new ones with zero
+boilerplate via `defcallback`, or from existing `@behaviour` modules
+and even arbitrary modules via bytecode interception. All three
+routes produce the same dispatch facade and support the same test
+double API: stateful fakes with transaction rollback, ExMachina
+factory integration, structured log assertions, and expects layered
+over fakes for failure simulation. The built-in Ecto Repo fakes
+are powerful enough to act as a DB-free replacement for the Ecto
+sandbox, running tests >250x faster and enabling property-based
+testing of Ecto code.
 
 ## Terminology
 
