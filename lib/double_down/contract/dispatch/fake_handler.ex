@@ -6,7 +6,7 @@ defmodule DoubleDown.Contract.Dispatch.FakeHandler do
   name in `DoubleDown.Double.fake/2..4`:
 
       # Instead of:
-      Double.fake(Repo, &Repo.OpenInMemory.dispatch/3, Repo.OpenInMemory.new())
+      Double.fake(Repo, &Repo.OpenInMemory.dispatch/4, Repo.OpenInMemory.new())
 
       # Write:
       Double.fake(Repo, Repo.OpenInMemory)
@@ -14,11 +14,11 @@ defmodule DoubleDown.Contract.Dispatch.FakeHandler do
   ## Callbacks
 
     * `new/2` — build initial state from seed data and options
-    * `dispatch/3` — stateful handler `(operation, args, state) -> {result, new_state}`
-    * `dispatch/4` — stateful handler with cross-contract state access
+    * `dispatch/4` — stateful handler `(contract, operation, args, state) -> {result, new_state}`
+    * `dispatch/5` — stateful handler with cross-contract state access
 
-  Implement either `dispatch/3` or `dispatch/4` (or both). When both
-  are implemented, `dispatch/4` takes priority.
+  Implement either `dispatch/4` or `dispatch/5` (or both). When both
+  are implemented, `dispatch/5` takes priority.
 
   ## Example
 
@@ -29,8 +29,8 @@ defmodule DoubleDown.Contract.Dispatch.FakeHandler do
         def new(seed, _opts), do: seed
 
         @impl true
-        def dispatch(:get, [id], state), do: {Map.get(state, id), state}
-        def dispatch(:put, [id, val], state), do: {:ok, Map.put(state, id, val)}
+        def dispatch(_contract, :get, [id], state), do: {Map.get(state, id), state}
+        def dispatch(_contract, :put, [id, val], state), do: {:ok, Map.put(state, id, val)}
       end
   """
 
@@ -48,20 +48,31 @@ defmodule DoubleDown.Contract.Dispatch.FakeHandler do
   @doc """
   Stateful dispatch handler.
 
-  Receives the operation name, argument list, and current state.
-  Returns `{result, new_state}`.
+  Receives the contract module, operation name, argument list, and
+  current state. Returns `{result, new_state}`.
   """
-  @callback dispatch(operation :: atom(), args :: [term()], state :: term()) ::
+  @callback dispatch(
+              contract :: module(),
+              operation :: atom(),
+              args :: [term()],
+              state :: term()
+            ) ::
               {term(), term()}
 
   @doc """
   Stateful dispatch handler with cross-contract state access.
 
-  Same as `dispatch/3` but receives a read-only snapshot of all
-  contract states as the 4th argument.
+  Same as `dispatch/4` but receives a read-only snapshot of all
+  contract states as the 5th argument.
   """
-  @callback dispatch(operation :: atom(), args :: [term()], state :: term(), all_states :: map()) ::
+  @callback dispatch(
+              contract :: module(),
+              operation :: atom(),
+              args :: [term()],
+              state :: term(),
+              all_states :: map()
+            ) ::
               {term(), term()}
 
-  @optional_callbacks [dispatch: 3, dispatch: 4]
+  @optional_callbacks [dispatch: 4, dispatch: 5]
 end

@@ -138,7 +138,7 @@ DoubleDown.Double.fake(DoubleDown.Repo, DoubleDown.Repo.InMemory,
 
 # 3-arity function fake (equivalent to FakeHandler)
 DoubleDown.Double.fake(DoubleDown.Repo,
-  &DoubleDown.Repo.InMemory.dispatch/3,
+  &DoubleDown.Repo.InMemory.dispatch/4,
   DoubleDown.Repo.InMemory.new())
 ```
 

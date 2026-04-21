@@ -77,7 +77,7 @@ defmodule DoubleDown.Double do
 
       # First insert fails, rest go through InMemory
       DoubleDown.Repo
-      |> DoubleDown.Double.fake(&Repo.OpenInMemory.dispatch/3, Repo.OpenInMemory.new())
+      |> DoubleDown.Double.fake(&Repo.OpenInMemory.dispatch/4, Repo.OpenInMemory.new())
       |> DoubleDown.Double.expect(:insert, fn [changeset] ->
         {:error, Ecto.Changeset.add_error(changeset, :email, "taken")}
       end)
@@ -131,7 +131,7 @@ defmodule DoubleDown.Double do
   ## Multi-contract
 
       DoubleDown.Repo
-      |> DoubleDown.Double.fake(&Repo.OpenInMemory.dispatch/3, Repo.OpenInMemory.new())
+      |> DoubleDown.Double.fake(&Repo.OpenInMemory.dispatch/4, Repo.OpenInMemory.new())
       |> DoubleDown.Double.expect(:insert, fn [cs] -> {:error, :taken} end)
 
       QueriesContract
@@ -174,7 +174,7 @@ defmodule DoubleDown.Double do
   the state and decide whether to handle the call or delegate:
 
       DoubleDown.Repo
-      |> Double.fake(&Repo.OpenInMemory.dispatch/3, Repo.OpenInMemory.new())
+      |> Double.fake(&Repo.OpenInMemory.dispatch/4, Repo.OpenInMemory.new())
       |> Double.expect(:insert, fn [changeset], state ->
         if duplicate?(state, changeset) do
           {{:error, add_error(changeset, :email, "taken")}, state}
@@ -442,7 +442,7 @@ defmodule DoubleDown.Double do
   ## FakeHandler module (recommended for stateful fakes)
 
   A module implementing `DoubleDown.Contract.Dispatch.FakeHandler`. The module's
-  `new/2` builds initial state, and its `dispatch/3` or `dispatch/4`
+  `new/2` builds initial state, and its `dispatch/4` or `dispatch/5`
   handles operations:
 
       # Default state
@@ -540,7 +540,7 @@ defmodule DoubleDown.Double do
       To use a module with Double.fake/3..4, it must implement:
         @behaviour DoubleDown.Contract.Dispatch.FakeHandler
         @callback new(seed, opts) :: state
-        @callback dispatch(operation, args, state) :: {result, new_state}
+        @callback dispatch(contract, operation, args, state) :: {result, new_state}
       """
     end
 
@@ -561,11 +561,11 @@ defmodule DoubleDown.Double do
       implements_behaviour?(module, DoubleDown.Contract.Dispatch.FakeHandler)
   end
 
-  # Prefer dispatch/4 (cross-contract) over dispatch/3
+  # Prefer dispatch/5 (cross-contract) over dispatch/4
   defp resolve_fake_dispatch(module) do
     cond do
+      function_exported?(module, :dispatch, 5) -> &module.dispatch/5
       function_exported?(module, :dispatch, 4) -> &module.dispatch/4
-      function_exported?(module, :dispatch, 3) -> &module.dispatch/3
     end
   end
 
@@ -887,10 +887,10 @@ defmodule DoubleDown.Double do
 
   defp invoke_stateful_fallback(fallback_fn, state, operation, args, all_states) do
     handler_result =
-      if is_function(fallback_fn, 4) do
-        fallback_fn.(operation, args, state.fallback_state, all_states)
+      if is_function(fallback_fn, 5) do
+        fallback_fn.(state.contract, operation, args, state.fallback_state, all_states)
       else
-        fallback_fn.(operation, args, state.fallback_state)
+        fallback_fn.(state.contract, operation, args, state.fallback_state)
       end
 
     case handler_result do

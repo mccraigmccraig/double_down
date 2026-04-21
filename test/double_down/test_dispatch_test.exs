@@ -493,7 +493,7 @@ defmodule DoubleDown.TestDispatchTest do
       # Set up Repo with InMemory — insert a user
       DoubleDown.Testing.set_stateful_handler(
         Repo,
-        &Repo.OpenInMemory.dispatch/3,
+        &Repo.OpenInMemory.dispatch/4,
         Repo.OpenInMemory.new()
       )
 

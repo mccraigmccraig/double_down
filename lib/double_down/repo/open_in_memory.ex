@@ -148,7 +148,7 @@ if Code.ensure_loaded?(Ecto) do
     or `DoubleDown.Double.fake/2..4`.
 
     Handles all `DoubleDown.Repo` operations. The function signature is
-    `(operation, args, store) -> {result, new_store}`.
+    `(contract, operation, args, store) -> {result, new_store}`.
 
     Write operations are handled directly by the state. PK-based reads check
     the state first, then fall through to the fallback function. All other
@@ -156,34 +156,34 @@ if Code.ensure_loaded?(Ecto) do
     or the fallback doesn't handle the operation, an error is raised.
     """
     @impl DoubleDown.Contract.Dispatch.FakeHandler
-    @spec dispatch(atom(), list(), store()) :: {term(), store()}
+    @spec dispatch(module(), atom(), list(), store()) :: {term(), store()}
 
     # -----------------------------------------------------------------
     # Write operations — delegate to Shared
     # -----------------------------------------------------------------
 
-    def dispatch(:insert, [changeset], store),
+    def dispatch(_contract, :insert, [changeset], store),
       do: InMemoryShared.dispatch_insert([changeset], store)
 
-    def dispatch(:update, [changeset], store),
+    def dispatch(_contract, :update, [changeset], store),
       do: InMemoryShared.dispatch_update([changeset], store)
 
-    def dispatch(:delete, [record], store), do: InMemoryShared.dispatch_delete([record], store)
+    def dispatch(_contract, :delete, [record], store), do: InMemoryShared.dispatch_delete([record], store)
 
-    def dispatch(:insert!, [changeset], store),
+    def dispatch(_contract, :insert!, [changeset], store),
       do: InMemoryShared.dispatch_insert!([changeset], store)
 
-    def dispatch(:update!, [changeset], store),
+    def dispatch(_contract, :update!, [changeset], store),
       do: InMemoryShared.dispatch_update!([changeset], store)
 
-    def dispatch(:delete!, [record], store),
+    def dispatch(_contract, :delete!, [record], store),
       do: InMemoryShared.dispatch_delete!([record], store)
 
     # -----------------------------------------------------------------
     # PK reads — 3-stage: state -> fallback -> error
     # -----------------------------------------------------------------
 
-    def dispatch(:get, [queryable, id] = args, store) do
+    def dispatch(_contract, :get, [queryable, id] = args, store) do
       schema = InMemoryShared.extract_schema(queryable)
 
       case InMemoryShared.get_record(store, schema, id) do
@@ -192,7 +192,7 @@ if Code.ensure_loaded?(Ecto) do
       end
     end
 
-    def dispatch(:get!, [queryable, id] = args, store) do
+    def dispatch(_contract, :get!, [queryable, id] = args, store) do
       schema = InMemoryShared.extract_schema(queryable)
 
       case InMemoryShared.get_record(store, schema, id) do
@@ -205,60 +205,60 @@ if Code.ensure_loaded?(Ecto) do
     # Opts-accepting variants — strip opts, delegate to base arity.
     # -----------------------------------------------------------------
 
-    def dispatch(:insert, [changeset, _opts], store),
-      do: dispatch(:insert, [changeset], store)
+    def dispatch(contract, :insert, [changeset, _opts], store),
+      do: dispatch(contract, :insert, [changeset], store)
 
-    def dispatch(:update, [changeset, _opts], store),
-      do: dispatch(:update, [changeset], store)
+    def dispatch(contract, :update, [changeset, _opts], store),
+      do: dispatch(contract, :update, [changeset], store)
 
-    def dispatch(:delete, [record, _opts], store),
-      do: dispatch(:delete, [record], store)
+    def dispatch(contract, :delete, [record, _opts], store),
+      do: dispatch(contract, :delete, [record], store)
 
-    def dispatch(:insert!, [changeset, _opts], store),
-      do: dispatch(:insert!, [changeset], store)
+    def dispatch(contract, :insert!, [changeset, _opts], store),
+      do: dispatch(contract, :insert!, [changeset], store)
 
-    def dispatch(:update!, [changeset, _opts], store),
-      do: dispatch(:update!, [changeset], store)
+    def dispatch(contract, :update!, [changeset, _opts], store),
+      do: dispatch(contract, :update!, [changeset], store)
 
-    def dispatch(:delete!, [record, _opts], store),
-      do: dispatch(:delete!, [record], store)
+    def dispatch(contract, :delete!, [record, _opts], store),
+      do: dispatch(contract, :delete!, [record], store)
 
-    def dispatch(:get, [queryable, id, _opts], store),
-      do: dispatch(:get, [queryable, id], store)
+    def dispatch(contract, :get, [queryable, id, _opts], store),
+      do: dispatch(contract, :get, [queryable, id], store)
 
-    def dispatch(:get!, [queryable, id, _opts], store),
-      do: dispatch(:get!, [queryable, id], store)
+    def dispatch(contract, :get!, [queryable, id, _opts], store),
+      do: dispatch(contract, :get!, [queryable, id], store)
 
-    def dispatch(:get_by, [queryable, clauses, _opts], store),
-      do: dispatch(:get_by, [queryable, clauses], store)
+    def dispatch(contract, :get_by, [queryable, clauses, _opts], store),
+      do: dispatch(contract, :get_by, [queryable, clauses], store)
 
-    def dispatch(:get_by!, [queryable, clauses, _opts], store),
-      do: dispatch(:get_by!, [queryable, clauses], store)
+    def dispatch(contract, :get_by!, [queryable, clauses, _opts], store),
+      do: dispatch(contract, :get_by!, [queryable, clauses], store)
 
-    def dispatch(:one, [queryable, _opts], store),
-      do: dispatch(:one, [queryable], store)
+    def dispatch(contract, :one, [queryable, _opts], store),
+      do: dispatch(contract, :one, [queryable], store)
 
-    def dispatch(:one!, [queryable, _opts], store),
-      do: dispatch(:one!, [queryable], store)
+    def dispatch(contract, :one!, [queryable, _opts], store),
+      do: dispatch(contract, :one!, [queryable], store)
 
-    def dispatch(:all, [queryable, _opts], store),
-      do: dispatch(:all, [queryable], store)
+    def dispatch(contract, :all, [queryable, _opts], store),
+      do: dispatch(contract, :all, [queryable], store)
 
-    def dispatch(:exists?, [queryable, _opts], store),
-      do: dispatch(:exists?, [queryable], store)
+    def dispatch(contract, :exists?, [queryable, _opts], store),
+      do: dispatch(contract, :exists?, [queryable], store)
 
-    def dispatch(:aggregate, [queryable, aggregate, field, _opts], store),
-      do: dispatch(:aggregate, [queryable, aggregate, field], store)
+    def dispatch(contract, :aggregate, [queryable, aggregate, field, _opts], store),
+      do: dispatch(contract, :aggregate, [queryable, aggregate, field], store)
 
     # -----------------------------------------------------------------
     # get_by / get_by! — 3-stage when clauses include PK, else fallback
     # -----------------------------------------------------------------
 
-    def dispatch(:get_by, [queryable, clauses] = args, store) do
+    def dispatch(_contract, :get_by, [queryable, clauses] = args, store) do
       dispatch_get_by(:get_by, queryable, clauses, args, store)
     end
 
-    def dispatch(:get_by!, [queryable, clauses] = args, store) do
+    def dispatch(_contract, :get_by!, [queryable, clauses] = args, store) do
       dispatch_get_by(:get_by!, queryable, clauses, args, store)
     end
 
@@ -266,28 +266,28 @@ if Code.ensure_loaded?(Ecto) do
     # Non-PK reads — always fallback (open-world)
     # -----------------------------------------------------------------
 
-    def dispatch(:one, args, store), do: dispatch_via_fallback(:one, args, store)
-    def dispatch(:one!, args, store), do: dispatch_via_fallback(:one!, args, store)
-    def dispatch(:all, args, store), do: dispatch_via_fallback(:all, args, store)
-    def dispatch(:exists?, args, store), do: dispatch_via_fallback(:exists?, args, store)
-    def dispatch(:aggregate, args, store), do: dispatch_via_fallback(:aggregate, args, store)
+    def dispatch(_contract, :one, args, store), do: dispatch_via_fallback(:one, args, store)
+    def dispatch(_contract, :one!, args, store), do: dispatch_via_fallback(:one!, args, store)
+    def dispatch(_contract, :all, args, store), do: dispatch_via_fallback(:all, args, store)
+    def dispatch(_contract, :exists?, args, store), do: dispatch_via_fallback(:exists?, args, store)
+    def dispatch(_contract, :aggregate, args, store), do: dispatch_via_fallback(:aggregate, args, store)
 
     # -----------------------------------------------------------------
     # Bulk operations — always fallback (open-world)
     # -----------------------------------------------------------------
 
-    def dispatch(:insert_all, args, store), do: dispatch_via_fallback(:insert_all, args, store)
-    def dispatch(:update_all, args, store), do: dispatch_via_fallback(:update_all, args, store)
-    def dispatch(:delete_all, args, store), do: dispatch_via_fallback(:delete_all, args, store)
+    def dispatch(_contract, :insert_all, args, store), do: dispatch_via_fallback(:insert_all, args, store)
+    def dispatch(_contract, :update_all, args, store), do: dispatch_via_fallback(:update_all, args, store)
+    def dispatch(_contract, :delete_all, args, store), do: dispatch_via_fallback(:delete_all, args, store)
 
     # -----------------------------------------------------------------
     # Transaction operations — delegate to Shared
     # -----------------------------------------------------------------
 
-    def dispatch(:transact, args, store),
-      do: InMemoryShared.dispatch_transact(args, store, DoubleDown.Repo)
+    def dispatch(contract, :transact, args, store),
+      do: InMemoryShared.dispatch_transact(args, store, contract)
 
-    def dispatch(:rollback, args, store), do: InMemoryShared.dispatch_rollback(args, store)
+    def dispatch(_contract, :rollback, args, store), do: InMemoryShared.dispatch_rollback(args, store)
 
     # -----------------------------------------------------------------
     # get_by PK-inclusive dispatch (open-world)

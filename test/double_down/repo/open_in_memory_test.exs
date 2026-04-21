@@ -124,10 +124,10 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
   end
 
   # -------------------------------------------------------------------
-  # Direct dispatch/3 unit tests
+  # Direct dispatch/4 unit tests
   # -------------------------------------------------------------------
 
-  describe "dispatch/3: insert with invalid changeset" do
+  describe "dispatch/4: insert with invalid changeset" do
     test "returns {:error, changeset} and leaves store unchanged" do
       store = Repo.OpenInMemory.new()
 
@@ -137,7 +137,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
         |> Ecto.Changeset.add_error(:name, "is invalid")
 
       assert {{:error, %Ecto.Changeset{valid?: false}}, ^store} =
-               Repo.OpenInMemory.dispatch(:insert, [cs], store)
+               Repo.OpenInMemory.dispatch(DoubleDown.Repo, :insert, [cs], store)
     end
 
     test "does not auto-assign id" do
@@ -148,14 +148,14 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
         |> Ecto.Changeset.cast(%{name: "Alice"}, [:name])
         |> Ecto.Changeset.add_error(:name, "is invalid")
 
-      {{:error, changeset}, _store} = Repo.OpenInMemory.dispatch(:insert, [cs], store)
+      {{:error, changeset}, _store} = Repo.OpenInMemory.dispatch(DoubleDown.Repo, :insert, [cs], store)
       assert changeset.changes == %{name: "Alice"}
       # No id was assigned — the changeset data still has nil id
       assert changeset.data.id == nil
     end
   end
 
-  describe "dispatch/3: update with invalid changeset" do
+  describe "dispatch/4: update with invalid changeset" do
     test "returns {:error, changeset} and leaves store unchanged" do
       alice = %User{id: 1, name: "Alice"}
       store = Repo.OpenInMemory.new(seed: [alice])
@@ -166,33 +166,33 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
         |> Ecto.Changeset.add_error(:name, "is invalid")
 
       assert {{:error, %Ecto.Changeset{valid?: false}}, new_store} =
-               Repo.OpenInMemory.dispatch(:update, [cs], store)
+               Repo.OpenInMemory.dispatch(DoubleDown.Repo, :update, [cs], store)
 
       # Store unchanged — original record still present
       assert new_store == store
     end
   end
 
-  describe "dispatch/3: insert with valid changeset" do
+  describe "dispatch/4: insert with valid changeset" do
     test "returns {:ok, record} and updates store" do
       store = Repo.OpenInMemory.new()
       cs = User.changeset(%{name: "Alice"})
 
       assert {{:ok, %User{name: "Alice", id: 1}}, new_store} =
-               Repo.OpenInMemory.dispatch(:insert, [cs], store)
+               Repo.OpenInMemory.dispatch(DoubleDown.Repo, :insert, [cs], store)
 
       assert %{User => %{1 => %User{name: "Alice"}}} = new_store
     end
   end
 
-  describe "dispatch/3: update with valid changeset" do
+  describe "dispatch/4: update with valid changeset" do
     test "returns {:ok, record} and updates store" do
       alice = %User{id: 1, name: "Alice"}
       store = Repo.OpenInMemory.new(seed: [alice])
       cs = User.changeset(alice, %{name: "Alicia"})
 
       assert {{:ok, %User{id: 1, name: "Alicia"}}, new_store} =
-               Repo.OpenInMemory.dispatch(:update, [cs], store)
+               Repo.OpenInMemory.dispatch(DoubleDown.Repo, :update, [cs], store)
 
       assert %{User => %{1 => %User{name: "Alicia"}}} = new_store
     end
@@ -257,7 +257,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
     setup do
       DoubleDown.Testing.set_stateful_handler(
         Repo,
-        &Repo.OpenInMemory.dispatch/3,
+        &Repo.OpenInMemory.dispatch/4,
         Repo.OpenInMemory.new()
       )
 
@@ -284,7 +284,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
 
       DoubleDown.Testing.set_stateful_handler(
         Repo,
-        &Repo.OpenInMemory.dispatch/3,
+        &Repo.OpenInMemory.dispatch/4,
         initial
       )
 
@@ -389,7 +389,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
     setup do
       DoubleDown.Testing.set_stateful_handler(
         Repo,
-        &Repo.OpenInMemory.dispatch/3,
+        &Repo.OpenInMemory.dispatch/4,
         Repo.OpenInMemory.new()
       )
 
@@ -479,7 +479,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
 
       DoubleDown.Testing.set_stateful_handler(
         Repo,
-        &Repo.OpenInMemory.dispatch/3,
+        &Repo.OpenInMemory.dispatch/4,
         initial
       )
 
@@ -505,7 +505,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
           fallback_fn: fn :get, [User, 99], _state -> bob end
         )
 
-      DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/3, state)
+      DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/4, state)
 
       # Found in state
       assert %User{id: 1, name: "Alice"} = TestRepo.get(User, 1)
@@ -517,7 +517,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
       state =
         Repo.OpenInMemory.new(fallback_fn: fn :get, [User, 42], _state -> nil end)
 
-      DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/3, state)
+      DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/4, state)
 
       assert_raise ArgumentError, ~r/InMemory cannot service :get/, fn ->
         TestRepo.get(User, 999)
@@ -543,7 +543,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
           fallback_fn: fn :get!, [User, 99], _state -> bob end
         )
 
-      DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/3, state)
+      DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/4, state)
 
       assert %User{id: 1, name: "Alice"} = TestRepo.get!(User, 1)
       assert ^bob = TestRepo.get!(User, 99)
@@ -558,7 +558,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
     test "get_by returns record from state when PK is in clauses" do
       alice = %User{id: 1, name: "Alice", email: "alice@example.com"}
       state = Repo.OpenInMemory.new(seed: [alice])
-      DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/3, state)
+      DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/4, state)
 
       assert %User{id: 1, name: "Alice"} = TestRepo.get_by(User, id: 1)
     end
@@ -566,7 +566,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
     test "get_by with PK and extra fields matching returns record" do
       alice = %User{id: 1, name: "Alice", email: "alice@example.com"}
       state = Repo.OpenInMemory.new(seed: [alice])
-      DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/3, state)
+      DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/4, state)
 
       assert %User{id: 1, name: "Alice"} = TestRepo.get_by(User, id: 1, name: "Alice")
     end
@@ -574,7 +574,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
     test "get_by with PK and extra fields not matching returns nil" do
       alice = %User{id: 1, name: "Alice", email: "alice@example.com"}
       state = Repo.OpenInMemory.new(seed: [alice])
-      DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/3, state)
+      DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/4, state)
 
       assert nil == TestRepo.get_by(User, id: 1, name: "NotAlice")
     end
@@ -588,7 +588,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
           fallback_fn: fn :get_by, [User, [id: 99]], _state -> bob end
         )
 
-      DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/3, state)
+      DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/4, state)
 
       # Found in state
       assert %User{id: 1, name: "Alice"} = TestRepo.get_by(User, id: 1)
@@ -598,7 +598,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
 
     test "get_by with PK raises when not in state and no fallback" do
       state = Repo.OpenInMemory.new(seed: [%User{id: 1, name: "Alice"}])
-      DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/3, state)
+      DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/4, state)
 
       assert_raise ArgumentError, ~r/InMemory cannot service :get_by/, fn ->
         TestRepo.get_by(User, id: 999)
@@ -608,7 +608,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
     test "get_by with PK works with map clauses" do
       alice = %User{id: 1, name: "Alice", email: "alice@example.com"}
       state = Repo.OpenInMemory.new(seed: [alice])
-      DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/3, state)
+      DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/4, state)
 
       assert %User{id: 1, name: "Alice"} = TestRepo.get_by(User, %{id: 1})
       assert %User{id: 1, name: "Alice"} = TestRepo.get_by(User, %{id: 1, name: "Alice"})
@@ -619,7 +619,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
       uuid = Ecto.UUID.generate()
       user = %BinaryIdUser{id: uuid, name: "Alice"}
       state = Repo.OpenInMemory.new(seed: [user])
-      DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/3, state)
+      DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/4, state)
 
       assert %BinaryIdUser{name: "Alice"} = TestRepo.get_by(BinaryIdUser, id: uuid)
     end
@@ -633,7 +633,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
           fallback_fn: fn :get_by, [User, [name: "Alice"]], _state -> alice end
         )
 
-      DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/3, state)
+      DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/4, state)
 
       assert %User{name: "Alice"} = TestRepo.get_by(User, name: "Alice")
     end
@@ -647,7 +647,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
           fallback_fn: fn :get_by, [^query, [name: "Alice"]], _state -> alice end
         )
 
-      DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/3, state)
+      DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/4, state)
 
       assert %User{name: "Alice"} = TestRepo.get_by(query, name: "Alice")
     end
@@ -655,7 +655,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
     test "get_by with composite PK returns record when all PK fields present" do
       membership = %CompositePkMembership{user_id: 1, org_id: 10, role: "admin"}
       state = Repo.OpenInMemory.new(seed: [membership])
-      DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/3, state)
+      DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/4, state)
 
       assert %CompositePkMembership{role: "admin"} =
                TestRepo.get_by(CompositePkMembership, user_id: 1, org_id: 10)
@@ -664,7 +664,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
     test "get_by with composite PK and extra fields matching" do
       membership = %CompositePkMembership{user_id: 1, org_id: 10, role: "admin"}
       state = Repo.OpenInMemory.new(seed: [membership])
-      DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/3, state)
+      DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/4, state)
 
       assert %CompositePkMembership{role: "admin"} =
                TestRepo.get_by(CompositePkMembership, user_id: 1, org_id: 10, role: "admin")
@@ -673,7 +673,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
     test "get_by with composite PK and extra fields not matching returns nil" do
       membership = %CompositePkMembership{user_id: 1, org_id: 10, role: "admin"}
       state = Repo.OpenInMemory.new(seed: [membership])
-      DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/3, state)
+      DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/4, state)
 
       assert nil ==
                TestRepo.get_by(CompositePkMembership, user_id: 1, org_id: 10, role: "member")
@@ -690,7 +690,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
           end
         )
 
-      DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/3, state)
+      DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/4, state)
 
       # Only one PK field — must delegate to fallback
       assert %CompositePkMembership{role: "admin"} =
@@ -702,7 +702,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
     test "get_by! returns record from state when PK is in clauses" do
       alice = %User{id: 1, name: "Alice"}
       state = Repo.OpenInMemory.new(seed: [alice])
-      DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/3, state)
+      DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/4, state)
 
       assert %User{id: 1, name: "Alice"} = TestRepo.get_by!(User, id: 1)
     end
@@ -713,14 +713,14 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
       state =
         Repo.OpenInMemory.new(fallback_fn: fn :get_by!, [User, [id: 99]], _state -> bob end)
 
-      DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/3, state)
+      DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/4, state)
 
       assert ^bob = TestRepo.get_by!(User, id: 99)
     end
 
     test "get_by! with PK raises when not in state and no fallback" do
       state = Repo.OpenInMemory.new()
-      DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/3, state)
+      DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/4, state)
 
       assert_raise ArgumentError, ~r/InMemory cannot service :get_by!/, fn ->
         TestRepo.get_by!(User, id: 999)
@@ -730,7 +730,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
     test "get_by! with PK and extra fields not matching returns nil" do
       alice = %User{id: 1, name: "Alice"}
       state = Repo.OpenInMemory.new(seed: [alice])
-      DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/3, state)
+      DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/4, state)
 
       # get_by! returns nil when PK found but extra fields don't match
       # (this mirrors get_by behaviour — the bang is about "no fallback", not "must find")
@@ -757,7 +757,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
           end
         )
 
-      DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/3, state)
+      DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/4, state)
 
       assert %User{name: "Alice"} = TestRepo.get_by(User, name: "Alice")
 
@@ -771,7 +771,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
     test "get_by raises without fallback" do
       DoubleDown.Testing.set_stateful_handler(
         Repo,
-        &Repo.OpenInMemory.dispatch/3,
+        &Repo.OpenInMemory.dispatch/4,
         Repo.OpenInMemory.new()
       )
 
@@ -786,7 +786,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
       state =
         Repo.OpenInMemory.new(fallback_fn: fn :get_by!, [User, [name: "Bob"]], _state -> bob end)
 
-      DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/3, state)
+      DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/4, state)
       assert %User{name: "Bob"} = TestRepo.get_by!(User, name: "Bob")
     end
 
@@ -796,14 +796,14 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
       state =
         Repo.OpenInMemory.new(fallback_fn: fn :one, [User], _state -> alice end)
 
-      DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/3, state)
+      DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/4, state)
       assert %User{name: "Alice"} = TestRepo.one(User)
     end
 
     test "one raises without fallback" do
       DoubleDown.Testing.set_stateful_handler(
         Repo,
-        &Repo.OpenInMemory.dispatch/3,
+        &Repo.OpenInMemory.dispatch/4,
         Repo.OpenInMemory.new()
       )
 
@@ -818,7 +818,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
       state =
         Repo.OpenInMemory.new(fallback_fn: fn :one!, [User], _state -> alice end)
 
-      DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/3, state)
+      DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/4, state)
       assert %User{name: "Alice"} = TestRepo.one!(User)
     end
 
@@ -828,7 +828,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
       state =
         Repo.OpenInMemory.new(fallback_fn: fn :all, [User], _state -> users end)
 
-      DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/3, state)
+      DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/4, state)
 
       result = TestRepo.all(User)
       assert length(result) == 2
@@ -838,7 +838,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
     test "all raises without fallback" do
       DoubleDown.Testing.set_stateful_handler(
         Repo,
-        &Repo.OpenInMemory.dispatch/3,
+        &Repo.OpenInMemory.dispatch/4,
         Repo.OpenInMemory.new()
       )
 
@@ -855,14 +855,14 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
           end
         )
 
-      DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/3, state)
+      DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/4, state)
       assert TestRepo.exists?(User) == true
     end
 
     test "exists? raises without fallback" do
       DoubleDown.Testing.set_stateful_handler(
         Repo,
-        &Repo.OpenInMemory.dispatch/3,
+        &Repo.OpenInMemory.dispatch/4,
         Repo.OpenInMemory.new()
       )
 
@@ -888,7 +888,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
           end
         )
 
-      DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/3, state)
+      DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/4, state)
 
       assert 3 = TestRepo.aggregate(User, :count, :id)
       assert 55 = TestRepo.aggregate(User, :sum, :age)
@@ -899,7 +899,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
     test "aggregate raises without fallback" do
       DoubleDown.Testing.set_stateful_handler(
         Repo,
-        &Repo.OpenInMemory.dispatch/3,
+        &Repo.OpenInMemory.dispatch/4,
         Repo.OpenInMemory.new()
       )
 
@@ -922,14 +922,14 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
           fallback_fn: fn :insert_all, [User, ^entries, []], _state -> {2, nil} end
         )
 
-      DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/3, state)
+      DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/4, state)
       assert {2, nil} = TestRepo.insert_all(User, entries, [])
     end
 
     test "insert_all raises without fallback" do
       DoubleDown.Testing.set_stateful_handler(
         Repo,
-        &Repo.OpenInMemory.dispatch/3,
+        &Repo.OpenInMemory.dispatch/4,
         Repo.OpenInMemory.new()
       )
 
@@ -942,14 +942,14 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
       state =
         Repo.OpenInMemory.new(fallback_fn: fn :delete_all, [User, []], _state -> {2, nil} end)
 
-      DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/3, state)
+      DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/4, state)
       assert {2, nil} = TestRepo.delete_all(User, [])
     end
 
     test "delete_all raises without fallback" do
       DoubleDown.Testing.set_stateful_handler(
         Repo,
-        &Repo.OpenInMemory.dispatch/3,
+        &Repo.OpenInMemory.dispatch/4,
         Repo.OpenInMemory.new()
       )
 
@@ -964,14 +964,14 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
           fallback_fn: fn :update_all, [User, [set: [name: "bulk"]], []], _state -> {3, nil} end
         )
 
-      DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/3, state)
+      DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/4, state)
       assert {3, nil} = TestRepo.update_all(User, [set: [name: "bulk"]], [])
     end
 
     test "update_all raises without fallback" do
       DoubleDown.Testing.set_stateful_handler(
         Repo,
-        &Repo.OpenInMemory.dispatch/3,
+        &Repo.OpenInMemory.dispatch/4,
         Repo.OpenInMemory.new()
       )
 
@@ -989,7 +989,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
     setup do
       DoubleDown.Testing.set_stateful_handler(
         Repo,
-        &Repo.OpenInMemory.dispatch/3,
+        &Repo.OpenInMemory.dispatch/4,
         Repo.OpenInMemory.new()
       )
 
@@ -1132,7 +1132,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
     setup do
       DoubleDown.Testing.set_stateful_handler(
         Repo,
-        &Repo.OpenInMemory.dispatch/3,
+        &Repo.OpenInMemory.dispatch/4,
         Repo.OpenInMemory.new()
       )
 
@@ -1175,7 +1175,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
     test "different schemas are stored independently (PK reads)" do
       DoubleDown.Testing.set_stateful_handler(
         Repo,
-        &Repo.OpenInMemory.dispatch/3,
+        &Repo.OpenInMemory.dispatch/4,
         Repo.OpenInMemory.new()
       )
 
@@ -1197,7 +1197,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
       bob = %User{id: 2, name: "Bob"}
       state = Repo.OpenInMemory.new(seed: [alice, bob])
 
-      DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/3, state)
+      DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/4, state)
 
       assert ^alice = TestRepo.get(User, 1)
       assert ^bob = TestRepo.get(User, 2)
@@ -1205,7 +1205,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
 
     test "can add to seeded state and read back by PK" do
       state = Repo.OpenInMemory.new(seed: [%User{id: 1, name: "Alice"}])
-      DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/3, state)
+      DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/4, state)
 
       {:ok, bob} = TestRepo.insert(User.changeset(%{name: "Bob"}))
       assert ^bob = TestRepo.get(User, bob.id)
@@ -1221,7 +1221,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
     test "logs write and PK read operations" do
       DoubleDown.Testing.set_stateful_handler(
         Repo,
-        &Repo.OpenInMemory.dispatch/3,
+        &Repo.OpenInMemory.dispatch/4,
         Repo.OpenInMemory.new()
       )
 
@@ -1245,7 +1245,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
 
       DoubleDown.Testing.set_stateful_handler(
         Repo,
-        &Repo.OpenInMemory.dispatch/3,
+        &Repo.OpenInMemory.dispatch/4,
         Repo.OpenInMemory.new(fallback_fn: fn :all, [User], _state -> users end)
       )
 
@@ -1261,7 +1261,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
     test "1-arity transact logs inner facade calls made from the transaction function" do
       DoubleDown.Testing.set_stateful_handler(
         Repo,
-        &Repo.OpenInMemory.dispatch/3,
+        &Repo.OpenInMemory.dispatch/4,
         Repo.OpenInMemory.new()
       )
 
@@ -1305,7 +1305,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
           end
         )
 
-      DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/3, state)
+      DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/4, state)
 
       # The RuntimeError is re-raised in the calling process, not in the GenServer
       assert_raise RuntimeError, ~r/boom from fallback/, fn ->
@@ -1324,7 +1324,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
           end
         )
 
-      DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/3, state)
+      DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/4, state)
 
       assert_raise ArgumentError, ~r/bad argument in fallback/, fn ->
         TestRepo.get_by(User, name: "Alice")
@@ -1340,7 +1340,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
           fallback_fn: fn :all, [User], _state -> [%User{id: 1, name: "Alice"}] end
         )
 
-      DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/3, state)
+      DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/4, state)
 
       # Matching clause works
       assert [%User{name: "Alice"}] = TestRepo.all(User)
@@ -1360,7 +1360,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
     setup do
       DoubleDown.Testing.set_stateful_handler(
         Repo,
-        &Repo.OpenInMemory.dispatch/3,
+        &Repo.OpenInMemory.dispatch/4,
         Repo.OpenInMemory.new()
       )
 
@@ -1423,7 +1423,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
     test "nested transact works via Double.fake (no deadlock)" do
       DoubleDown.Double.fake(
         Repo,
-        &Repo.OpenInMemory.dispatch/3,
+        &Repo.OpenInMemory.dispatch/4,
         Repo.OpenInMemory.new()
       )
 
@@ -1458,7 +1458,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
     setup do
       DoubleDown.Testing.set_stateful_handler(
         Repo,
-        &Repo.OpenInMemory.dispatch/3,
+        &Repo.OpenInMemory.dispatch/4,
         Repo.OpenInMemory.new()
       )
 
@@ -1515,7 +1515,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
     test "rollback works via Double.fake" do
       DoubleDown.Double.fake(
         Repo,
-        &Repo.OpenInMemory.dispatch/3,
+        &Repo.OpenInMemory.dispatch/4,
         Repo.OpenInMemory.new()
       )
 

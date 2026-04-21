@@ -242,7 +242,7 @@ if Code.ensure_loaded?(Ecto) do
     # -------------------------------------------------------------------
     # Fallback dispatch
     #
-    # Because dispatch/3 runs inside NimbleOwnership.get_and_update
+    # Because dispatch/4 runs inside NimbleOwnership.get_and_update
     # (a GenServer call), we must not raise here — that would crash
     # the ownership server. Instead, we use %DoubleDown.Contract.Dispatch.Defer{}
     # to move the raise outside the lock.
