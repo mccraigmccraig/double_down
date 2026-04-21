@@ -151,13 +151,23 @@ if Code.ensure_loaded?(Ecto) do
     def dispatch_delete([%Ecto.Changeset{} = changeset], store) do
       record = Ecto.Changeset.apply_changes(changeset)
       schema = record.__struct__
-      key = if no_primary_key?(schema), do: record, else: DoubleDown.Repo.Impl.Autogenerate.get_primary_key(record)
+
+      key =
+        if no_primary_key?(schema),
+          do: record,
+          else: DoubleDown.Repo.Impl.Autogenerate.get_primary_key(record)
+
       {{:ok, record}, delete_record(store, schema, key)}
     end
 
     def dispatch_delete([record], store) do
       schema = record.__struct__
-      key = if no_primary_key?(schema), do: record, else: DoubleDown.Repo.Impl.Autogenerate.get_primary_key(record)
+
+      key =
+        if no_primary_key?(schema),
+          do: record,
+          else: DoubleDown.Repo.Impl.Autogenerate.get_primary_key(record)
+
       {{:ok, record}, delete_record(store, schema, key)}
     end
 
