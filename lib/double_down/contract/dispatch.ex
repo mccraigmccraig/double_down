@@ -109,11 +109,11 @@ defmodule DoubleDown.Contract.Dispatch do
   field within the Double's internal map) and raw stateful handlers
   installed via `set_stateful_handler` (replaces the entire state).
   """
-  @spec restore_state(module(), term()) :: :ok
-  def restore_state(contract, snapshot) do
+  @spec restore_state(module(), pid(), term()) :: :ok
+  def restore_state(contract, owner_pid, snapshot) do
     state_key = Module.concat(DoubleDown.State, contract)
 
-    NimbleOwnership.get_and_update(@ownership_server, self(), state_key, fn state ->
+    NimbleOwnership.get_and_update(@ownership_server, owner_pid, state_key, fn state ->
       new_state =
         case state do
           %{fallback_state: _} ->

@@ -232,7 +232,10 @@ if Code.ensure_loaded?(Ecto) do
       fun.()
     catch
       {:rollback, value} ->
-        DoubleDown.Contract.Dispatch.restore_state(contract, snapshot)
+        {:ok, owner_pid, _handler} =
+          DoubleDown.Contract.Dispatch.resolve_test_handler(contract)
+
+        DoubleDown.Contract.Dispatch.restore_state(contract, owner_pid, snapshot)
         {:error, value}
     end
 

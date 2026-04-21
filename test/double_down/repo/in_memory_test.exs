@@ -860,6 +860,33 @@ defmodule DoubleDown.Repo.InMemoryTest do
       assert [%User{name: "Alice"}] = DoubleDown.Test.Repo.all(User)
     end
 
+    test "rollback in a Task restores state to the correct owner" do
+      # Insert before transaction
+      {:ok, _alice} = DoubleDown.Test.Repo.insert(User.changeset(%{name: "Alice"}))
+
+      # Run a transaction that inserts + rolls back inside a Task.
+      # Task.async sets $callers, so resolve_test_handler finds the
+      # test process as owner — restore_state must target that pid,
+      # not the Task pid.
+      task =
+        Task.async(fn ->
+          DoubleDown.Test.Repo.transact(
+            fn ->
+              {:ok, _} = DoubleDown.Test.Repo.insert(User.changeset(%{name: "Bob"}))
+              DoubleDown.Test.Repo.rollback(:aborted)
+            end,
+            []
+          )
+        end)
+
+      assert {:error, :aborted} = Task.await(task)
+
+      # Alice survives, Bob was rolled back
+      users = DoubleDown.Test.Repo.all(User)
+      assert length(users) == 1
+      assert hd(users).name == "Alice"
+    end
+
     test "cross-contract isolation — rollback only affects Repo state" do
       # Set up a second contract with its own state
       DoubleDown.Double.fake(
