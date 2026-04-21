@@ -1020,6 +1020,65 @@ defmodule DoubleDown.Repo.InMemoryTest do
   end
 
   # -------------------------------------------------------------------
+  # Ecto.Multi bulk operations
+  # -------------------------------------------------------------------
+
+  describe "Ecto.Multi bulk operations" do
+    setup do
+      DoubleDown.Double.fake(DoubleDown.Repo, InMemory)
+      :ok
+    end
+
+    test "Multi.insert_all mutates fake state" do
+      multi =
+        Ecto.Multi.new()
+        |> Ecto.Multi.insert_all(:users, User, [%{name: "Alice"}, %{name: "Bob"}])
+
+      assert {:ok, %{users: {2, nil}}} = DoubleDown.Test.Repo.transact(multi, [])
+
+      users = DoubleDown.Test.Repo.all(User)
+      assert length(users) == 2
+      names = Enum.map(users, & &1.name) |> Enum.sort()
+      assert names == ["Alice", "Bob"]
+    end
+
+    test "Multi.delete_all via :run callback mutates fake state" do
+      {:ok, _} = DoubleDown.Test.Repo.insert(User.changeset(%{name: "Alice"}))
+      {:ok, _} = DoubleDown.Test.Repo.insert(User.changeset(%{name: "Bob"}))
+
+      # Ecto.Multi.delete_all wraps the schema in an Ecto.Query, which
+      # InMemory can't evaluate. Use a :run callback with the bare schema.
+      multi =
+        Ecto.Multi.new()
+        |> Ecto.Multi.run(:purge, fn repo, _changes ->
+          {count, nil} = repo.delete_all(User, [])
+          {:ok, {count, nil}}
+        end)
+
+      assert {:ok, %{purge: {2, nil}}} = DoubleDown.Test.Repo.transact(multi, [])
+      assert [] == DoubleDown.Test.Repo.all(User)
+    end
+
+    test "Multi.update_all via :run callback mutates fake state" do
+      {:ok, _} = DoubleDown.Test.Repo.insert(User.changeset(%{name: "Alice"}))
+      {:ok, _} = DoubleDown.Test.Repo.insert(User.changeset(%{name: "Bob"}))
+
+      # Same as delete_all — use :run callback to pass bare schema.
+      multi =
+        Ecto.Multi.new()
+        |> Ecto.Multi.run(:rename, fn repo, _changes ->
+          {count, nil} = repo.update_all(User, [set: [name: "Updated"]], [])
+          {:ok, {count, nil}}
+        end)
+
+      assert {:ok, %{rename: {2, nil}}} = DoubleDown.Test.Repo.transact(multi, [])
+
+      users = DoubleDown.Test.Repo.all(User)
+      assert Enum.all?(users, &(&1.name == "Updated"))
+    end
+  end
+
+  # -------------------------------------------------------------------
   # @primary_key false schema support
   # -------------------------------------------------------------------
 

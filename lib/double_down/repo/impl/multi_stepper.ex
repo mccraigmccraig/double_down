@@ -155,18 +155,20 @@ if Code.ensure_loaded?(Ecto) do
       apply_merge(sub_multi, changes, repo_facade)
     end
 
-    # Bulk operations — insert_all, update_all, delete_all
-    # Test/InMemory adapters don't support real bulk ops; return {0, nil}
-    defp apply_operation(_name, {:insert_all, _source, _entries, _opts}, changes, _repo_facade) do
-      {:ok, {0, nil}, changes}
+    # Bulk operations — route through repo_facade like changeset ops
+    defp apply_operation(_name, {:insert_all, source, entries, opts}, changes, repo_facade) do
+      result = apply(repo_facade, :insert_all, [source, entries, opts])
+      {:ok, result, changes}
     end
 
-    defp apply_operation(_name, {:update_all, _query, _updates, _opts}, changes, _repo_facade) do
-      {:ok, {0, nil}, changes}
+    defp apply_operation(_name, {:update_all, query, updates, opts}, changes, repo_facade) do
+      result = apply(repo_facade, :update_all, [query, updates, opts])
+      {:ok, result, changes}
     end
 
-    defp apply_operation(_name, {:delete_all, _query, _opts}, changes, _repo_facade) do
-      {:ok, {0, nil}, changes}
+    defp apply_operation(_name, {:delete_all, query, opts}, changes, repo_facade) do
+      result = apply(repo_facade, :delete_all, [query, opts])
+      {:ok, result, changes}
     end
 
     # -- Helpers --
