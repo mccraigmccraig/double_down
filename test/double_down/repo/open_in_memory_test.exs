@@ -463,6 +463,20 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
       cs = NoPkEvent.changeset(%{name: "thing_happened"})
       assert {:ok, %NoPkEvent{name: "thing_happened"}} = TestRepo.insert(cs)
     end
+
+    test "@primary_key false schema preserves multiple inserts" do
+      {:ok, _} = TestRepo.insert(NoPkEvent.changeset(%{name: "a"}))
+      {:ok, _} = TestRepo.insert(NoPkEvent.changeset(%{name: "b"}))
+      {:ok, _} = TestRepo.insert(NoPkEvent.changeset(%{name: "c"}))
+
+      # OpenInMemory is open-world so all/1 requires a fallback;
+      # verify via the store directly.
+      store = DoubleDown.Contract.Dispatch.get_state(Repo)
+      events = DoubleDown.Repo.Impl.InMemoryShared.records_for_schema(store, NoPkEvent)
+      assert length(events) == 3
+      names = Enum.map(events, & &1.name) |> Enum.sort()
+      assert names == ["a", "b", "c"]
+    end
   end
 
   # -------------------------------------------------------------------
