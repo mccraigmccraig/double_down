@@ -151,14 +151,14 @@ if Code.ensure_loaded?(Ecto) do
     def dispatch_delete([%Ecto.Changeset{} = changeset], store) do
       record = Ecto.Changeset.apply_changes(changeset)
       schema = record.__struct__
-      id = DoubleDown.Repo.Impl.Autogenerate.get_primary_key(record)
-      {{:ok, record}, delete_record(store, schema, id)}
+      key = if no_primary_key?(schema), do: record, else: DoubleDown.Repo.Impl.Autogenerate.get_primary_key(record)
+      {{:ok, record}, delete_record(store, schema, key)}
     end
 
     def dispatch_delete([record], store) do
       schema = record.__struct__
-      id = DoubleDown.Repo.Impl.Autogenerate.get_primary_key(record)
-      {{:ok, record}, delete_record(store, schema, id)}
+      key = if no_primary_key?(schema), do: record, else: DoubleDown.Repo.Impl.Autogenerate.get_primary_key(record)
+      {{:ok, record}, delete_record(store, schema, key)}
     end
 
     # -------------------------------------------------------------------
@@ -324,34 +324,59 @@ if Code.ensure_loaded?(Ecto) do
 
     # -------------------------------------------------------------------
     # State access helpers
+    #
+    # Schemas with a primary key are stored as %{pk => record} maps.
+    # Schemas with @primary_key false are stored as [record] lists
+    # (reverse insertion order — newest first).
     # -------------------------------------------------------------------
 
     @doc false
+    def no_primary_key?(schema) do
+      function_exported?(schema, :__schema__, 1) and
+        schema.__schema__(:primary_key) == []
+    end
+
+    @doc false
     def get_record(store, schema, id) do
-      store
-      |> Map.get(schema, %{})
-      |> Map.get(id)
+      case Map.get(store, schema) do
+        nil -> nil
+        records when is_list(records) -> nil
+        schema_map when is_map(schema_map) -> Map.get(schema_map, id)
+      end
     end
 
     @doc false
     def put_record(store, schema, id, record) do
-      schema_map = Map.get(store, schema, %{})
-      Map.put(store, schema, Map.put(schema_map, id, record))
+      if no_primary_key?(schema) do
+        records = Map.get(store, schema, [])
+        Map.put(store, schema, [record | records])
+      else
+        schema_map = Map.get(store, schema, %{})
+        Map.put(store, schema, Map.put(schema_map, id, record))
+      end
     end
 
     @doc false
-    def delete_record(store, schema, id) do
+    def delete_record(store, schema, record_or_id) do
       case Map.get(store, schema) do
-        nil -> store
-        schema_map -> Map.put(store, schema, Map.delete(schema_map, id))
+        nil ->
+          store
+
+        records when is_list(records) ->
+          Map.put(store, schema, List.delete(records, record_or_id))
+
+        schema_map when is_map(schema_map) ->
+          Map.put(store, schema, Map.delete(schema_map, record_or_id))
       end
     end
 
     @doc false
     def records_for_schema(store, schema) do
-      store
-      |> Map.get(schema, %{})
-      |> Map.values()
+      case Map.get(store, schema) do
+        nil -> []
+        records when is_list(records) -> records
+        schema_map when is_map(schema_map) -> Map.values(schema_map)
+      end
     end
 
     # -------------------------------------------------------------------

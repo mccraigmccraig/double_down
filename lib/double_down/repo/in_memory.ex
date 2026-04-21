@@ -367,21 +367,26 @@ if Code.ensure_loaded?(Ecto) do
 
     def dispatch(_contract, :update_all, [queryable, [set: set_fields]], store)
         when is_atom(queryable) and not is_nil(queryable) do
-      schema_map = Map.get(store, queryable, %{})
-      count = map_size(schema_map)
-
-      updated_map =
-        Map.new(schema_map, fn {id, record} ->
-          updated =
-            Enum.reduce(set_fields, record, fn {field, value}, acc ->
-              Map.put(acc, field, value)
-            end)
-
-          {id, updated}
+      apply_set_fields = fn record ->
+        Enum.reduce(set_fields, record, fn {field, value}, acc ->
+          Map.put(acc, field, value)
         end)
+      end
 
-      new_store = Map.put(store, queryable, updated_map)
-      {{count, nil}, new_store}
+      case Map.get(store, queryable) do
+        nil ->
+          {{0, nil}, store}
+
+        records when is_list(records) ->
+          updated = Enum.map(records, apply_set_fields)
+          {{length(records), nil}, Map.put(store, queryable, updated)}
+
+        schema_map when is_map(schema_map) ->
+          updated_map =
+            Map.new(schema_map, fn {id, record} -> {id, apply_set_fields.(record)} end)
+
+          {{map_size(schema_map), nil}, Map.put(store, queryable, updated_map)}
+      end
     end
 
     def dispatch(contract, :update_all, [queryable, updates], store),

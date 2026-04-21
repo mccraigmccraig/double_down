@@ -2,6 +2,7 @@ defmodule DoubleDown.Repo.InMemoryTest do
   use ExUnit.Case, async: true
 
   alias DoubleDown.Repo.InMemory
+  alias DoubleDown.Repo.Impl.InMemoryShared
   require Ecto.Query
 
   # -- Test schemas --
@@ -43,6 +44,19 @@ defmodule DoubleDown.Repo.InMemoryTest do
     schema "task_categories" do
       field(:name, :string)
       belongs_to(:organisation, Organisation)
+    end
+  end
+
+  defmodule NoPkEvent do
+    use Ecto.Schema
+
+    @primary_key false
+    schema "events" do
+      field(:name, :string)
+    end
+
+    def changeset(event \\ %__MODULE__{}, attrs) do
+      Ecto.Changeset.cast(event, attrs, [:name])
     end
   end
 
@@ -984,6 +998,91 @@ defmodule DoubleDown.Repo.InMemoryTest do
       users = DoubleDown.Test.Repo.all(User)
       assert length(users) == 1
       assert hd(users).name == "Alice"
+    end
+  end
+
+  # -------------------------------------------------------------------
+  # @primary_key false schema support
+  # -------------------------------------------------------------------
+
+  describe "@primary_key false schemas" do
+    setup do
+      DoubleDown.Double.fake(DoubleDown.Repo, InMemory)
+      :ok
+    end
+
+    test "multiple inserts are all preserved" do
+      {:ok, _a} = DoubleDown.Test.Repo.insert(NoPkEvent.changeset(%{name: "a"}))
+      {:ok, _b} = DoubleDown.Test.Repo.insert(NoPkEvent.changeset(%{name: "b"}))
+      {:ok, _c} = DoubleDown.Test.Repo.insert(NoPkEvent.changeset(%{name: "c"}))
+
+      events = DoubleDown.Test.Repo.all(NoPkEvent)
+      assert length(events) == 3
+      names = Enum.map(events, & &1.name) |> Enum.sort()
+      assert names == ["a", "b", "c"]
+    end
+
+    test "seeding multiple rows preserves all of them" do
+      store =
+        InMemory.new([
+          %NoPkEvent{name: "x"},
+          %NoPkEvent{name: "y"}
+        ])
+
+      records = InMemoryShared.records_for_schema(store, NoPkEvent)
+      assert length(records) == 2
+      names = Enum.map(records, & &1.name) |> Enum.sort()
+      assert names == ["x", "y"]
+    end
+
+    test "delete removes the specific record" do
+      {:ok, a} = DoubleDown.Test.Repo.insert(NoPkEvent.changeset(%{name: "a"}))
+      {:ok, _b} = DoubleDown.Test.Repo.insert(NoPkEvent.changeset(%{name: "b"}))
+
+      {:ok, _} = DoubleDown.Test.Repo.delete(a)
+
+      events = DoubleDown.Test.Repo.all(NoPkEvent)
+      assert length(events) == 1
+      assert hd(events).name == "b"
+    end
+
+    test "delete_all removes all records" do
+      {:ok, _} = DoubleDown.Test.Repo.insert(NoPkEvent.changeset(%{name: "a"}))
+      {:ok, _} = DoubleDown.Test.Repo.insert(NoPkEvent.changeset(%{name: "b"}))
+
+      {count, nil} = DoubleDown.Test.Repo.delete_all(NoPkEvent, [])
+      assert count == 2
+      assert [] == DoubleDown.Test.Repo.all(NoPkEvent)
+    end
+
+    test "update_all applies updates to all records" do
+      {:ok, _} = DoubleDown.Test.Repo.insert(NoPkEvent.changeset(%{name: "a"}))
+      {:ok, _} = DoubleDown.Test.Repo.insert(NoPkEvent.changeset(%{name: "b"}))
+
+      {count, nil} = DoubleDown.Test.Repo.update_all(NoPkEvent, [set: [name: "updated"]], [])
+      assert count == 2
+
+      events = DoubleDown.Test.Repo.all(NoPkEvent)
+      assert Enum.all?(events, &(&1.name == "updated"))
+    end
+
+    test "get returns nil for no-PK schemas" do
+      {:ok, _} = DoubleDown.Test.Repo.insert(NoPkEvent.changeset(%{name: "a"}))
+      assert nil == DoubleDown.Test.Repo.get(NoPkEvent, 1)
+    end
+
+    test "exists? returns true when records exist" do
+      {:ok, _} = DoubleDown.Test.Repo.insert(NoPkEvent.changeset(%{name: "a"}))
+      assert DoubleDown.Test.Repo.exists?(NoPkEvent) == true
+    end
+
+    test "coexists with PK schemas in the same store" do
+      {:ok, _} = DoubleDown.Test.Repo.insert(User.changeset(%{name: "Alice"}))
+      {:ok, _} = DoubleDown.Test.Repo.insert(NoPkEvent.changeset(%{name: "a"}))
+      {:ok, _} = DoubleDown.Test.Repo.insert(NoPkEvent.changeset(%{name: "b"}))
+
+      assert [%User{name: "Alice"}] = DoubleDown.Test.Repo.all(User)
+      assert length(DoubleDown.Test.Repo.all(NoPkEvent)) == 2
     end
   end
 end
