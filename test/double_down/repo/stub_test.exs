@@ -763,4 +763,14 @@ defmodule DoubleDown.Repo.StubTest do
       assert {:error, :stub_rollback} = result
     end
   end
+
+  describe "rollback outside transaction" do
+    test "raises RuntimeError" do
+      DoubleDown.Double.stub(Repo, Repo.Stub.new())
+
+      assert_raise RuntimeError, ~r/cannot call rollback outside of transaction/, fn ->
+        TestRepo.rollback(:oops)
+      end
+    end
+  end
 end

@@ -274,14 +274,32 @@ if Code.ensure_loaded?(Ecto) do
       }
     end
 
+    @transaction_key DoubleDown.Repo.InTransaction
+
     defp dispatch(:rollback, [value], _fallback_fn) do
-      %DoubleDown.Contract.Dispatch.Defer{fn: fn -> throw({:rollback, value}) end}
+      %DoubleDown.Contract.Dispatch.Defer{
+        fn: fn ->
+          if Process.get(@transaction_key, false) do
+            throw({:rollback, value})
+          else
+            raise RuntimeError,
+                  "cannot call rollback outside of transaction"
+          end
+        end
+      }
     end
 
     defp run_in_transaction(fun) do
-      fun.()
-    catch
-      {:rollback, value} -> {:error, value}
+      prev = Process.get(@transaction_key, false)
+      Process.put(@transaction_key, true)
+
+      try do
+        fun.()
+      catch
+        {:rollback, value} -> {:error, value}
+      after
+        Process.put(@transaction_key, prev)
+      end
     end
 
     # -----------------------------------------------------------------

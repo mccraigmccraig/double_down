@@ -223,40 +223,58 @@ if Code.ensure_loaded?(Ecto) do
        }, store}
     end
 
+    @transaction_key DoubleDown.Repo.InTransaction
+
     @doc false
     def dispatch_rollback([value], store) do
-      {%DoubleDown.Contract.Dispatch.Defer{fn: fn -> throw({:rollback, value}) end}, store}
+      {%DoubleDown.Contract.Dispatch.Defer{
+         fn: fn ->
+           if Process.get(@transaction_key, false) do
+             throw({:rollback, value})
+           else
+             raise RuntimeError,
+                   "cannot call rollback outside of transaction"
+           end
+         end
+       }, store}
     end
 
     defp run_in_transaction(fun, contract, snapshot) do
-      result = fun.()
+      prev = Process.get(@transaction_key, false)
+      Process.put(@transaction_key, true)
 
-      case result do
-        {:ok, _} ->
-          result
+      try do
+        result = fun.()
 
-        {:error, _} ->
+        case result do
+          {:ok, _} ->
+            result
+
+          {:error, _} ->
+            do_restore_state(contract, snapshot)
+            result
+
+          {:error, _name, _value, _changes} ->
+            do_restore_state(contract, snapshot)
+            result
+
+          _other ->
+            # Non-standard return (e.g. bare value) — treat as success,
+            # matching Ecto.Repo.transaction/2 which returns {:ok, result}
+            # for non-tagged returns. The wrapping happens at the facade level.
+            result
+        end
+      rescue
+        exception ->
           do_restore_state(contract, snapshot)
-          result
-
-        {:error, _name, _value, _changes} ->
+          reraise exception, __STACKTRACE__
+      catch
+        {:rollback, value} ->
           do_restore_state(contract, snapshot)
-          result
-
-        _other ->
-          # Non-standard return (e.g. bare value) — treat as success,
-          # matching Ecto.Repo.transaction/2 which returns {:ok, result}
-          # for non-tagged returns. The wrapping happens at the facade level.
-          result
+          {:error, value}
+      after
+        Process.put(@transaction_key, prev)
       end
-    rescue
-      exception ->
-        do_restore_state(contract, snapshot)
-        reraise exception, __STACKTRACE__
-    catch
-      {:rollback, value} ->
-        do_restore_state(contract, snapshot)
-        {:error, value}
     end
 
     defp do_restore_state(contract, snapshot) do

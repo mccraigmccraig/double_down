@@ -1017,6 +1017,12 @@ defmodule DoubleDown.Repo.InMemoryTest do
       assert length(users) == 1
       assert hd(users).name == "Alice"
     end
+
+    test "rollback outside transaction raises RuntimeError" do
+      assert_raise RuntimeError, ~r/cannot call rollback outside of transaction/, fn ->
+        DoubleDown.Test.Repo.rollback(:oops)
+      end
+    end
   end
 
   # -------------------------------------------------------------------
