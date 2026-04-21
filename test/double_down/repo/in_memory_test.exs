@@ -116,7 +116,9 @@ defmodule DoubleDown.Repo.InMemoryTest do
       assert inserted.organisation_id == 42
 
       # Should be findable by FK
-      {found, _} = InMemory.dispatch(DoubleDown.Repo, :get_by, [TaskCategory, [organisation_id: 42]], store)
+      {found, _} =
+        InMemory.dispatch(DoubleDown.Repo, :get_by, [TaskCategory, [organisation_id: 42]], store)
+
       assert found.name == "Widgets"
     end
 
@@ -180,7 +182,9 @@ defmodule DoubleDown.Repo.InMemoryTest do
       assert inserted.organisation_id != nil
 
       # Parent should have been inserted into the store
-      {found_org, _} = InMemory.dispatch(DoubleDown.Repo, :get, [Organisation, inserted.organisation_id], store)
+      {found_org, _} =
+        InMemory.dispatch(DoubleDown.Repo, :get, [Organisation, inserted.organisation_id], store)
+
       assert found_org != nil
       assert found_org.name == "Acme"
     end
@@ -194,7 +198,9 @@ defmodule DoubleDown.Repo.InMemoryTest do
 
       assert inserted.organisation_id != nil
 
-      {found_org, _} = InMemory.dispatch(DoubleDown.Repo, :get, [Organisation, inserted.organisation_id], store)
+      {found_org, _} =
+        InMemory.dispatch(DoubleDown.Repo, :get, [Organisation, inserted.organisation_id], store)
+
       assert found_org != nil
     end
 
@@ -330,7 +336,7 @@ defmodule DoubleDown.Repo.InMemoryTest do
     test "does NOT call fallback on miss" do
       store =
         InMemory.new([],
-          fallback_fn: fn _op, _args, _state ->
+          fallback_fn: fn _contract, _op, _args, _state ->
             raise "fallback should not be called for get miss"
           end
         )
@@ -369,7 +375,9 @@ defmodule DoubleDown.Repo.InMemoryTest do
           %User{id: 2, name: "Bob", email: "bob@example.com"}
         ])
 
-      {user, _} = InMemory.dispatch(DoubleDown.Repo, :get_by, [User, [email: "alice@example.com"]], store)
+      {user, _} =
+        InMemory.dispatch(DoubleDown.Repo, :get_by, [User, [email: "alice@example.com"]], store)
+
       assert user.name == "Alice"
     end
 
@@ -591,7 +599,10 @@ defmodule DoubleDown.Repo.InMemoryTest do
       store = InMemory.new()
 
       entries = [%{name: "Alice", email: "a@b.com"}, %{name: "Bob", email: "b@b.com"}]
-      {{count, nil}, store} = InMemory.dispatch(DoubleDown.Repo, :insert_all, [User, entries, []], store)
+
+      {{count, nil}, store} =
+        InMemory.dispatch(DoubleDown.Repo, :insert_all, [User, entries, []], store)
+
       assert count == 2
 
       {users, _} = InMemory.dispatch(DoubleDown.Repo, :all, [User], store)
@@ -663,7 +674,7 @@ defmodule DoubleDown.Repo.InMemoryTest do
 
       store =
         InMemory.new([],
-          fallback_fn: fn :all, [_query], _state -> [%User{id: 1, name: "Alice"}] end
+          fallback_fn: fn _contract, :all, [_query], _state -> [%User{id: 1, name: "Alice"}] end
         )
 
       {result, _} = InMemory.dispatch(DoubleDown.Repo, :all, [query], store)
@@ -893,7 +904,7 @@ defmodule DoubleDown.Repo.InMemoryTest do
       DoubleDown.Double.fake(
         DoubleDown.Test.Greeter,
         fn
-          _op, _args, state -> {"hello", state}
+          _contract, _op, _args, state -> {"hello", state}
         end,
         %{counter: 0}
       )

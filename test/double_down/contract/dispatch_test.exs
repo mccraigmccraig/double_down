@@ -41,8 +41,8 @@ defmodule DoubleDown.Contract.DispatchTest do
       DoubleDown.Testing.set_stateful_handler(
         Counter,
         fn
-          :increment, [amount], count -> {count + amount, count + amount}
-          :get_count, [], count -> {count, count}
+          _contract, :increment, [amount], count -> {count + amount, count + amount}
+          _contract, :get_count, [], count -> {count, count}
         end,
         0
       )
@@ -131,8 +131,8 @@ defmodule DoubleDown.Contract.DispatchTest do
       DoubleDown.Testing.set_stateful_handler(
         Counter,
         fn
-          :increment, [amount], count -> {count + amount, count + amount}
-          :get_count, [], count -> {count, count}
+          _contract, :increment, [amount], count -> {count + amount, count + amount}
+          _contract, :get_count, [], count -> {count, count}
         end,
         0
       )
@@ -194,8 +194,8 @@ defmodule DoubleDown.Contract.DispatchTest do
       DoubleDown.Testing.set_stateful_handler(
         Counter,
         fn
-          :increment, [amount], count -> {count + amount, count + amount}
-          :get_count, [], count -> {count, count}
+          _contract, :increment, [amount], count -> {count + amount, count + amount}
+          _contract, :get_count, [], count -> {count, count}
         end,
         0
       )

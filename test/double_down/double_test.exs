@@ -113,8 +113,8 @@ defmodule DoubleDown.DoubleTest do
       Counter
       |> Double.fake(
         fn
-          :increment, [n], count -> {count + n, count + n}
-          :get_count, [], count -> {count, count}
+          _contract, :increment, [n], count -> {count + n, count + n}
+          _contract, :get_count, [], count -> {count, count}
         end,
         0
       )
@@ -131,13 +131,13 @@ defmodule DoubleDown.DoubleTest do
     test "3-arity stub receives all_states" do
       Greeter
       |> Double.fake(
-        fn :greet, [name], state -> {"Hello #{name}", state} end,
+        fn _contract, :greet, [name], state -> {"Hello #{name}", state} end,
         %{greeted: []}
       )
 
       Counter
       |> Double.fake(
-        fn :get_count, [], count -> {count, count} end,
+        fn _contract, :get_count, [], count -> {count, count} end,
         0
       )
       |> Double.stub(:get_count, fn [], _state, all_states ->
@@ -152,8 +152,8 @@ defmodule DoubleDown.DoubleTest do
       Counter
       |> Double.fake(
         fn
-          :increment, [n], count -> {count + n, count + n}
-          :get_count, [], count -> {count, count}
+          _contract, :increment, [n], count -> {count + n, count + n}
+          _contract, :get_count, [], count -> {count, count}
         end,
         0
       )
@@ -177,8 +177,8 @@ defmodule DoubleDown.DoubleTest do
       Counter
       |> Double.fake(
         fn
-          :increment, [n], count -> {count + n, count + n}
-          :get_count, [], count -> {count, count}
+          _contract, :increment, [n], count -> {count + n, count + n}
+          _contract, :get_count, [], count -> {count, count}
         end,
         0
       )
@@ -216,7 +216,7 @@ defmodule DoubleDown.DoubleTest do
     test "raises at dispatch time if 2-arity stub returns bare value" do
       Counter
       |> Double.fake(
-        fn :increment, [n], count -> {count + n, count + n} end,
+        fn _contract, :increment, [n], count -> {count + n, count + n} end,
         0
       )
       |> Double.stub(:increment, fn [_n], _state -> 42 end)
@@ -413,7 +413,7 @@ defmodule DoubleDown.DoubleTest do
   describe "fake/3 stateful fake" do
     test "returns contract module for piping" do
       result =
-        Double.fake(Counter, fn _op, _args, state -> {:ok, state} end, 0)
+        Double.fake(Counter, fn _contract, _op, _args, state -> {:ok, state} end, 0)
 
       assert result == Counter
     end
@@ -422,8 +422,8 @@ defmodule DoubleDown.DoubleTest do
       Double.fake(
         Counter,
         fn
-          :increment, [n], count -> {count + n, count + n}
-          :get_count, [], count -> {count, count}
+          _contract, :increment, [n], count -> {count + n, count + n}
+          _contract, :get_count, [], count -> {count, count}
         end,
         0
       )
@@ -437,8 +437,8 @@ defmodule DoubleDown.DoubleTest do
       Counter
       |> Double.fake(
         fn
-          :increment, [n], count -> {count + n, count + n}
-          :get_count, [], count -> {count, count}
+          _contract, :increment, [n], count -> {count + n, count + n}
+          _contract, :get_count, [], count -> {count, count}
         end,
         0
       )
@@ -455,8 +455,8 @@ defmodule DoubleDown.DoubleTest do
       Counter
       |> Double.fake(
         fn
-          :increment, [n], count -> {count + n, count + n}
-          :get_count, [], count -> {count, count}
+          _contract, :increment, [n], count -> {count + n, count + n}
+          _contract, :get_count, [], count -> {count, count}
         end,
         0
       )
@@ -471,8 +471,8 @@ defmodule DoubleDown.DoubleTest do
       Counter
       |> Double.fake(
         fn
-          :increment, [n], count -> {count + n, count + n}
-          :get_count, [], count -> {count, count}
+          _contract, :increment, [n], count -> {count + n, count + n}
+          _contract, :get_count, [], count -> {count, count}
         end,
         0
       )
@@ -487,7 +487,7 @@ defmodule DoubleDown.DoubleTest do
     test "FunctionClauseError in stateful fallback raises" do
       Double.fake(
         Counter,
-        fn :increment, [n], count -> {count + n, count + n} end,
+        fn _contract, :increment, [n], count -> {count + n, count + n} end,
         0
       )
 
@@ -501,7 +501,7 @@ defmodule DoubleDown.DoubleTest do
     test "stateful fallback returning bare value raises descriptive error" do
       Double.fake(
         Counter,
-        fn :increment, [_n], _count -> 42 end,
+        fn _contract, :increment, [_n], _count -> 42 end,
         0
       )
 
@@ -514,18 +514,18 @@ defmodule DoubleDown.DoubleTest do
   # ── fake/3 with 4-arity stateful fake ──────────────────────
 
   describe "fake/3 with 4-arity stateful fake (cross-contract state)" do
-    test "4-arity stateful fake receives global state" do
-      # Set up Greeter with a 3-arity stateful handler (another contract's state)
+    test "5-arity stateful fake receives global state" do
+      # Set up Greeter with a 4-arity stateful handler (another contract's state)
       Double.fake(
         Greeter,
-        fn :greet, [name], state -> {"Hello #{name}", state} end,
+        fn _contract, :greet, [name], state -> {"Hello #{name}", state} end,
         %{greeting_count: 0}
       )
 
-      # Set up Counter with a 4-arity fake that reads Greeter's state
+      # Set up Counter with a 5-arity fake that reads Greeter's state
       Double.fake(
         Counter,
-        fn :get_count, [], state, all_states ->
+        fn _contract, :get_count, [], state, all_states ->
           greeter_state = Map.get(all_states, Greeter)
           {greeter_state, state}
         end,
@@ -537,12 +537,12 @@ defmodule DoubleDown.DoubleTest do
       assert result == %{greeting_count: 0}
     end
 
-    test "4-arity stateful fake with expects takes priority" do
+    test "5-arity stateful fake with expects takes priority" do
       Double.fake(
         Counter,
         fn
-          :increment, [n], count, _all_states -> {count + n, count + n}
-          :get_count, [], count, _all_states -> {count, count}
+          _contract, :increment, [n], count, _all_states -> {count + n, count + n}
+          _contract, :get_count, [], count, _all_states -> {count, count}
         end,
         0
       )
@@ -555,14 +555,14 @@ defmodule DoubleDown.DoubleTest do
       assert 3 = Counter.Port.get_count()
     end
 
-    test "3-arity fake still works when canonical handler is 4-arity" do
+    test "4-arity fake still works when canonical handler is 5-arity" do
       # This verifies backward compatibility — the canonical handler is
-      # always registered as 4-arity, but 3-arity fakes still work
+      # always registered as 5-arity, but 4-arity fakes still work
       Double.fake(
         Counter,
         fn
-          :increment, [n], count -> {count + n, count + n}
-          :get_count, [], count -> {count, count}
+          _contract, :increment, [n], count -> {count + n, count + n}
+          _contract, :get_count, [], count -> {count, count}
         end,
         0
       )
@@ -571,12 +571,12 @@ defmodule DoubleDown.DoubleTest do
       assert 5 = Counter.Port.get_count()
     end
 
-    test "passthrough with 4-arity fake threads state correctly" do
+    test "passthrough with 5-arity fake threads state correctly" do
       Double.fake(
         Counter,
         fn
-          :increment, [n], count, _all_states -> {count + n, count + n}
-          :get_count, [], count, _all_states -> {count, count}
+          _contract, :increment, [n], count, _all_states -> {count + n, count + n}
+          _contract, :get_count, [], count, _all_states -> {count, count}
         end,
         0
       )
@@ -620,7 +620,7 @@ defmodule DoubleDown.DoubleTest do
       alice = %SimpleUser{id: 1, name: "Alice"}
 
       Double.fake(Repo, Repo.OpenInMemory, [alice],
-        fallback_fn: fn :all, [SimpleUser], state ->
+        fallback_fn: fn _contract, :all, [SimpleUser], state ->
           state |> Map.get(SimpleUser, %{}) |> Map.values()
         end
       )
@@ -688,8 +688,8 @@ defmodule DoubleDown.DoubleTest do
       Counter
       |> Double.fake(
         fn
-          :increment, [n], count -> {count + n, count + n}
-          :get_count, [], count -> {count, count}
+          _contract, :increment, [n], count -> {count + n, count + n}
+          _contract, :get_count, [], count -> {count, count}
         end,
         0
       )
@@ -708,15 +708,15 @@ defmodule DoubleDown.DoubleTest do
     test "3-arity expect receives fallback state and all_states" do
       Greeter
       |> Double.fake(
-        fn :greet, [name], state -> {"Hello #{name}", state} end,
+        fn _contract, :greet, [name], state -> {"Hello #{name}", state} end,
         %{greeted: []}
       )
 
       Counter
       |> Double.fake(
         fn
-          :increment, [_n], count -> {count, count}
-          :get_count, [], count -> {count, count}
+          _contract, :increment, [_n], count -> {count, count}
+          _contract, :get_count, [], count -> {count, count}
         end,
         0
       )
@@ -733,8 +733,8 @@ defmodule DoubleDown.DoubleTest do
       Counter
       |> Double.fake(
         fn
-          :increment, [n], count -> {count + n, count + n}
-          :get_count, [], count -> {count, count}
+          _contract, :increment, [n], count -> {count + n, count + n}
+          _contract, :get_count, [], count -> {count, count}
         end,
         0
       )
@@ -775,7 +775,7 @@ defmodule DoubleDown.DoubleTest do
     test "raises at dispatch time if 2-arity responder returns bare value" do
       Counter
       |> Double.fake(
-        fn :increment, [n], count -> {count + n, count + n} end,
+        fn _contract, :increment, [n], count -> {count + n, count + n} end,
         0
       )
       |> Double.expect(:increment, fn [_n], _state ->
@@ -791,7 +791,7 @@ defmodule DoubleDown.DoubleTest do
     test "raises at dispatch time if 3-arity responder returns bare value" do
       Counter
       |> Double.fake(
-        fn :increment, [n], count -> {count + n, count + n} end,
+        fn _contract, :increment, [n], count -> {count + n, count + n} end,
         0
       )
       |> Double.expect(:increment, fn [_n], _state, _all ->
@@ -807,8 +807,8 @@ defmodule DoubleDown.DoubleTest do
       Counter
       |> Double.fake(
         fn
-          :increment, [n], count -> {count + n, count + n}
-          :get_count, [], count -> {count, count}
+          _contract, :increment, [n], count -> {count + n, count + n}
+          _contract, :get_count, [], count -> {count, count}
         end,
         0
       )
@@ -828,8 +828,8 @@ defmodule DoubleDown.DoubleTest do
       Counter
       |> Double.fake(
         fn
-          :increment, [n], count -> {count + n, count + n}
-          :get_count, [], count -> {count, count}
+          _contract, :increment, [n], count -> {count + n, count + n}
+          _contract, :get_count, [], count -> {count, count}
         end,
         0
       )
@@ -846,8 +846,8 @@ defmodule DoubleDown.DoubleTest do
       Counter
       |> Double.fake(
         fn
-          :increment, [n], count -> {count + n, count + n}
-          :get_count, [], count -> {count, count}
+          _contract, :increment, [n], count -> {count + n, count + n}
+          _contract, :get_count, [], count -> {count, count}
         end,
         0
       )
@@ -864,8 +864,8 @@ defmodule DoubleDown.DoubleTest do
       Counter
       |> Double.fake(
         fn
-          :increment, [n], count -> {count + n, count + n}
-          :get_count, [], count -> {count, count}
+          _contract, :increment, [n], count -> {count + n, count + n}
+          _contract, :get_count, [], count -> {count, count}
         end,
         0
       )
@@ -881,8 +881,8 @@ defmodule DoubleDown.DoubleTest do
       Counter
       |> Double.fake(
         fn
-          :increment, [n], count -> {count + n, count + n}
-          :get_count, [], count -> {count, count}
+          _contract, :increment, [n], count -> {count + n, count + n}
+          _contract, :get_count, [], count -> {count, count}
         end,
         0
       )
@@ -905,8 +905,8 @@ defmodule DoubleDown.DoubleTest do
       Counter
       |> Double.fake(
         fn
-          :increment, [n], count -> {count + n, count + n}
-          :get_count, [], count -> {count, count}
+          _contract, :increment, [n], count -> {count + n, count + n}
+          _contract, :get_count, [], count -> {count, count}
         end,
         0
       )
@@ -991,8 +991,8 @@ defmodule DoubleDown.DoubleTest do
       Counter
       |> Double.fake(
         fn
-          :increment, [n], count -> {count + n, count + n}
-          :get_count, [], count -> {count, count}
+          _contract, :increment, [n], count -> {count + n, count + n}
+          _contract, :get_count, [], count -> {count, count}
         end,
         0
       )
@@ -1020,8 +1020,8 @@ defmodule DoubleDown.DoubleTest do
       Counter
       |> Double.fake(
         fn
-          :increment, [n], count -> {count + n, count + n}
-          :get_count, [], count -> {count, count}
+          _contract, :increment, [n], count -> {count + n, count + n}
+          _contract, :get_count, [], count -> {count, count}
         end,
         0
       )

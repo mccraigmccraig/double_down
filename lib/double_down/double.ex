@@ -68,10 +68,10 @@ defmodule DoubleDown.Double do
 
   ### Stateful fake
 
-  A 3-arity `fn operation, args, state -> {result, new_state} end`
-  or 4-arity `fn operation, args, state, all_states -> {result, new_state} end`
+  A 4-arity `fn contract, operation, args, state -> {result, new_state} end`
+  or 5-arity `fn contract, operation, args, state, all_states -> {result, new_state} end`
   with real logic and state. Integrates fakes like `Repo.OpenInMemory`
-  while allowing expects to override specific calls. 4-arity fakes
+  while allowing expects to override specific calls. 5-arity fakes
   receive a read-only snapshot of all contract states for
   cross-contract state access:
 
@@ -473,11 +473,11 @@ defmodule DoubleDown.Double do
 
   ## Stateful fake function
 
-  A 3-arity `fn operation, args, state -> {result, new_state} end`
-  or 4-arity `fn operation, args, state, all_states -> {result, new_state} end`
+  A 4-arity `fn contract, operation, args, state -> {result, new_state} end`
+  or 5-arity `fn contract, operation, args, state, all_states -> {result, new_state} end`
   with initial state:
 
-      DoubleDown.Double.fake(MyContract, &handler/3, initial_state)
+      DoubleDown.Double.fake(MyContract, &handler/4, initial_state)
 
   The fake's state is threaded through calls automatically. When an
   expect short-circuits (e.g. returning an error), the fake state is
@@ -510,7 +510,7 @@ defmodule DoubleDown.Double do
   # fake/3 — stateful fake function OR FakeHandler module with seed
   @spec fake(module(), function() | module(), term()) :: module()
   def fake(contract, fun, init_state)
-      when is_atom(contract) and (is_function(fun, 3) or is_function(fun, 4)) do
+      when is_atom(contract) and (is_function(fun, 4) or is_function(fun, 5)) do
     ensure_handler_installed(contract)
 
     update_handler_state(contract, fn state ->
@@ -700,11 +700,11 @@ defmodule DoubleDown.Double do
 
       _ ->
         # First touch — install the canonical handler fn.
-        # Always 4-arity so dispatch passes the global state snapshot,
-        # which is forwarded to 4-arity stateful fakes that need it.
+        # Always 5-arity so dispatch passes the global state snapshot,
+        # which is forwarded to 5-arity stateful fakes that need it.
         DoubleDown.Testing.set_stateful_handler(
           contract,
-          &canonical_handler/4,
+          &canonical_handler/5,
           %{@initial_state | contract: contract}
         )
 
@@ -734,7 +734,7 @@ defmodule DoubleDown.Double do
   # contract via set_stateful_handler and never replaced — all changes
   # go through state mutations.
   @doc false
-  def canonical_handler(operation, args, state, all_states) do
+  def canonical_handler(_contract, operation, args, state, all_states) do
     case pop_expect(state, operation) do
       {:ok, :passthrough, new_state} ->
         invoke_fallback_or_raise(new_state, operation, args, all_states)

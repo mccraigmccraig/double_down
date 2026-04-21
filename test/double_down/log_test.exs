@@ -364,8 +364,8 @@ defmodule DoubleDown.LogTest do
       DoubleDown.Testing.set_stateful_handler(
         Counter,
         fn
-          :increment, [n], count -> {count + n, count + n}
-          :get_count, [], count -> {count, count}
+          _contract, :increment, [n], count -> {count + n, count + n}
+          _contract, :get_count, [], count -> {count, count}
         end,
         0
       )

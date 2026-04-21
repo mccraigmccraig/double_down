@@ -358,7 +358,7 @@ defmodule DoubleDown.TestDispatchTest do
 
   describe "stateful handler exceptions don't crash the ownership server" do
     test "raise inside stateful handler is transported to calling process" do
-      handler = fn :greet, [_name], state ->
+      handler = fn _contract, :greet, [_name], state ->
         raise RuntimeError, "boom from handler"
         {nil, state}
       end
@@ -375,7 +375,7 @@ defmodule DoubleDown.TestDispatchTest do
     end
 
     test "throw inside stateful handler is transported to calling process" do
-      handler = fn :greet, [_name], state ->
+      handler = fn _contract, :greet, [_name], state ->
         throw(:boom_throw)
         {nil, state}
       end
@@ -390,7 +390,7 @@ defmodule DoubleDown.TestDispatchTest do
     end
 
     test "exit inside stateful handler is transported to calling process" do
-      handler = fn :greet, [_name], state ->
+      handler = fn _contract, :greet, [_name], state ->
         exit(:boom_exit)
         {nil, state}
       end
@@ -411,17 +411,17 @@ defmodule DoubleDown.TestDispatchTest do
     alias DoubleDown.Test.Counter
 
     test "4-arity handler receives global state snapshot" do
-      # Set up Greeter with a 3-arity handler
+      # Set up Greeter with a 4-arity handler
       DoubleDown.Testing.set_stateful_handler(
         Greeter,
-        fn :greet, [name], state -> {"Hello #{name}", state} end,
+        fn _contract, :greet, [name], state -> {"Hello #{name}", state} end,
         %{greeter: true}
       )
 
-      # Set up Counter with a 4-arity handler that reads Greeter's state
+      # Set up Counter with a 5-arity handler that reads Greeter's state
       DoubleDown.Testing.set_stateful_handler(
         Counter,
-        fn :get_count, [], state, all_states ->
+        fn _contract, :get_count, [], state, all_states ->
           greeter_state = Map.get(all_states, Greeter)
           {greeter_state, state}
         end,
@@ -435,7 +435,7 @@ defmodule DoubleDown.TestDispatchTest do
     test "global state contains sentinel key" do
       DoubleDown.Testing.set_stateful_handler(
         Greeter,
-        fn :greet, [_name], _state, all_states ->
+        fn _contract, :greet, [_name], _state, all_states ->
           {all_states, %{}}
         end,
         %{}
@@ -449,7 +449,7 @@ defmodule DoubleDown.TestDispatchTest do
     test "global state includes this contract's own state" do
       DoubleDown.Testing.set_stateful_handler(
         Greeter,
-        fn :greet, [_name], _state, all_states ->
+        fn _contract, :greet, [_name], _state, all_states ->
           {Map.get(all_states, Greeter), %{}}
         end,
         %{my_data: 42}
@@ -458,10 +458,10 @@ defmodule DoubleDown.TestDispatchTest do
       assert %{my_data: 42} = Greeter.Port.greet("Alice")
     end
 
-    test "3-arity handlers still work unchanged" do
+    test "4-arity handlers still work unchanged" do
       DoubleDown.Testing.set_stateful_handler(
         Greeter,
-        fn :greet, [name], state ->
+        fn _contract, :greet, [name], state ->
           {"Hello #{name}", Map.put(state, :called, true)}
         end,
         %{}
@@ -473,7 +473,7 @@ defmodule DoubleDown.TestDispatchTest do
     test "raises when handler returns global state map (sentinel detection)" do
       DoubleDown.Testing.set_stateful_handler(
         Greeter,
-        fn :greet, [_name], _state, all_states ->
+        fn _contract, :greet, [_name], _state, all_states ->
           # Accidentally return all_states instead of own state
           {"oops", all_states}
         end,
@@ -499,10 +499,10 @@ defmodule DoubleDown.TestDispatchTest do
 
       {:ok, _user} = TestRepo.insert(SimpleUser.changeset(%{name: "Alice"}))
 
-      # Set up Greeter with a 4-arity handler that reads Repo's InMemory state
+      # Set up Greeter with a 5-arity handler that reads Repo's InMemory state
       DoubleDown.Testing.set_stateful_handler(
         Greeter,
-        fn :greet, [_name], state, all_states ->
+        fn _contract, :greet, [_name], state, all_states ->
           repo_state = Map.get(all_states, Repo, %{})
           users = repo_state |> Map.get(SimpleUser, %{}) |> Map.values()
           {users, state}

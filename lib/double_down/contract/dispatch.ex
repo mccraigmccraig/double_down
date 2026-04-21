@@ -43,7 +43,7 @@ defmodule DoubleDown.Contract.Dispatch do
   def call(otp_app, contract, operation, args) do
     case resolve_test_handler(contract) do
       {:ok, owner_pid, handler} ->
-        result = invoke_handler(handler, owner_pid, operation, args)
+        result = invoke_handler(handler, owner_pid, contract, operation, args)
         maybe_log(owner_pid, contract, operation, args, result)
         result
 
@@ -165,14 +165,14 @@ defmodule DoubleDown.Contract.Dispatch do
   # -- Handler invocation --
 
   @doc false
-  def invoke_handler(%{type: :module, impl: impl}, _owner_pid, operation, args) do
+  def invoke_handler(%{type: :module, impl: impl}, _owner_pid, _contract, operation, args) do
     case apply(impl, operation, args) do
       %DoubleDown.Contract.Dispatch.Defer{fn: deferred_fn} -> deferred_fn.()
       result -> result
     end
   end
 
-  def invoke_handler(%{type: :fn, fun: fun}, _owner_pid, operation, args) do
+  def invoke_handler(%{type: :fn, fun: fun}, _owner_pid, _contract, operation, args) do
     case fun.(operation, args) do
       %DoubleDown.Contract.Dispatch.Defer{fn: deferred_fn} -> deferred_fn.()
       result -> result
@@ -182,6 +182,7 @@ defmodule DoubleDown.Contract.Dispatch do
   def invoke_handler(
         %{type: :stateful, fun: fun, state_key: state_key},
         owner_pid,
+        contract,
         operation,
         args
       ) do
@@ -201,11 +202,11 @@ defmodule DoubleDown.Contract.Dispatch do
     # in a %Defer{} so it re-raises in the calling process (outside the lock),
     # where ExUnit can handle it normally.
     #
-    # 4-arity handlers receive a read-only snapshot of all contract states
-    # as the 4th argument. This is fetched before entering get_and_update
+    # 5-arity handlers receive a read-only snapshot of all contract states
+    # as the 5th argument. This is fetched before entering get_and_update
     # to avoid re-entrant GenServer calls.
     all_states =
-      if is_function(fun, 4) do
+      if is_function(fun, 5) do
         build_global_state(owner_pid)
       else
         nil
@@ -216,9 +217,9 @@ defmodule DoubleDown.Contract.Dispatch do
         try do
           handler_result =
             if all_states do
-              fun.(operation, args, state, all_states)
+              fun.(contract, operation, args, state, all_states)
             else
-              fun.(operation, args, state)
+              fun.(contract, operation, args, state)
             end
 
           case handler_result do

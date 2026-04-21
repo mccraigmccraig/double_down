@@ -45,7 +45,7 @@ defmodule DoubleDown.TestingTest do
       assert :ok =
                DoubleDown.Testing.set_stateful_handler(
                  Counter,
-                 fn :increment, [n], state -> {state + n, state + n} end,
+                 fn _contract, :increment, [n], state -> {state + n, state + n} end,
                  0
                )
     end
@@ -54,7 +54,7 @@ defmodule DoubleDown.TestingTest do
       DoubleDown.Testing.set_stateful_handler(
         Counter,
         fn
-          :get_count, [], state -> {state, state}
+          _contract, :get_count, [], state -> {state, state}
         end,
         42
       )
@@ -66,8 +66,8 @@ defmodule DoubleDown.TestingTest do
       DoubleDown.Testing.set_stateful_handler(
         Counter,
         fn
-          :increment, [n], state -> {state + n, state + n}
-          :get_count, [], state -> {state, state}
+          _contract, :increment, [n], state -> {state + n, state + n}
+          _contract, :get_count, [], state -> {state, state}
         end,
         0
       )
@@ -77,9 +77,9 @@ defmodule DoubleDown.TestingTest do
       assert 15 = Counter.Port.get_count()
     end
 
-    test "rejects non-arity-3 function" do
+    test "rejects non-arity-4 function" do
       assert_raise FunctionClauseError, fn ->
-        DoubleDown.Testing.set_stateful_handler(Counter, fn _, _ -> {:ok, 0} end, 0)
+        DoubleDown.Testing.set_stateful_handler(Counter, fn _, _, _ -> {:ok, 0} end, 0)
       end
     end
   end
@@ -118,8 +118,8 @@ defmodule DoubleDown.TestingTest do
       DoubleDown.Testing.set_stateful_handler(
         Counter,
         fn
-          :increment, [n], state -> {state + n, state + n}
-          :get_count, [], state -> {state, state}
+          _contract, :increment, [n], state -> {state + n, state + n}
+          _contract, :get_count, [], state -> {state, state}
         end,
         100
       )
@@ -162,8 +162,8 @@ defmodule DoubleDown.TestingTest do
       DoubleDown.Testing.set_stateful_handler(
         Counter,
         fn
-          :increment, [n], s -> {s + n, s + n}
-          :get_count, [], s -> {s, s}
+          _contract, :increment, [n], s -> {s + n, s + n}
+          _contract, :get_count, [], s -> {s, s}
         end,
         0
       )
@@ -177,7 +177,7 @@ defmodule DoubleDown.TestingTest do
       DoubleDown.Testing.set_stateful_handler(
         Counter,
         fn
-          :get_count, [], s -> {s, s}
+          _contract, :get_count, [], s -> {s, s}
         end,
         0
       )
@@ -256,7 +256,7 @@ defmodule DoubleDown.TestingTest do
 
       DoubleDown.Testing.set_stateful_handler(
         Counter,
-        fn :increment, [n], s -> {s + n, s + n} end,
+        fn _contract, :increment, [n], s -> {s + n, s + n} end,
         0
       )
 
@@ -379,8 +379,8 @@ defmodule DoubleDown.TestingTest do
       DoubleDown.Testing.set_stateful_handler(
         Counter,
         fn
-          :increment, [n], s -> {s + n, s + n}
-          :get_count, [], s -> {s, s}
+          _contract, :increment, [n], s -> {s + n, s + n}
+          _contract, :get_count, [], s -> {s, s}
         end,
         0
       )
@@ -454,7 +454,7 @@ defmodule DoubleDown.TestingTest do
 
       DoubleDown.Testing.set_stateful_handler(
         Counter,
-        fn :get_count, [], s -> {s, s} end,
+        fn _contract, :get_count, [], s -> {s, s} end,
         99
       )
 
@@ -467,7 +467,7 @@ defmodule DoubleDown.TestingTest do
 
       DoubleDown.Testing.set_stateful_handler(
         Counter,
-        fn :get_count, [], s -> {s, s} end,
+        fn _contract, :get_count, [], s -> {s, s} end,
         0
       )
 
@@ -532,8 +532,8 @@ defmodule DoubleDown.TestingGlobalModeTest do
       DoubleDown.Testing.set_stateful_handler(
         Counter,
         fn
-          :increment, [n], s -> {s + n, s + n}
-          :get_count, [], s -> {s, s}
+          _contract, :increment, [n], s -> {s + n, s + n}
+          _contract, :get_count, [], s -> {s, s}
         end,
         0
       )

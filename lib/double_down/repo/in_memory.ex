@@ -70,7 +70,7 @@ if Code.ensure_loaded?(Ecto) do
 
         DoubleDown.Double.fake(DoubleDown.Repo, DoubleDown.Repo.InMemory, [],
           fallback_fn: fn
-            :all, [%Ecto.Query{}], _state -> []
+            _contract, :all, [%Ecto.Query{}], _state -> []
           end
         )
 
@@ -122,14 +122,17 @@ if Code.ensure_loaded?(Ecto) do
     def dispatch(_contract, :insert, [changeset], store),
       do: InMemoryShared.dispatch_insert([changeset], store)
 
-    def dispatch(_contract, :insert, [cs, _opts], store), do: InMemoryShared.dispatch_insert([cs], store)
+    def dispatch(_contract, :insert, [cs, _opts], store),
+      do: InMemoryShared.dispatch_insert([cs], store)
 
     def dispatch(_contract, :update, [changeset], store),
       do: InMemoryShared.dispatch_update([changeset], store)
 
-    def dispatch(_contract, :update, [cs, _opts], store), do: InMemoryShared.dispatch_update([cs], store)
+    def dispatch(_contract, :update, [cs, _opts], store),
+      do: InMemoryShared.dispatch_update([cs], store)
 
-    def dispatch(_contract, :delete, [record], store), do: InMemoryShared.dispatch_delete([record], store)
+    def dispatch(_contract, :delete, [record], store),
+      do: InMemoryShared.dispatch_delete([record], store)
 
     def dispatch(_contract, :delete, [record, _opts], store),
       do: InMemoryShared.dispatch_delete([record], store)
@@ -191,8 +194,8 @@ if Code.ensure_loaded?(Ecto) do
       {List.first(matching), store}
     end
 
-    def dispatch(_contract, :get_by, [queryable, clauses], store),
-      do: dispatch_via_fallback(:get_by, [queryable, clauses], store)
+    def dispatch(contract, :get_by, [queryable, clauses], store),
+      do: dispatch_via_fallback(contract, :get_by, [queryable, clauses], store)
 
     def dispatch(contract, :get_by, [queryable, clauses, _opts], store),
       do: dispatch(contract, :get_by, [queryable, clauses], store)
@@ -215,8 +218,8 @@ if Code.ensure_loaded?(Ecto) do
       end
     end
 
-    def dispatch(_contract, :get_by!, [queryable, clauses], store),
-      do: dispatch_via_fallback(:get_by!, [queryable, clauses], store)
+    def dispatch(contract, :get_by!, [queryable, clauses], store),
+      do: dispatch_via_fallback(contract, :get_by!, [queryable, clauses], store)
 
     def dispatch(contract, :get_by!, [queryable, clauses, _opts], store),
       do: dispatch(contract, :get_by!, [queryable, clauses], store)
@@ -230,8 +233,8 @@ if Code.ensure_loaded?(Ecto) do
       {InMemoryShared.records_for_schema(store, queryable), store}
     end
 
-    def dispatch(_contract, :all, [queryable], store),
-      do: dispatch_via_fallback(:all, [queryable], store)
+    def dispatch(contract, :all, [queryable], store),
+      do: dispatch_via_fallback(contract, :all, [queryable], store)
 
     def dispatch(contract, :all, [queryable, _opts], store),
       do: dispatch(contract, :all, [queryable], store)
@@ -252,8 +255,8 @@ if Code.ensure_loaded?(Ecto) do
       end
     end
 
-    def dispatch(_contract, :one, [queryable], store),
-      do: dispatch_via_fallback(:one, [queryable], store)
+    def dispatch(contract, :one, [queryable], store),
+      do: dispatch_via_fallback(contract, :one, [queryable], store)
 
     def dispatch(contract, :one, [queryable, _opts], store),
       do: dispatch(contract, :one, [queryable], store)
@@ -274,8 +277,8 @@ if Code.ensure_loaded?(Ecto) do
       end
     end
 
-    def dispatch(_contract, :one!, [queryable], store),
-      do: dispatch_via_fallback(:one!, [queryable], store)
+    def dispatch(contract, :one!, [queryable], store),
+      do: dispatch_via_fallback(contract, :one!, [queryable], store)
 
     def dispatch(contract, :one!, [queryable, _opts], store),
       do: dispatch(contract, :one!, [queryable], store)
@@ -285,8 +288,8 @@ if Code.ensure_loaded?(Ecto) do
       {InMemoryShared.records_for_schema(store, queryable) != [], store}
     end
 
-    def dispatch(_contract, :exists?, [queryable], store),
-      do: dispatch_via_fallback(:exists?, [queryable], store)
+    def dispatch(contract, :exists?, [queryable], store),
+      do: dispatch_via_fallback(contract, :exists?, [queryable], store)
 
     def dispatch(contract, :exists?, [queryable, _opts], store),
       do: dispatch(contract, :exists?, [queryable], store)
@@ -301,8 +304,8 @@ if Code.ensure_loaded?(Ecto) do
       {compute_aggregate(records, aggregate, field), store}
     end
 
-    def dispatch(_contract, :aggregate, [queryable, aggregate, field], store),
-      do: dispatch_via_fallback(:aggregate, [queryable, aggregate, field], store)
+    def dispatch(contract, :aggregate, [queryable, aggregate, field], store),
+      do: dispatch_via_fallback(contract, :aggregate, [queryable, aggregate, field], store)
 
     def dispatch(contract, :aggregate, [queryable, aggregate, field, _opts], store),
       do: dispatch(contract, :aggregate, [queryable, aggregate, field], store)
@@ -345,8 +348,8 @@ if Code.ensure_loaded?(Ecto) do
       {result, new_store}
     end
 
-    def dispatch(_contract, :insert_all, args, store),
-      do: dispatch_via_fallback(:insert_all, args, store)
+    def dispatch(contract, :insert_all, args, store),
+      do: dispatch_via_fallback(contract, :insert_all, args, store)
 
     def dispatch(_contract, :delete_all, [queryable], store)
         when is_atom(queryable) and not is_nil(queryable) do
@@ -356,8 +359,8 @@ if Code.ensure_loaded?(Ecto) do
       {{count, nil}, new_store}
     end
 
-    def dispatch(_contract, :delete_all, [queryable], store),
-      do: dispatch_via_fallback(:delete_all, [queryable], store)
+    def dispatch(contract, :delete_all, [queryable], store),
+      do: dispatch_via_fallback(contract, :delete_all, [queryable], store)
 
     def dispatch(contract, :delete_all, [queryable, _opts], store),
       do: dispatch(contract, :delete_all, [queryable], store)
@@ -381,8 +384,8 @@ if Code.ensure_loaded?(Ecto) do
       {{count, nil}, new_store}
     end
 
-    def dispatch(_contract, :update_all, [queryable, updates], store),
-      do: dispatch_via_fallback(:update_all, [queryable, updates], store)
+    def dispatch(contract, :update_all, [queryable, updates], store),
+      do: dispatch_via_fallback(contract, :update_all, [queryable, updates], store)
 
     def dispatch(contract, :update_all, [queryable, updates, _opts], store),
       do: dispatch(contract, :update_all, [queryable, updates], store)
@@ -394,14 +397,15 @@ if Code.ensure_loaded?(Ecto) do
     def dispatch(contract, :transact, args, store),
       do: InMemoryShared.dispatch_transact(args, store, contract)
 
-    def dispatch(_contract, :rollback, args, store), do: InMemoryShared.dispatch_rollback(args, store)
+    def dispatch(_contract, :rollback, args, store),
+      do: InMemoryShared.dispatch_rollback(args, store)
 
     # -----------------------------------------------------------------
     # Fallback dispatch (closed-world error messages)
     # -----------------------------------------------------------------
 
-    defp dispatch_via_fallback(operation, args, store) do
-      case InMemoryShared.try_fallback(store, operation, args) do
+    defp dispatch_via_fallback(contract, operation, args, store) do
+      case InMemoryShared.try_fallback(store, contract, operation, args) do
         {:no_fallback, ^operation, ^args} ->
           defer_raise_no_fallback(operation, args, store)
 
@@ -422,7 +426,7 @@ if Code.ensure_loaded?(Ecto) do
 
         DoubleDown.Repo.InMemory.new(
           fallback_fn: fn
-            :#{operation}, #{inspect(args)}, _state -> # your result here
+            _contract, :#{operation}, #{inspect(args)}, _state -> # your result here
           end
         )
         """,

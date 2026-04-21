@@ -102,7 +102,9 @@ defmodule DoubleDown.Dynamic do
   def dispatch(module, operation, args) do
     case DoubleDown.Contract.Dispatch.resolve_test_handler(module) do
       {:ok, owner_pid, handler} ->
-        result = DoubleDown.Contract.Dispatch.invoke_handler(handler, owner_pid, operation, args)
+        result =
+          DoubleDown.Contract.Dispatch.invoke_handler(handler, owner_pid, module, operation, args)
+
         DoubleDown.Contract.Dispatch.maybe_log(owner_pid, module, operation, args, result)
         result
 

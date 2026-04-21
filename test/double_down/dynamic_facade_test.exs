@@ -59,14 +59,14 @@ defmodule DoubleDown.DynamicFacadeTest do
       Double.fake(
         DynamicTarget,
         fn
-          :greet, [name], state ->
+          _contract, :greet, [name], state ->
             count = Map.get(state, :greet_count, 0) + 1
             {"Hello #{name} (#{count})", Map.put(state, :greet_count, count)}
 
-          :add, [a, b], state ->
+          _contract, :add, [a, b], state ->
             {a + b, state}
 
-          :zero_arity, [], state ->
+          _contract, :zero_arity, [], state ->
             {:fake, state}
         end,
         %{}
@@ -82,8 +82,8 @@ defmodule DoubleDown.DynamicFacadeTest do
       Double.fake(
         DynamicTarget,
         fn
-          :greet, [name], state -> {"Fake: #{name}", state}
-          :add, [a, b], state -> {a + b, state}
+          _contract, :greet, [name], state -> {"Fake: #{name}", state}
+          _contract, :add, [a, b], state -> {a + b, state}
         end,
         %{}
       )
@@ -140,7 +140,7 @@ defmodule DoubleDown.DynamicFacadeTest do
     test ":passthrough expect delegates to original" do
       Double.fake(
         DynamicTarget,
-        fn :greet, [name], state -> {"Fake: #{name}", state} end,
+        fn _contract, :greet, [name], state -> {"Fake: #{name}", state} end,
         %{}
       )
       |> Double.expect(:greet, :passthrough)
@@ -156,7 +156,7 @@ defmodule DoubleDown.DynamicFacadeTest do
     test "Double.passthrough() from stateful responder delegates to fake" do
       Double.fake(
         DynamicTarget,
-        fn :greet, [name], state -> {"Fake: #{name}", state} end,
+        fn _contract, :greet, [name], state -> {"Fake: #{name}", state} end,
         %{}
       )
       |> Double.expect(:greet, fn [name], _state ->
@@ -179,8 +179,8 @@ defmodule DoubleDown.DynamicFacadeTest do
       Double.fake(
         DynamicTarget,
         fn
-          :greet, [name], state -> {"Fake: #{name}", state}
-          :zero_arity, [], state -> {state[:count] || 0, state}
+          _contract, :greet, [name], state -> {"Fake: #{name}", state}
+          _contract, :zero_arity, [], state -> {state[:count] || 0, state}
         end,
         %{count: 0}
       )
@@ -210,7 +210,7 @@ defmodule DoubleDown.DynamicFacadeTest do
       # Set up dynamic module with 4-arity fake that reads Repo state
       Double.fake(
         DynamicTarget,
-        fn :greet, [_name], state, all_states ->
+        fn _contract, :greet, [_name], state, all_states ->
           repo_state = Map.get(all_states, Repo, %{})
           users = repo_state |> Map.get(SimpleUser, %{}) |> Map.values()
           names = Enum.map(users, & &1.name)

@@ -32,9 +32,9 @@ if Code.ensure_loaded?(Ecto) do
           DoubleDown.Repo.OpenInMemory,
           [%User{id: 1, name: "Alice"}],
           fallback_fn: fn
-            :all, [User], state ->
+            _contract, :all, [User], state ->
               Map.get(state, User, %{}) |> Map.values()
-            :get_by, [User, [email: "alice@example.com"]], _state ->
+            _contract, :get_by, [User, [email: "alice@example.com"]], _state ->
               %User{id: 1, name: "Alice"}
           end
         )
@@ -115,7 +115,7 @@ if Code.ensure_loaded?(Ecto) do
         DoubleDown.Repo.OpenInMemory.new(
           [%User{id: 1, name: "Alice"}],
           fallback_fn: fn
-            :all, [User], state ->
+            _contract, :all, [User], state ->
               Map.get(state, User, %{}) |> Map.values()
           end
         )
@@ -168,7 +168,8 @@ if Code.ensure_loaded?(Ecto) do
     def dispatch(_contract, :update, [changeset], store),
       do: InMemoryShared.dispatch_update([changeset], store)
 
-    def dispatch(_contract, :delete, [record], store), do: InMemoryShared.dispatch_delete([record], store)
+    def dispatch(_contract, :delete, [record], store),
+      do: InMemoryShared.dispatch_delete([record], store)
 
     def dispatch(_contract, :insert!, [changeset], store),
       do: InMemoryShared.dispatch_insert!([changeset], store)
@@ -183,20 +184,20 @@ if Code.ensure_loaded?(Ecto) do
     # PK reads — 3-stage: state -> fallback -> error
     # -----------------------------------------------------------------
 
-    def dispatch(_contract, :get, [queryable, id] = args, store) do
+    def dispatch(contract, :get, [queryable, id] = args, store) do
       schema = InMemoryShared.extract_schema(queryable)
 
       case InMemoryShared.get_record(store, schema, id) do
-        nil -> dispatch_via_fallback(:get, args, store)
+        nil -> dispatch_via_fallback(contract, :get, args, store)
         record -> {record, store}
       end
     end
 
-    def dispatch(_contract, :get!, [queryable, id] = args, store) do
+    def dispatch(contract, :get!, [queryable, id] = args, store) do
       schema = InMemoryShared.extract_schema(queryable)
 
       case InMemoryShared.get_record(store, schema, id) do
-        nil -> dispatch_via_fallback(:get!, args, store)
+        nil -> dispatch_via_fallback(contract, :get!, args, store)
         record -> {record, store}
       end
     end
@@ -254,31 +255,45 @@ if Code.ensure_loaded?(Ecto) do
     # get_by / get_by! — 3-stage when clauses include PK, else fallback
     # -----------------------------------------------------------------
 
-    def dispatch(_contract, :get_by, [queryable, clauses] = args, store) do
-      dispatch_get_by(:get_by, queryable, clauses, args, store)
+    def dispatch(contract, :get_by, [queryable, clauses] = args, store) do
+      dispatch_get_by(contract, :get_by, queryable, clauses, args, store)
     end
 
-    def dispatch(_contract, :get_by!, [queryable, clauses] = args, store) do
-      dispatch_get_by(:get_by!, queryable, clauses, args, store)
+    def dispatch(contract, :get_by!, [queryable, clauses] = args, store) do
+      dispatch_get_by(contract, :get_by!, queryable, clauses, args, store)
     end
 
     # -----------------------------------------------------------------
     # Non-PK reads — always fallback (open-world)
     # -----------------------------------------------------------------
 
-    def dispatch(_contract, :one, args, store), do: dispatch_via_fallback(:one, args, store)
-    def dispatch(_contract, :one!, args, store), do: dispatch_via_fallback(:one!, args, store)
-    def dispatch(_contract, :all, args, store), do: dispatch_via_fallback(:all, args, store)
-    def dispatch(_contract, :exists?, args, store), do: dispatch_via_fallback(:exists?, args, store)
-    def dispatch(_contract, :aggregate, args, store), do: dispatch_via_fallback(:aggregate, args, store)
+    def dispatch(contract, :one, args, store),
+      do: dispatch_via_fallback(contract, :one, args, store)
+
+    def dispatch(contract, :one!, args, store),
+      do: dispatch_via_fallback(contract, :one!, args, store)
+
+    def dispatch(contract, :all, args, store),
+      do: dispatch_via_fallback(contract, :all, args, store)
+
+    def dispatch(contract, :exists?, args, store),
+      do: dispatch_via_fallback(contract, :exists?, args, store)
+
+    def dispatch(contract, :aggregate, args, store),
+      do: dispatch_via_fallback(contract, :aggregate, args, store)
 
     # -----------------------------------------------------------------
     # Bulk operations — always fallback (open-world)
     # -----------------------------------------------------------------
 
-    def dispatch(_contract, :insert_all, args, store), do: dispatch_via_fallback(:insert_all, args, store)
-    def dispatch(_contract, :update_all, args, store), do: dispatch_via_fallback(:update_all, args, store)
-    def dispatch(_contract, :delete_all, args, store), do: dispatch_via_fallback(:delete_all, args, store)
+    def dispatch(contract, :insert_all, args, store),
+      do: dispatch_via_fallback(contract, :insert_all, args, store)
+
+    def dispatch(contract, :update_all, args, store),
+      do: dispatch_via_fallback(contract, :update_all, args, store)
+
+    def dispatch(contract, :delete_all, args, store),
+      do: dispatch_via_fallback(contract, :delete_all, args, store)
 
     # -----------------------------------------------------------------
     # Transaction operations — delegate to Shared
@@ -287,13 +302,14 @@ if Code.ensure_loaded?(Ecto) do
     def dispatch(contract, :transact, args, store),
       do: InMemoryShared.dispatch_transact(args, store, contract)
 
-    def dispatch(_contract, :rollback, args, store), do: InMemoryShared.dispatch_rollback(args, store)
+    def dispatch(_contract, :rollback, args, store),
+      do: InMemoryShared.dispatch_rollback(args, store)
 
     # -----------------------------------------------------------------
     # get_by PK-inclusive dispatch (open-world)
     # -----------------------------------------------------------------
 
-    defp dispatch_get_by(operation, queryable, clauses, args, store)
+    defp dispatch_get_by(contract, operation, queryable, clauses, args, store)
          when is_atom(queryable) and not is_nil(queryable) do
       clauses_kw = InMemoryShared.normalize_clauses(clauses)
 
@@ -302,7 +318,7 @@ if Code.ensure_loaded?(Ecto) do
           case InMemoryShared.get_record(store, queryable, pk_value) do
             nil ->
               # Not in state — absence is not authoritative, delegate to fallback
-              dispatch_via_fallback(operation, args, store)
+              dispatch_via_fallback(contract, operation, args, store)
 
             record ->
               if InMemoryShared.fields_match?(record, remaining_clauses) do
@@ -313,21 +329,21 @@ if Code.ensure_loaded?(Ecto) do
           end
 
         :not_pk_inclusive ->
-          dispatch_via_fallback(operation, args, store)
+          dispatch_via_fallback(contract, operation, args, store)
       end
     end
 
-    defp dispatch_get_by(operation, _queryable, _clauses, args, store) do
+    defp dispatch_get_by(contract, operation, _queryable, _clauses, args, store) do
       # Ecto.Query or other non-atom queryable — delegate to fallback
-      dispatch_via_fallback(operation, args, store)
+      dispatch_via_fallback(contract, operation, args, store)
     end
 
     # -----------------------------------------------------------------
     # Fallback dispatch (open-world error messages)
     # -----------------------------------------------------------------
 
-    defp dispatch_via_fallback(operation, args, store) do
-      case InMemoryShared.try_fallback(store, operation, args) do
+    defp dispatch_via_fallback(contract, operation, args, store) do
+      case InMemoryShared.try_fallback(store, contract, operation, args) do
         {:no_fallback, ^operation, ^args} ->
           defer_raise_no_fallback(operation, args, store)
 
@@ -349,7 +365,7 @@ if Code.ensure_loaded?(Ecto) do
 
         DoubleDown.Repo.OpenInMemory.new(
           fallback_fn: fn
-            :#{operation}, #{inspect(args)}, _state -> # your result here
+            _contract, :#{operation}, #{inspect(args)}, _state -> # your result here
           end
         )
         """,

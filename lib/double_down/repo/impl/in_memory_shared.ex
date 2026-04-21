@@ -249,16 +249,16 @@ if Code.ensure_loaded?(Ecto) do
     # -------------------------------------------------------------------
 
     @doc false
-    def try_fallback(store, operation, args) do
+    def try_fallback(store, contract, operation, args) do
       case Map.get(store, @fallback_fn_key) do
         nil ->
           {:no_fallback, operation, args}
 
-        fallback_fn when is_function(fallback_fn, 3) ->
+        fallback_fn when is_function(fallback_fn, 4) ->
           clean_state = Map.delete(store, @fallback_fn_key)
 
           try do
-            {fallback_fn.(operation, args, clean_state), store}
+            {fallback_fn.(contract, operation, args, clean_state), store}
           rescue
             # FunctionClauseError means no matching clause — treat as missing fallback.
             FunctionClauseError ->

@@ -148,7 +148,9 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
         |> Ecto.Changeset.cast(%{name: "Alice"}, [:name])
         |> Ecto.Changeset.add_error(:name, "is invalid")
 
-      {{:error, changeset}, _store} = Repo.OpenInMemory.dispatch(DoubleDown.Repo, :insert, [cs], store)
+      {{:error, changeset}, _store} =
+        Repo.OpenInMemory.dispatch(DoubleDown.Repo, :insert, [cs], store)
+
       assert changeset.changes == %{name: "Alice"}
       # No id was assigned — the changeset data still has nil id
       assert changeset.data.id == nil
@@ -236,14 +238,14 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
     end
 
     test "stores fallback_fn via :fallback_fn option" do
-      fallback = fn :all, [User], _state -> [] end
+      fallback = fn _contract, :all, [User], _state -> [] end
       state = Repo.OpenInMemory.new(fallback_fn: fallback)
       assert %{__fallback_fn__: ^fallback} = state
     end
 
     test "combines seed and fallback_fn" do
       alice = %User{id: 1, name: "Alice"}
-      fallback = fn :all, [User], _state -> [alice] end
+      fallback = fn _contract, :all, [User], _state -> [alice] end
       state = Repo.OpenInMemory.new(seed: [alice], fallback_fn: fallback)
       assert %{User => %{1 => ^alice}, __fallback_fn__: ^fallback} = state
     end
@@ -502,7 +504,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
       state =
         Repo.OpenInMemory.new(
           seed: [%User{id: 1, name: "Alice"}],
-          fallback_fn: fn :get, [User, 99], _state -> bob end
+          fallback_fn: fn _contract, :get, [User, 99], _state -> bob end
         )
 
       DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/4, state)
@@ -515,7 +517,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
 
     test "get raises when fallback doesn't match" do
       state =
-        Repo.OpenInMemory.new(fallback_fn: fn :get, [User, 42], _state -> nil end)
+        Repo.OpenInMemory.new(fallback_fn: fn _contract, :get, [User, 42], _state -> nil end)
 
       DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/4, state)
 
@@ -540,7 +542,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
       state =
         Repo.OpenInMemory.new(
           seed: [%User{id: 1, name: "Alice"}],
-          fallback_fn: fn :get!, [User, 99], _state -> bob end
+          fallback_fn: fn _contract, :get!, [User, 99], _state -> bob end
         )
 
       DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/4, state)
@@ -585,7 +587,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
       state =
         Repo.OpenInMemory.new(
           seed: [%User{id: 1, name: "Alice"}],
-          fallback_fn: fn :get_by, [User, [id: 99]], _state -> bob end
+          fallback_fn: fn _contract, :get_by, [User, [id: 99]], _state -> bob end
         )
 
       DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/4, state)
@@ -630,7 +632,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
       state =
         Repo.OpenInMemory.new(
           seed: [alice],
-          fallback_fn: fn :get_by, [User, [name: "Alice"]], _state -> alice end
+          fallback_fn: fn _contract, :get_by, [User, [name: "Alice"]], _state -> alice end
         )
 
       DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/4, state)
@@ -644,7 +646,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
 
       state =
         Repo.OpenInMemory.new(
-          fallback_fn: fn :get_by, [^query, [name: "Alice"]], _state -> alice end
+          fallback_fn: fn _contract, :get_by, [^query, [name: "Alice"]], _state -> alice end
         )
 
       DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/4, state)
@@ -686,7 +688,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
         Repo.OpenInMemory.new(
           seed: [membership],
           fallback_fn: fn
-            :get_by, [CompositePkMembership, [user_id: 1]], _state -> membership
+            _contract, :get_by, [CompositePkMembership, [user_id: 1]], _state -> membership
           end
         )
 
@@ -711,7 +713,9 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
       bob = %User{id: 99, name: "Fallback Bob"}
 
       state =
-        Repo.OpenInMemory.new(fallback_fn: fn :get_by!, [User, [id: 99]], _state -> bob end)
+        Repo.OpenInMemory.new(
+          fallback_fn: fn _contract, :get_by!, [User, [id: 99]], _state -> bob end
+        )
 
       DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/4, state)
 
@@ -750,10 +754,17 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
         Repo.OpenInMemory.new(
           seed: [alice],
           fallback_fn: fn
-            :get_by, [User, [name: "Alice"]], _state -> alice
-            :get_by, [User, [name: "Alice", email: "alice@example.com"]], _state -> alice
-            :get_by, [User, %{name: "Alice"}], _state -> alice
-            :get_by, [User, [name: "Nobody"]], _state -> nil
+            _contract, :get_by, [User, [name: "Alice"]], _state ->
+              alice
+
+            _contract, :get_by, [User, [name: "Alice", email: "alice@example.com"]], _state ->
+              alice
+
+            _contract, :get_by, [User, %{name: "Alice"}], _state ->
+              alice
+
+            _contract, :get_by, [User, [name: "Nobody"]], _state ->
+              nil
           end
         )
 
@@ -784,7 +795,9 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
       bob = %User{id: 2, name: "Bob"}
 
       state =
-        Repo.OpenInMemory.new(fallback_fn: fn :get_by!, [User, [name: "Bob"]], _state -> bob end)
+        Repo.OpenInMemory.new(
+          fallback_fn: fn _contract, :get_by!, [User, [name: "Bob"]], _state -> bob end
+        )
 
       DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/4, state)
       assert %User{name: "Bob"} = TestRepo.get_by!(User, name: "Bob")
@@ -794,7 +807,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
       alice = %User{id: 1, name: "Alice"}
 
       state =
-        Repo.OpenInMemory.new(fallback_fn: fn :one, [User], _state -> alice end)
+        Repo.OpenInMemory.new(fallback_fn: fn _contract, :one, [User], _state -> alice end)
 
       DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/4, state)
       assert %User{name: "Alice"} = TestRepo.one(User)
@@ -816,7 +829,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
       alice = %User{id: 1, name: "Alice"}
 
       state =
-        Repo.OpenInMemory.new(fallback_fn: fn :one!, [User], _state -> alice end)
+        Repo.OpenInMemory.new(fallback_fn: fn _contract, :one!, [User], _state -> alice end)
 
       DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/4, state)
       assert %User{name: "Alice"} = TestRepo.one!(User)
@@ -826,7 +839,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
       users = [%User{id: 1, name: "Alice"}, %User{id: 2, name: "Bob"}]
 
       state =
-        Repo.OpenInMemory.new(fallback_fn: fn :all, [User], _state -> users end)
+        Repo.OpenInMemory.new(fallback_fn: fn _contract, :all, [User], _state -> users end)
 
       DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/4, state)
 
@@ -851,7 +864,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
       state =
         Repo.OpenInMemory.new(
           fallback_fn: fn
-            :exists?, [User], _state -> true
+            _contract, :exists?, [User], _state -> true
           end
         )
 
@@ -881,10 +894,10 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
       state =
         Repo.OpenInMemory.new(
           fallback_fn: fn
-            :aggregate, [User, :count, :id], _state -> 3
-            :aggregate, [User, :sum, :age], _state -> 55
-            :aggregate, [User, :min, :age], _state -> 25
-            :aggregate, [User, :max, :age], _state -> 30
+            _contract, :aggregate, [User, :count, :id], _state -> 3
+            _contract, :aggregate, [User, :sum, :age], _state -> 55
+            _contract, :aggregate, [User, :min, :age], _state -> 25
+            _contract, :aggregate, [User, :max, :age], _state -> 30
           end
         )
 
@@ -919,7 +932,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
 
       state =
         Repo.OpenInMemory.new(
-          fallback_fn: fn :insert_all, [User, ^entries, []], _state -> {2, nil} end
+          fallback_fn: fn _contract, :insert_all, [User, ^entries, []], _state -> {2, nil} end
         )
 
       DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/4, state)
@@ -940,7 +953,9 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
 
     test "delete_all dispatches to fallback" do
       state =
-        Repo.OpenInMemory.new(fallback_fn: fn :delete_all, [User, []], _state -> {2, nil} end)
+        Repo.OpenInMemory.new(
+          fallback_fn: fn _contract, :delete_all, [User, []], _state -> {2, nil} end
+        )
 
       DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/4, state)
       assert {2, nil} = TestRepo.delete_all(User, [])
@@ -961,7 +976,9 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
     test "update_all dispatches to fallback" do
       state =
         Repo.OpenInMemory.new(
-          fallback_fn: fn :update_all, [User, [set: [name: "bulk"]], []], _state -> {3, nil} end
+          fallback_fn: fn _contract, :update_all, [User, [set: [name: "bulk"]], []], _state ->
+            {3, nil}
+          end
         )
 
       DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/4, state)
@@ -1246,7 +1263,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
       DoubleDown.Testing.set_stateful_handler(
         Repo,
         &Repo.OpenInMemory.dispatch/4,
-        Repo.OpenInMemory.new(fallback_fn: fn :all, [User], _state -> users end)
+        Repo.OpenInMemory.new(fallback_fn: fn _contract, :all, [User], _state -> users end)
       )
 
       DoubleDown.Testing.enable_log(Repo)
@@ -1300,7 +1317,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
     test "fallback raising RuntimeError does not crash the ownership server" do
       state =
         Repo.OpenInMemory.new(
-          fallback_fn: fn :all, [User], _state ->
+          fallback_fn: fn _contract, :all, [User], _state ->
             raise RuntimeError, "boom from fallback"
           end
         )
@@ -1319,7 +1336,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
     test "fallback raising ArgumentError does not crash the ownership server" do
       state =
         Repo.OpenInMemory.new(
-          fallback_fn: fn :get_by, [User, [name: "Alice"]], _state ->
+          fallback_fn: fn _contract, :get_by, [User, [name: "Alice"]], _state ->
             raise ArgumentError, "bad argument in fallback"
           end
         )
@@ -1337,7 +1354,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
     test "FunctionClauseError from fallback still treated as missing clause" do
       state =
         Repo.OpenInMemory.new(
-          fallback_fn: fn :all, [User], _state -> [%User{id: 1, name: "Alice"}] end
+          fallback_fn: fn _contract, :all, [User], _state -> [%User{id: 1, name: "Alice"}] end
         )
 
       DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/4, state)

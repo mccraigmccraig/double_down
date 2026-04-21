@@ -52,13 +52,13 @@ defmodule DoubleDown.Testing do
   @doc """
   Register a stateful handler for a contract.
 
-  The function may be 3-arity or 4-arity:
+  The function may be 4-arity or 5-arity:
 
-    * **3-arity:** `fn operation, args, state -> {result, new_state} end`
-    * **4-arity:** `fn operation, args, state, all_states -> {result, new_state} end`
+    * **4-arity:** `fn contract, operation, args, state -> {result, new_state} end`
+    * **5-arity:** `fn contract, operation, args, state, all_states -> {result, new_state} end`
 
-  4-arity handlers receive a read-only snapshot of all contract states as
-  the 4th argument. This enables cross-contract state access (e.g. a Queries
+  5-arity handlers receive a read-only snapshot of all contract states as
+  the 5th argument. This enables cross-contract state access (e.g. a Queries
   handler reading the Repo InMemory store). The `all_states` map is keyed by
   contract module and includes a `DoubleDown.Contract.GlobalState` sentinel key.
   The handler must return only its own contract's new state — not the global map.
@@ -67,7 +67,7 @@ defmodule DoubleDown.Testing do
   """
   @spec set_stateful_handler(module(), (... -> {term(), term()}), term()) :: :ok
   def set_stateful_handler(contract, fun, initial_state)
-      when is_function(fun, 3) or is_function(fun, 4) do
+      when is_function(fun, 4) or is_function(fun, 5) do
     state_key = Module.concat(DoubleDown.State, contract)
 
     # Store the initial state
