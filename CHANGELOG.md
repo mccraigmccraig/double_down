@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.47.2]
+
+### Added
+
+- `DoubleDown.Contract.Dispatch.handler_active?/1` — public boolean API
+  to check whether the calling process has a test handler installed for
+  a given contract module. Returns `true` when a handler is active (via
+  `Double.fake/2`, `expect/3`, etc.), `false` otherwise. Respects the
+  `$callers` chain. Useful for test infrastructure that needs to skip
+  real-DB side-effects (e.g. Carbonite session variables) when an
+  in-memory handler is intercepting Repo calls.
+
 ## [0.47.1]
 
 ### Fixed
@@ -1114,7 +1126,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `DoubleDown.Testing` with NimbleOwnership, `Repo.Test` stateless
   adapter, CI setup, Credo, Dialyzer.
 
-[Unreleased]: https://github.com/mccraigmccraig/double_down/compare/v0.47.1...HEAD
+[Unreleased]: https://github.com/mccraigmccraig/double_down/compare/v0.47.2...HEAD
+[0.47.2]: https://github.com/mccraigmccraig/double_down/compare/v0.47.1...v0.47.2
 [0.47.1]: https://github.com/mccraigmccraig/double_down/compare/v0.47.0...v0.47.1
 [0.47.0]: https://github.com/mccraigmccraig/double_down/compare/v0.46.3...v0.47.0
 [0.46.3]: https://github.com/mccraigmccraig/double_down/compare/v0.46.2...v0.46.3
