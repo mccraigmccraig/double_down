@@ -983,4 +983,36 @@ defmodule DoubleDown.Repo.StubTest do
       assert [%User{name: "Alice"}] = TestRepo.all_by(User, [name: "Alice"], [])
     end
   end
+
+  # -------------------------------------------------------------------
+  # stream
+  # -------------------------------------------------------------------
+
+  describe "stream" do
+    test "delegates to fallback" do
+      DoubleDown.Double.stub(Repo, Repo.Stub.new(fn
+        :stream, [User] -> Stream.map([%User{id: 1, name: "Alice"}], & &1)
+      end))
+
+      stream = TestRepo.stream(User)
+      assert [%User{name: "Alice"}] = Enum.to_list(stream)
+    end
+
+    test "raises without fallback" do
+      DoubleDown.Double.stub(Repo, Repo.Stub.new())
+
+      assert_raise ArgumentError, ~r/cannot service :stream/, fn ->
+        TestRepo.stream(User)
+      end
+    end
+
+    test "opts-stripping variant works" do
+      DoubleDown.Double.stub(Repo, Repo.Stub.new(fn
+        :stream, [User] -> Stream.map([%User{id: 1, name: "Alice"}], & &1)
+      end))
+
+      stream = TestRepo.stream(User, [])
+      assert [%User{name: "Alice"}] = Enum.to_list(stream)
+    end
+  end
 end

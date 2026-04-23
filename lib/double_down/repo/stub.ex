@@ -290,6 +290,9 @@ if Code.ensure_loaded?(Ecto) do
     defp dispatch(:reload!, [struct_or_structs, _opts], fallback_fn),
       do: dispatch(:reload!, [struct_or_structs], fallback_fn)
 
+    defp dispatch(:stream, [queryable, _opts], fallback_fn),
+      do: dispatch(:stream, [queryable], fallback_fn)
+
     # -----------------------------------------------------------------
     # Read and bulk operations — fallback or error
     # -----------------------------------------------------------------
@@ -309,6 +312,7 @@ if Code.ensure_loaded?(Ecto) do
                 :preload,
                 :reload,
                 :reload!,
+                :stream,
                 :insert_all,
                 :update_all,
                 :delete_all

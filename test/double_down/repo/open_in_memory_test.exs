@@ -1807,4 +1807,29 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
       end
     end
   end
+
+  # -------------------------------------------------------------------
+  # stream — always fallback
+  # -------------------------------------------------------------------
+
+  describe "stream" do
+    test "delegates to fallback" do
+      DoubleDown.Double.fake(DoubleDown.Repo, Repo.OpenInMemory, [],
+        fallback_fn: fn _contract, :stream, [_query], _state ->
+          Stream.map([%User{id: 1, name: "Alice"}], & &1)
+        end
+      )
+
+      stream = TestRepo.stream(User)
+      assert [%User{name: "Alice"}] = Enum.to_list(stream)
+    end
+
+    test "raises helpful error when no fallback" do
+      DoubleDown.Double.fake(DoubleDown.Repo, Repo.OpenInMemory)
+
+      assert_raise ArgumentError, ~r/cannot service :stream/, fn ->
+        TestRepo.stream(User)
+      end
+    end
+  end
 end

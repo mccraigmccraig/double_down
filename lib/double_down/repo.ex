@@ -285,6 +285,21 @@ if Code.ensure_loaded?(Ecto) do
                 ) :: list(struct())
 
     # -----------------------------------------------------------------
+    # Stream Operations
+    # -----------------------------------------------------------------
+
+    @doc """
+    Return a lazy enumerable that emits all records matching a queryable.
+
+    Mirrors `Ecto.Repo.stream/2`. Must be called inside a transaction
+    in real Ecto; test adapters delegate to fallback.
+    """
+    defcallback stream(queryable :: Ecto.Queryable.t()) :: Enum.t()
+
+    @doc "Return a lazy enumerable with options."
+    defcallback stream(queryable :: Ecto.Queryable.t(), opts :: keyword()) :: Enum.t()
+
+    # -----------------------------------------------------------------
     # Reload Operations
     # -----------------------------------------------------------------
 

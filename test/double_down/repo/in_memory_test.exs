@@ -1510,4 +1510,33 @@ defmodule DoubleDown.Repo.InMemoryTest do
       assert_raise ArgumentError, ~r/cannot service :some_future_op/, fn -> raise_fn.() end
     end
   end
+
+  # -------------------------------------------------------------------
+  # stream — always fallback
+  # -------------------------------------------------------------------
+
+  describe "stream" do
+    test "delegates to fallback" do
+      query = Ecto.Query.from(u in User)
+
+      store =
+        InMemory.new([],
+          fallback_fn: fn _contract, :stream, [_query], _state ->
+            Stream.map([%User{id: 1, name: "Alice"}], & &1)
+          end
+        )
+
+      {stream, _} = InMemory.dispatch(DoubleDown.Repo, :stream, [query], store)
+      assert [%User{name: "Alice"}] = Enum.to_list(stream)
+    end
+
+    test "raises helpful error when no fallback" do
+      store = InMemory.new()
+
+      {%DoubleDown.Contract.Dispatch.Defer{fn: raise_fn}, _} =
+        InMemory.dispatch(DoubleDown.Repo, :stream, [User], store)
+
+      assert_raise ArgumentError, ~r/cannot service :stream/, fn -> raise_fn.() end
+    end
+  end
 end
