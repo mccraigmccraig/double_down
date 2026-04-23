@@ -300,8 +300,8 @@ if Code.ensure_loaded?(Ecto) do
 
       loaded =
         case data do
-          data when is_list(data) and is_list(data) ->
-            # Could be keyword list or {columns, values} — normalize
+          data when is_list(data) ->
+            # Could be keyword list — normalize
             case data do
               [{col, _val} | _] when is_atom(col) ->
                 # keyword list
