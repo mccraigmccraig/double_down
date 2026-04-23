@@ -340,7 +340,11 @@ defmodule DoubleDown.Repo.InMemoryTest do
 
     test "raises on invalid changeset" do
       store = InMemory.new([%User{id: 1, name: "Alice"}])
-      cs = User.changeset(%User{id: 1, name: "Alice"}, %{}) |> Ecto.Changeset.add_error(:name, "required")
+
+      cs =
+        User.changeset(%User{id: 1, name: "Alice"}, %{})
+        |> Ecto.Changeset.add_error(:name, "required")
+
       cs = %{cs | valid?: false}
 
       {%DoubleDown.Contract.Dispatch.Defer{fn: raise_fn}, _} =
@@ -699,7 +703,12 @@ defmodule DoubleDown.Repo.InMemoryTest do
       store = InMemory.new([%User{id: 1, name: "Alice", age: 30}])
 
       {users, _} =
-        InMemory.dispatch(DoubleDown.Repo, :all_by, [User, [name: "Alice"], [timeout: 5000]], store)
+        InMemory.dispatch(
+          DoubleDown.Repo,
+          :all_by,
+          [User, [name: "Alice"], [timeout: 5000]],
+          store
+        )
 
       assert length(users) == 1
     end
@@ -1498,10 +1507,13 @@ defmodule DoubleDown.Repo.InMemoryTest do
     test "delegates to fallback with params" do
       store =
         InMemory.new([],
-          fallback_fn: fn _contract, :query, ["SELECT $1", [42]], _state -> {:ok, %{rows: [[42]]}} end
+          fallback_fn: fn _contract, :query, ["SELECT $1", [42]], _state ->
+            {:ok, %{rows: [[42]]}}
+          end
         )
 
-      {{:ok, %{rows: [[42]]}}, _} = InMemory.dispatch(DoubleDown.Repo, :query, ["SELECT $1", [42]], store)
+      {{:ok, %{rows: [[42]]}}, _} =
+        InMemory.dispatch(DoubleDown.Repo, :query, ["SELECT $1", [42]], store)
     end
 
     test "raises helpful error when no fallback" do

@@ -923,7 +923,9 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
           seed: [alice, bob],
           fallback_fn: fn
             _contract, :all_by, [User, [age: 30]], state ->
-              state |> Map.get(User, %{}) |> Map.values()
+              state
+              |> Map.get(User, %{})
+              |> Map.values()
               |> Enum.filter(&(&1.age == 30))
           end
         )

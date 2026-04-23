@@ -52,8 +52,13 @@ if Code.ensure_loaded?(Ecto) do
     # -----------------------------------------------------------------
 
     defp resolve_assoc(%Ecto.Association.Has{} = assoc, struct, store) do
-      %{owner_key: owner_key, related_key: related_key, related: related,
-        cardinality: cardinality, where: where_clauses} = assoc
+      %{
+        owner_key: owner_key,
+        related_key: related_key,
+        related: related,
+        cardinality: cardinality,
+        where: where_clauses
+      } = assoc
 
       owner_val = Map.fetch!(struct, owner_key)
       records = InMemoryShared.records_for_schema(store, related)
@@ -83,9 +88,13 @@ if Code.ensure_loaded?(Ecto) do
     end
 
     defp resolve_assoc(%Ecto.Association.ManyToMany{} = assoc, struct, store) do
-      %{owner_key: owner_key, related: related,
+      %{
+        owner_key: owner_key,
+        related: related,
         join_keys: [{join_owner_key, _owner_key}, {join_related_key, related_key}],
-        join_through: join_through, where: where_clauses} = assoc
+        join_through: join_through,
+        where: where_clauses
+      } = assoc
 
       owner_val = Map.fetch!(struct, owner_key)
 
@@ -145,6 +154,7 @@ if Code.ensure_loaded?(Ecto) do
     # -----------------------------------------------------------------
 
     defp normalize_preloads(preloads) when is_atom(preloads), do: [{preloads, []}]
+
     defp normalize_preloads(preloads) when is_list(preloads) do
       Enum.flat_map(preloads, fn
         {field, sub} when is_atom(field) -> [{field, normalize_preloads(sub)}]
@@ -154,6 +164,7 @@ if Code.ensure_loaded?(Ecto) do
 
     defp apply_where_clauses(records, nil), do: records
     defp apply_where_clauses(records, []), do: records
+
     defp apply_where_clauses(records, clauses) do
       Enum.filter(records, fn record ->
         Enum.all?(clauses, fn {field, value} ->
@@ -163,6 +174,7 @@ if Code.ensure_loaded?(Ecto) do
     end
 
     defp deduplicate([]), do: []
+
     defp deduplicate([first | _] = records) do
       schema = first.__struct__
 

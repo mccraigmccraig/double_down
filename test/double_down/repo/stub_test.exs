@@ -843,10 +843,13 @@ defmodule DoubleDown.Repo.StubTest do
     test "returns true inside transaction" do
       DoubleDown.Double.stub(Repo, Repo.Stub.new())
 
-      TestRepo.transact(fn _repo ->
-        assert TestRepo.in_transaction?()
-        {:ok, :done}
-      end, [])
+      TestRepo.transact(
+        fn _repo ->
+          assert TestRepo.in_transaction?()
+          {:ok, :done}
+        end,
+        []
+      )
     end
   end
 
@@ -857,7 +860,7 @@ defmodule DoubleDown.Repo.StubTest do
   describe "load" do
     test "loads a schema struct from keyword data" do
       DoubleDown.Double.stub(Repo, Repo.Stub.new())
-      result = TestRepo.load(User, [id: 1, name: "Alice"])
+      result = TestRepo.load(User, id: 1, name: "Alice")
       assert %User{id: 1, name: "Alice"} = result
     end
 
@@ -880,9 +883,12 @@ defmodule DoubleDown.Repo.StubTest do
 
   describe "preload" do
     test "delegates to fallback" do
-      DoubleDown.Double.stub(Repo, Repo.Stub.new(fn
-        :preload, [struct, [:posts]] -> %{struct | name: "preloaded"}
-      end))
+      DoubleDown.Double.stub(
+        Repo,
+        Repo.Stub.new(fn
+          :preload, [struct, [:posts]] -> %{struct | name: "preloaded"}
+        end)
+      )
 
       user = %User{id: 1, name: "Alice"}
       assert %User{name: "preloaded"} = TestRepo.preload(user, [:posts])
@@ -897,9 +903,12 @@ defmodule DoubleDown.Repo.StubTest do
     end
 
     test "opts-stripping variant works" do
-      DoubleDown.Double.stub(Repo, Repo.Stub.new(fn
-        :preload, [struct, [:posts]] -> %{struct | name: "preloaded"}
-      end))
+      DoubleDown.Double.stub(
+        Repo,
+        Repo.Stub.new(fn
+          :preload, [struct, [:posts]] -> %{struct | name: "preloaded"}
+        end)
+      )
 
       user = %User{id: 1, name: "Alice"}
       assert %User{name: "preloaded"} = TestRepo.preload(user, [:posts], [])
@@ -908,9 +917,12 @@ defmodule DoubleDown.Repo.StubTest do
 
   describe "reload" do
     test "delegates to fallback" do
-      DoubleDown.Double.stub(Repo, Repo.Stub.new(fn
-        :reload, [%User{id: 1}] -> %User{id: 1, name: "Reloaded"}
-      end))
+      DoubleDown.Double.stub(
+        Repo,
+        Repo.Stub.new(fn
+          :reload, [%User{id: 1}] -> %User{id: 1, name: "Reloaded"}
+        end)
+      )
 
       assert %User{name: "Reloaded"} = TestRepo.reload(%User{id: 1})
     end
@@ -924,9 +936,12 @@ defmodule DoubleDown.Repo.StubTest do
     end
 
     test "opts-stripping variant works" do
-      DoubleDown.Double.stub(Repo, Repo.Stub.new(fn
-        :reload, [%User{id: 1}] -> %User{id: 1, name: "Reloaded"}
-      end))
+      DoubleDown.Double.stub(
+        Repo,
+        Repo.Stub.new(fn
+          :reload, [%User{id: 1}] -> %User{id: 1, name: "Reloaded"}
+        end)
+      )
 
       assert %User{name: "Reloaded"} = TestRepo.reload(%User{id: 1}, [])
     end
@@ -934,9 +949,12 @@ defmodule DoubleDown.Repo.StubTest do
 
   describe "reload!" do
     test "delegates to fallback" do
-      DoubleDown.Double.stub(Repo, Repo.Stub.new(fn
-        :reload!, [%User{id: 1}] -> %User{id: 1, name: "Reloaded"}
-      end))
+      DoubleDown.Double.stub(
+        Repo,
+        Repo.Stub.new(fn
+          :reload!, [%User{id: 1}] -> %User{id: 1, name: "Reloaded"}
+        end)
+      )
 
       assert %User{name: "Reloaded"} = TestRepo.reload!(%User{id: 1})
     end
@@ -950,9 +968,12 @@ defmodule DoubleDown.Repo.StubTest do
     end
 
     test "opts-stripping variant works" do
-      DoubleDown.Double.stub(Repo, Repo.Stub.new(fn
-        :reload!, [%User{id: 1}] -> %User{id: 1, name: "Reloaded"}
-      end))
+      DoubleDown.Double.stub(
+        Repo,
+        Repo.Stub.new(fn
+          :reload!, [%User{id: 1}] -> %User{id: 1, name: "Reloaded"}
+        end)
+      )
 
       assert %User{name: "Reloaded"} = TestRepo.reload!(%User{id: 1}, [])
     end
@@ -960,9 +981,12 @@ defmodule DoubleDown.Repo.StubTest do
 
   describe "all_by" do
     test "delegates to fallback" do
-      DoubleDown.Double.stub(Repo, Repo.Stub.new(fn
-        :all_by, [User, [name: "Alice"]] -> [%User{id: 1, name: "Alice"}]
-      end))
+      DoubleDown.Double.stub(
+        Repo,
+        Repo.Stub.new(fn
+          :all_by, [User, [name: "Alice"]] -> [%User{id: 1, name: "Alice"}]
+        end)
+      )
 
       assert [%User{name: "Alice"}] = TestRepo.all_by(User, name: "Alice")
     end
@@ -976,9 +1000,12 @@ defmodule DoubleDown.Repo.StubTest do
     end
 
     test "opts-stripping variant works" do
-      DoubleDown.Double.stub(Repo, Repo.Stub.new(fn
-        :all_by, [User, [name: "Alice"]] -> [%User{id: 1, name: "Alice"}]
-      end))
+      DoubleDown.Double.stub(
+        Repo,
+        Repo.Stub.new(fn
+          :all_by, [User, [name: "Alice"]] -> [%User{id: 1, name: "Alice"}]
+        end)
+      )
 
       assert [%User{name: "Alice"}] = TestRepo.all_by(User, [name: "Alice"], [])
     end
@@ -990,9 +1017,12 @@ defmodule DoubleDown.Repo.StubTest do
 
   describe "stream" do
     test "delegates to fallback" do
-      DoubleDown.Double.stub(Repo, Repo.Stub.new(fn
-        :stream, [User] -> Stream.map([%User{id: 1, name: "Alice"}], & &1)
-      end))
+      DoubleDown.Double.stub(
+        Repo,
+        Repo.Stub.new(fn
+          :stream, [User] -> Stream.map([%User{id: 1, name: "Alice"}], & &1)
+        end)
+      )
 
       stream = TestRepo.stream(User)
       assert [%User{name: "Alice"}] = Enum.to_list(stream)
@@ -1007,9 +1037,12 @@ defmodule DoubleDown.Repo.StubTest do
     end
 
     test "opts-stripping variant works" do
-      DoubleDown.Double.stub(Repo, Repo.Stub.new(fn
-        :stream, [User] -> Stream.map([%User{id: 1, name: "Alice"}], & &1)
-      end))
+      DoubleDown.Double.stub(
+        Repo,
+        Repo.Stub.new(fn
+          :stream, [User] -> Stream.map([%User{id: 1, name: "Alice"}], & &1)
+        end)
+      )
 
       stream = TestRepo.stream(User, [])
       assert [%User{name: "Alice"}] = Enum.to_list(stream)
