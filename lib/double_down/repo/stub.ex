@@ -182,6 +182,47 @@ if Code.ensure_loaded?(Ecto) do
       end
     end
 
+    # -----------------------------------------------------------------
+    # Insert-or-update — delegate to insert/update based on meta state
+    # -----------------------------------------------------------------
+
+    defp dispatch(:insert_or_update, [%Ecto.Changeset{} = changeset], fallback_fn) do
+      if Ecto.get_meta(changeset.data, :state) == :loaded do
+        dispatch(:update, [changeset], fallback_fn)
+      else
+        dispatch(:insert, [changeset], fallback_fn)
+      end
+    end
+
+    defp dispatch(:insert_or_update!, [changeset], fallback_fn) do
+      case dispatch(:insert_or_update, [changeset], fallback_fn) do
+        {:ok, record} ->
+          record
+
+        {:error, changeset} ->
+          raise Ecto.InvalidChangesetError, action: :insert_or_update, changeset: changeset
+      end
+    end
+
+    # -----------------------------------------------------------------
+    # Load — stateless struct loading
+    # -----------------------------------------------------------------
+
+    defp dispatch(:load, [schema_or_map, data], _fallback_fn) do
+      loader = fn _type, value -> {:ok, value} end
+
+      case data do
+        data when is_list(data) ->
+          do_load(schema_or_map, Map.new(data), loader)
+
+        {fields, values} when is_list(fields) and is_list(values) ->
+          do_load(schema_or_map, Map.new(Enum.zip(fields, values)), loader)
+
+        data when is_map(data) ->
+          do_load(schema_or_map, data, loader)
+      end
+    end
+
     # Opts-accepting variants — strip opts, delegate to base arity.
     # Ecto.Repo operations all accept an optional opts keyword list as
     # the last argument. These are called by Ecto.Multi's internal :run
@@ -231,6 +272,24 @@ if Code.ensure_loaded?(Ecto) do
     defp dispatch(:aggregate, [queryable, aggregate, field, _opts], fallback_fn),
       do: dispatch(:aggregate, [queryable, aggregate, field], fallback_fn)
 
+    defp dispatch(:insert_or_update, [changeset, _opts], fallback_fn),
+      do: dispatch(:insert_or_update, [changeset], fallback_fn)
+
+    defp dispatch(:insert_or_update!, [changeset, _opts], fallback_fn),
+      do: dispatch(:insert_or_update!, [changeset], fallback_fn)
+
+    defp dispatch(:all_by, [queryable, clauses, _opts], fallback_fn),
+      do: dispatch(:all_by, [queryable, clauses], fallback_fn)
+
+    defp dispatch(:preload, [struct_or_structs, preloads, _opts], fallback_fn),
+      do: dispatch(:preload, [struct_or_structs, preloads], fallback_fn)
+
+    defp dispatch(:reload, [struct_or_structs, _opts], fallback_fn),
+      do: dispatch(:reload, [struct_or_structs], fallback_fn)
+
+    defp dispatch(:reload!, [struct_or_structs, _opts], fallback_fn),
+      do: dispatch(:reload!, [struct_or_structs], fallback_fn)
+
     # -----------------------------------------------------------------
     # Read and bulk operations — fallback or error
     # -----------------------------------------------------------------
@@ -244,8 +303,12 @@ if Code.ensure_loaded?(Ecto) do
                 :one,
                 :one!,
                 :all,
+                :all_by,
                 :exists?,
                 :aggregate,
+                :preload,
+                :reload,
+                :reload!,
                 :insert_all,
                 :update_all,
                 :delete_all
@@ -289,6 +352,12 @@ if Code.ensure_loaded?(Ecto) do
       }
     end
 
+    defp dispatch(:in_transaction?, [], _fallback_fn) do
+      %DoubleDown.Contract.Dispatch.Defer{
+        fn: fn -> Process.get(@transaction_key, false) end
+      }
+    end
+
     defp run_in_transaction(fun) do
       prev = Process.get(@transaction_key, false)
       Process.put(@transaction_key, true)
@@ -303,8 +372,16 @@ if Code.ensure_loaded?(Ecto) do
     end
 
     # -----------------------------------------------------------------
-    # Insert helper (after all dispatch clauses to avoid grouping warning)
+    # Helpers (after all dispatch clauses to avoid grouping warning)
     # -----------------------------------------------------------------
+
+    defp do_load(schema, data, loader) when is_atom(schema) do
+      Ecto.Schema.Loader.unsafe_load(schema, data, loader)
+    end
+
+    defp do_load(types, data, loader) when is_map(types) do
+      Ecto.Schema.Loader.unsafe_load(%{}, types, data, loader)
+    end
 
     defp do_insert(record) do
       alias DoubleDown.Repo.Impl.Autogenerate

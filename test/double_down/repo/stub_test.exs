@@ -773,4 +773,214 @@ defmodule DoubleDown.Repo.StubTest do
       end
     end
   end
+
+  # -------------------------------------------------------------------
+  # insert_or_update / insert_or_update!
+  # -------------------------------------------------------------------
+
+  describe "insert_or_update" do
+    test "inserts when meta state is :built" do
+      DoubleDown.Double.stub(Repo, Repo.Stub.new())
+      cs = User.changeset(%{name: "Alice"})
+      assert {:ok, %User{name: "Alice"}} = TestRepo.insert_or_update(cs)
+    end
+
+    test "updates when meta state is :loaded" do
+      DoubleDown.Double.stub(Repo, Repo.Stub.new())
+      user = %User{id: 1, name: "Alice"} |> Ecto.put_meta(state: :loaded)
+      cs = User.changeset(user, %{name: "Alicia"})
+      assert {:ok, %User{name: "Alicia"}} = TestRepo.insert_or_update(cs)
+    end
+
+    test "returns error on invalid changeset" do
+      DoubleDown.Double.stub(Repo, Repo.Stub.new())
+      cs = User.changeset(%{}) |> Ecto.Changeset.add_error(:name, "required")
+      cs = %{cs | valid?: false}
+      assert {:error, %Ecto.Changeset{}} = TestRepo.insert_or_update(cs)
+    end
+
+    test "opts-stripping variant works" do
+      DoubleDown.Double.stub(Repo, Repo.Stub.new())
+      cs = User.changeset(%{name: "Alice"})
+      assert {:ok, %User{name: "Alice"}} = TestRepo.insert_or_update(cs, [])
+    end
+  end
+
+  describe "insert_or_update!" do
+    test "returns struct on success" do
+      DoubleDown.Double.stub(Repo, Repo.Stub.new())
+      cs = User.changeset(%{name: "Alice"})
+      assert %User{name: "Alice"} = TestRepo.insert_or_update!(cs)
+    end
+
+    test "raises on invalid changeset" do
+      DoubleDown.Double.stub(Repo, Repo.Stub.new())
+      cs = User.changeset(%{}) |> Ecto.Changeset.add_error(:name, "required")
+      cs = %{cs | valid?: false}
+
+      assert_raise Ecto.InvalidChangesetError, fn ->
+        TestRepo.insert_or_update!(cs)
+      end
+    end
+
+    test "opts-stripping variant works" do
+      DoubleDown.Double.stub(Repo, Repo.Stub.new())
+      cs = User.changeset(%{name: "Alice"})
+      assert %User{name: "Alice"} = TestRepo.insert_or_update!(cs, [])
+    end
+  end
+
+  # -------------------------------------------------------------------
+  # in_transaction?
+  # -------------------------------------------------------------------
+
+  describe "in_transaction?" do
+    test "returns false outside transaction" do
+      DoubleDown.Double.stub(Repo, Repo.Stub.new())
+      refute TestRepo.in_transaction?()
+    end
+
+    test "returns true inside transaction" do
+      DoubleDown.Double.stub(Repo, Repo.Stub.new())
+
+      TestRepo.transact(fn _repo ->
+        assert TestRepo.in_transaction?()
+        {:ok, :done}
+      end, [])
+    end
+  end
+
+  # -------------------------------------------------------------------
+  # load
+  # -------------------------------------------------------------------
+
+  describe "load" do
+    test "loads a schema struct from keyword data" do
+      DoubleDown.Double.stub(Repo, Repo.Stub.new())
+      result = TestRepo.load(User, [id: 1, name: "Alice"])
+      assert %User{id: 1, name: "Alice"} = result
+    end
+
+    test "loads a schema struct from map data" do
+      DoubleDown.Double.stub(Repo, Repo.Stub.new())
+      result = TestRepo.load(User, %{id: 1, name: "Alice"})
+      assert %User{id: 1, name: "Alice"} = result
+    end
+
+    test "loads a schema struct from {fields, values} tuple" do
+      DoubleDown.Double.stub(Repo, Repo.Stub.new())
+      result = TestRepo.load(User, {[:id, :name], [1, "Alice"]})
+      assert %User{id: 1, name: "Alice"} = result
+    end
+  end
+
+  # -------------------------------------------------------------------
+  # preload, reload, reload!, all_by — fallback operations
+  # -------------------------------------------------------------------
+
+  describe "preload" do
+    test "delegates to fallback" do
+      DoubleDown.Double.stub(Repo, Repo.Stub.new(fn
+        :preload, [struct, [:posts]] -> %{struct | name: "preloaded"}
+      end))
+
+      user = %User{id: 1, name: "Alice"}
+      assert %User{name: "preloaded"} = TestRepo.preload(user, [:posts])
+    end
+
+    test "raises without fallback" do
+      DoubleDown.Double.stub(Repo, Repo.Stub.new())
+
+      assert_raise ArgumentError, ~r/cannot service :preload/, fn ->
+        TestRepo.preload(%User{id: 1}, [:posts])
+      end
+    end
+
+    test "opts-stripping variant works" do
+      DoubleDown.Double.stub(Repo, Repo.Stub.new(fn
+        :preload, [struct, [:posts]] -> %{struct | name: "preloaded"}
+      end))
+
+      user = %User{id: 1, name: "Alice"}
+      assert %User{name: "preloaded"} = TestRepo.preload(user, [:posts], [])
+    end
+  end
+
+  describe "reload" do
+    test "delegates to fallback" do
+      DoubleDown.Double.stub(Repo, Repo.Stub.new(fn
+        :reload, [%User{id: 1}] -> %User{id: 1, name: "Reloaded"}
+      end))
+
+      assert %User{name: "Reloaded"} = TestRepo.reload(%User{id: 1})
+    end
+
+    test "raises without fallback" do
+      DoubleDown.Double.stub(Repo, Repo.Stub.new())
+
+      assert_raise ArgumentError, ~r/cannot service :reload/, fn ->
+        TestRepo.reload(%User{id: 1})
+      end
+    end
+
+    test "opts-stripping variant works" do
+      DoubleDown.Double.stub(Repo, Repo.Stub.new(fn
+        :reload, [%User{id: 1}] -> %User{id: 1, name: "Reloaded"}
+      end))
+
+      assert %User{name: "Reloaded"} = TestRepo.reload(%User{id: 1}, [])
+    end
+  end
+
+  describe "reload!" do
+    test "delegates to fallback" do
+      DoubleDown.Double.stub(Repo, Repo.Stub.new(fn
+        :reload!, [%User{id: 1}] -> %User{id: 1, name: "Reloaded"}
+      end))
+
+      assert %User{name: "Reloaded"} = TestRepo.reload!(%User{id: 1})
+    end
+
+    test "raises without fallback" do
+      DoubleDown.Double.stub(Repo, Repo.Stub.new())
+
+      assert_raise ArgumentError, ~r/cannot service :reload!/, fn ->
+        TestRepo.reload!(%User{id: 1})
+      end
+    end
+
+    test "opts-stripping variant works" do
+      DoubleDown.Double.stub(Repo, Repo.Stub.new(fn
+        :reload!, [%User{id: 1}] -> %User{id: 1, name: "Reloaded"}
+      end))
+
+      assert %User{name: "Reloaded"} = TestRepo.reload!(%User{id: 1}, [])
+    end
+  end
+
+  describe "all_by" do
+    test "delegates to fallback" do
+      DoubleDown.Double.stub(Repo, Repo.Stub.new(fn
+        :all_by, [User, [name: "Alice"]] -> [%User{id: 1, name: "Alice"}]
+      end))
+
+      assert [%User{name: "Alice"}] = TestRepo.all_by(User, name: "Alice")
+    end
+
+    test "raises without fallback" do
+      DoubleDown.Double.stub(Repo, Repo.Stub.new())
+
+      assert_raise ArgumentError, ~r/cannot service :all_by/, fn ->
+        TestRepo.all_by(User, name: "Alice")
+      end
+    end
+
+    test "opts-stripping variant works" do
+      DoubleDown.Double.stub(Repo, Repo.Stub.new(fn
+        :all_by, [User, [name: "Alice"]] -> [%User{id: 1, name: "Alice"}]
+      end))
+
+      assert [%User{name: "Alice"}] = TestRepo.all_by(User, [name: "Alice"], [])
+    end
+  end
 end
