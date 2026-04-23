@@ -60,7 +60,7 @@ if Code.ensure_loaded?(Ecto) do
     For reads, the dispatch stages are:
 
     1. **State lookup** — if the record is in state, return it
-    2. **Fallback function** — a 3-arity `(operation, args, state)`
+    2. **Fallback function** — a 4-arity `(contract, operation, args, state)`
        function that handles operations the state can't answer
     3. **Raise** — clear error suggesting a fallback clause
 
@@ -93,7 +93,7 @@ if Code.ensure_loaded?(Ecto) do
         - a pre-built store map: `%{User => %{1 => %User{id: 1}}}`
         - `%{}` or `[]` for empty (default)
       * `opts` — keyword options:
-        - `:fallback_fn` — a 3-arity function `(operation, args, state) -> result`
+        - `:fallback_fn` — a 4-arity function `(contract, operation, args, state) -> result`
           that handles operations the state cannot answer authoritatively. The
           `state` argument is the clean store map (without internal keys like
           `:__fallback_fn__`), so the fallback can compose canned data with
