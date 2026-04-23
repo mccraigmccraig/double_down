@@ -31,12 +31,96 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `in_transaction?/0` — reads the process dictionary flag already
     used by `transact`/`rollback`. Returns boolean.
 
+- **`stream/1,2` added to `DoubleDown.Repo` contract.** Core Ecto
+  API for lazily enumerating query results. Cannot be evaluated in
+  memory — all adapters delegate to fallback.
+
+- **8 missing dispatch clauses added to `Repo.Stub`.** `insert_or_update`,
+  `insert_or_update!`, `load`, `in_transaction?`, `preload`, `reload`,
+  `reload!`, `all_by` — all with opts-stripping variants. `in_transaction?`
+  uses a Defer-wrapped process dict check. `load` is handled statelessly.
+  Fallback operations (`preload`, `reload`, `reload!`, `all_by`, `stream`)
+  produce helpful error messages when no fallback is registered.
+
+- **`insert_all` `returning:` now supports field lists.** `returning: [:id, :name]`
+  returns maps containing only those fields, matching Ecto adapter
+  behaviour. `returning: true` still returns full structs.
+
+- **Catch-all dispatch clause** added to both `Repo.InMemory` and
+  `Repo.OpenInMemory`. Unrecognised operations now delegate to the
+  fallback function with a helpful error instead of raising
+  `FunctionClauseError`.
+
+- **`query`/`query!` dispatch clauses** added to `Repo.InMemory` and
+  `Repo.OpenInMemory`. Raw SQL operations delegate to fallback with
+  a clear "register a fallback" error message.
+
+- **`ContractFacade` preserves user `@moduledoc`.** User-provided
+  `@moduledoc` is now combined with the generated dispatch info
+  (user text first, generated appended after a separator).
+  `@moduledoc false` suppresses all documentation.
+
+### Changed
+
+- **Minimum Elixir version relaxed from `~> 1.19` to `~> 1.14`.**
+  No 1.15+ features are used. Floor driven by `ecto ~> 3.12`.
+
+- **`verify!/0` returns `:ok` when no Double handlers installed.**
+  Previously raised a confusing error. If no `Double`-managed handlers
+  were installed there are no expectations to verify, so verification
+  trivially passes.
+
+- **`insert_all` with binary table name sources** now raises a
+  descriptive error explaining that InMemory requires atom schema
+  modules, suggesting `fallback_fn` or `Double.expect`.
+
 ### Fixed
 
 - **InMemory insert/update now sets meta state to `:loaded`** on
   returned structs, matching real `Ecto.Repo` behaviour. Previously
   returned structs with `:built` state, which caused `insert_or_update`
   to misclassify already-persisted records as new.
+
+- **`dispatch_delete!` now raises `Ecto.InvalidChangesetError`** on
+  invalid changesets, matching `dispatch_insert!` and `dispatch_update!`.
+  Previously raised `MatchError`.
+
+- **`get_state/1` resolves owner through `$callers` chain.** Previously
+  used raw `self()`, returning `nil` from child processes (e.g.
+  `Task.async`). Now uses the same owner resolution as
+  `resolve_test_handler/1`. Extracted shared `resolve_owner_pid/1`
+  utility.
+
+- **OpenInMemory `fallback_fn` docs corrected** from 3-arity
+  `(operation, args, state)` to 4-arity `(contract, operation, args, state)`.
+
+### Removed
+
+- **Stale `DoubleDown.Facade` and `DoubleDown.Dynamic` modules deleted.**
+  These were pre-rename duplicates of `DoubleDown.ContractFacade` and
+  `DoubleDown.DynamicFacade` with separate registries. No code referenced
+  them.
+
+### Improved
+
+- **`rename_module_attribute/2`** — added empty list base case for
+  defensive termination.
+
+- **`resolve_fake_dispatch/1`** — added `cond` fallback raising a
+  clear `ArgumentError` instead of `CondClauseError`.
+
+- **`create_shim/2`** — compiler options toggle wrapped in `try/after`
+  so `ignore_module_conflict` is always restored.
+
+- **`insert_all` limitations documented** in `Repo.InMemory` moduledoc:
+  `on_conflict`/`conflict_target` are silently ignored (constraint
+  testing requires a real database), binary table name sources are
+  not supported.
+
+- **`FunctionClauseError` rescue limitation documented** in
+  `DoubleDown.Double` moduledoc. If a fallback body internally raises
+  `FunctionClauseError`, it is misreported as "Unexpected call" — a
+  known Mox-shared limitation.
 
 ## [0.47.2]
 
