@@ -79,8 +79,9 @@ Full `Ecto.Repo` contract (`DoubleDown.Repo`) with three test doubles:
 | `Repo.OpenInMemory` | Open-world fake   | PK-based read-after-write; fallback for other reads              |
 
 All three support `Ecto.Multi` transactions with rollback, PK
-autogeneration, changeset validation, timestamps, and both changeset
-and bare struct inserts. See [Repo](docs/repo.md).
+autogeneration, changeset validation, timestamps, `insert_or_update`,
+`preload`, `reload`, `stream` (via fallback), and both changeset and
+bare struct inserts. See [Repo](docs/repo.md).
 
 ## Quick example
 
@@ -255,7 +256,7 @@ Add `double_down` to your dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:double_down, "~> 0.25"}
+    {:double_down, "~> 0.48"}
   ]
 end
 ```

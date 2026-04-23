@@ -186,8 +186,10 @@ adapter — so `repo.insert(cs)` dispatches correctly in both cases.
 `insert`, `update`, `delete`, `run`, `put`, `error`, `inspect`,
 `merge`, `insert_all`, `update_all`, `delete_all`.
 
-Bulk operations (`insert_all`, `update_all`, `delete_all`) go through
-the fallback function or raise in test adapters.
+In `Repo.InMemory`, bulk operations (`insert_all`, `update_all` with
+`set:`, `delete_all`) are handled directly for bare schema sources.
+In `Repo.OpenInMemory` and `Repo.Stub`, they delegate to the fallback
+function or raise.
 
 All three Repo test doubles share a `MultiStepper` module that walks
 through Multi operations without a real database.

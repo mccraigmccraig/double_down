@@ -17,21 +17,28 @@ property-based testing.
 
 `DoubleDown.Repo` defines these operations:
 
-| Category         | Operations                                                                      |
-|------------------|---------------------------------------------------------------------------------|
-| **Writes**       | `insert/1`, `update/1`, `delete/1`, `insert!/1`, `update!/1`, `delete!/1`       |
-| **Bulk**         | `insert_all/3`, `update_all/3`, `delete_all/2`                                  |
-| **Raw SQL**      | `query/1,2,3`, `query!/1,2,3`                                                   |
-| **PK reads**     | `get/2`, `get!/2`                                                               |
-| **Non-PK reads** | `get_by/2`, `get_by!/2`, `one/1`, `one!/1`, `all/1`, `exists?/1`, `aggregate/3` |
-| **Transactions** | `transact/2`, `rollback/1`                                                      |
+| Category         | Operations                                                                                         |
+|------------------|----------------------------------------------------------------------------------------------------|
+| **Writes**       | `insert`, `update`, `delete`, `insert!`, `update!`, `delete!`, `insert_or_update`, `insert_or_update!` |
+| **Bulk**         | `insert_all`, `update_all`, `delete_all`                                                           |
+| **Raw SQL**      | `query/1,2,3`, `query!/1,2,3`                                                                     |
+| **PK reads**     | `get`, `get!`                                                                                      |
+| **Non-PK reads** | `get_by`, `get_by!`, `one`, `one!`, `all`, `all_by`, `exists?`, `aggregate`                        |
+| **Associations** | `preload`, `load`, `reload`, `reload!`                                                             |
+| **Streaming**    | `stream`                                                                                           |
+| **Transactions** | `transact`, `rollback`, `in_transaction?`                                                          |
+
+All operations accept an optional trailing `opts` keyword list,
+matching `Ecto.Repo`'s API.
 
 Write operations return `{:ok, struct} | {:error, changeset}`.
-Bang variants (`insert!`, `update!`, `delete!`) return the struct
-directly or raise `Ecto.InvalidChangesetError`.
+Bang variants (`insert!`, `update!`, `delete!`, `insert_or_update!`)
+return the struct directly or raise `Ecto.InvalidChangesetError`.
 `insert`/`insert!` accept both changesets and bare structs (matching
-Ecto.Repo). Raise-on-not-found variants (`get!`, `get_by!`, `one!`)
-are separate contract operations mirroring Ecto's semantics.
+Ecto.Repo). `insert_or_update` delegates to insert or update based
+on changeset meta state. Raise-on-not-found variants (`get!`,
+`get_by!`, `one!`) are separate contract operations mirroring
+Ecto's semantics.
 
 ## Creating a Repo facade
 

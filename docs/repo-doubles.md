@@ -38,10 +38,13 @@ as the third argument to `Double.fake`:
 
 ## Repo.Stub
 
-A fire-and-forget adapter. Write operations apply changeset changes
-and return `{:ok, struct}`, but nothing is stored. Read operations
-delegate to an optional fallback function, or raise with an actionable
-error message.
+A fire-and-forget adapter. Write operations (`insert`, `update`,
+`delete`, `insert_or_update` and their bang variants) apply changeset
+changes and return `{:ok, struct}`, but nothing is stored. `load`
+is handled statelessly. `in_transaction?` checks the process dict.
+Read operations and association operations (`preload`, `reload`,
+`reload!`, `all_by`) delegate to an optional fallback function, or
+raise with an actionable error message.
 
 `Repo.Stub` implements `DoubleDown.Contract.Dispatch.StubHandler` and can be
 used by module name with `Double.stub`:
@@ -76,13 +79,15 @@ escape hatch for `Ecto.Query` queryables, not the default path.
 
 | Category | Operations | Behaviour |
 |----------|-----------|-----------|
-| **Writes** | `insert`, `update`, `delete` | Store in state |
+| **Writes** | `insert`, `update`, `delete`, `insert_or_update` + bang variants | Store in state |
 | **PK reads** | `get`, `get!` | Return `nil` / raise on miss (no fallback) |
-| **Clause reads** | `get_by`, `get_by!` | Scan and filter all records |
+| **Clause reads** | `get_by`, `get_by!`, `all_by` | Scan and filter all records |
 | **Collection reads** | `all`, `one`/`one!`, `exists?` | Scan all records of schema |
 | **Aggregates** | `aggregate` | Compute from records in state |
+| **Associations** | `preload`, `load`, `reload`, `reload!` | Resolve from state (preload/reload) or stateless (load) |
 | **Bulk writes** | `insert_all`, `delete_all`, `update_all` (`set:`) | Modify state directly |
-| **Transactions** | `transact`, `rollback` | Delegate to sub-operations; rollback restores state |
+| **Transactions** | `transact`, `rollback`, `in_transaction?` | Delegate to sub-operations; rollback restores state |
+| **Raw SQL / Stream** | `query`, `query!`, `stream` | Fallback or error |
 | **Ecto.Query** | Any operation with `Ecto.Query` queryable | Fallback or error |
 
 ### Basic usage
@@ -223,12 +228,14 @@ all bare-schema reads without a fallback.
 
 | Category | Operations | Behaviour |
 |----------|-----------|-----------|
-| **Writes** | `insert`, `update`, `delete` | Store in state |
+| **Writes** | `insert`, `update`, `delete`, `insert_or_update` + bang variants | Store in state |
 | **PK reads** | `get`, `get!` | State first, then fallback |
-| **get_by** | `get_by`, `get_by!` | PK lookup when PK in clauses, then fallback |
+| **Clause reads** | `get_by`, `get_by!`, `all_by` | PK lookup when PK in clauses, then fallback |
 | **Other reads** | `one`, `all`, `exists?`, `aggregate` | Always fallback |
-| **Bulk** | `insert_all`, `update_all`, `delete_all` | Always fallback |
-| **Transactions** | `transact`, `rollback` | Delegate to sub-operations; rollback restores state |
+| **Associations** | `preload`, `load`, `reload`, `reload!` | Preload/reload from state, load stateless |
+| **Bulk** | `insert_all`, `update_all`, `delete_all` | Always fallback (does not mutate state) |
+| **Transactions** | `transact`, `rollback`, `in_transaction?` | Delegate to sub-operations; rollback restores state |
+| **Raw SQL / Stream** | `query`, `query!`, `stream` | Always fallback |
 
 ### Basic usage — writes and PK reads
 
