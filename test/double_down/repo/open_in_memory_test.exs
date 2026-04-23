@@ -833,6 +833,40 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
   end
 
   # -------------------------------------------------------------------
+  # all_by (open-world — always fallback)
+  # -------------------------------------------------------------------
+
+  describe "all_by (requires fallback)" do
+    test "delegates to fallback" do
+      alice = %User{id: 1, name: "Alice", age: 30}
+      bob = %User{id: 2, name: "Bob", age: 30}
+
+      state =
+        Repo.OpenInMemory.new(
+          seed: [alice, bob],
+          fallback_fn: fn
+            _contract, :all_by, [User, [age: 30]], state ->
+              state |> Map.get(User, %{}) |> Map.values()
+              |> Enum.filter(&(&1.age == 30))
+          end
+        )
+
+      DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/4, state)
+      users = TestRepo.all_by(User, age: 30)
+      assert length(users) == 2
+    end
+
+    test "raises without fallback" do
+      state = Repo.OpenInMemory.new()
+      DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/4, state)
+
+      assert_raise ArgumentError, ~r/cannot service :all_by/, fn ->
+        TestRepo.all_by(User, age: 30)
+      end
+    end
+  end
+
+  # -------------------------------------------------------------------
   # Non-PK read operations (2-stage)
   # -------------------------------------------------------------------
 

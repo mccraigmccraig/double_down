@@ -536,6 +536,47 @@ defmodule DoubleDown.Repo.InMemoryTest do
   end
 
   # -------------------------------------------------------------------
+  # all_by — closed-world
+  # -------------------------------------------------------------------
+
+  describe "all_by (closed-world)" do
+    test "returns all matching records" do
+      store =
+        InMemory.new([
+          %User{id: 1, name: "Alice", age: 30},
+          %User{id: 2, name: "Bob", age: 30},
+          %User{id: 3, name: "Carol", age: 25}
+        ])
+
+      {users, _} = InMemory.dispatch(DoubleDown.Repo, :all_by, [User, [age: 30]], store)
+      assert length(users) == 2
+      assert Enum.map(users, & &1.name) |> Enum.sort() == ["Alice", "Bob"]
+    end
+
+    test "returns empty list when no matches" do
+      store = InMemory.new([%User{id: 1, name: "Alice", age: 30}])
+      {users, _} = InMemory.dispatch(DoubleDown.Repo, :all_by, [User, [age: 99]], store)
+      assert users == []
+    end
+
+    test "returns single match in a list" do
+      store = InMemory.new([%User{id: 1, name: "Alice", age: 30}])
+      {users, _} = InMemory.dispatch(DoubleDown.Repo, :all_by, [User, [name: "Alice"]], store)
+      assert length(users) == 1
+      assert hd(users).name == "Alice"
+    end
+
+    test "strips opts" do
+      store = InMemory.new([%User{id: 1, name: "Alice", age: 30}])
+
+      {users, _} =
+        InMemory.dispatch(DoubleDown.Repo, :all_by, [User, [name: "Alice"], [timeout: 5000]], store)
+
+      assert length(users) == 1
+    end
+  end
+
+  # -------------------------------------------------------------------
   # Collection reads — closed-world
   # -------------------------------------------------------------------
 

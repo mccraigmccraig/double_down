@@ -288,6 +288,12 @@ if Code.ensure_loaded?(Ecto) do
     def dispatch(contract, :all, args, store),
       do: dispatch_via_fallback(contract, :all, args, store)
 
+    def dispatch(contract, :all_by, [queryable, clauses, _opts], store),
+      do: dispatch(contract, :all_by, [queryable, clauses], store)
+
+    def dispatch(contract, :all_by, args, store),
+      do: dispatch_via_fallback(contract, :all_by, args, store)
+
     def dispatch(contract, :exists?, args, store),
       do: dispatch_via_fallback(contract, :exists?, args, store)
 

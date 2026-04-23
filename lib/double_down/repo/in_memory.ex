@@ -237,6 +237,24 @@ if Code.ensure_loaded?(Ecto) do
       do: dispatch(contract, :get_by!, [queryable, clauses], store)
 
     # -----------------------------------------------------------------
+    # all_by — scan and filter, return all matches (closed-world)
+    # -----------------------------------------------------------------
+
+    def dispatch(_contract, :all_by, [queryable, clauses], store)
+        when is_atom(queryable) and not is_nil(queryable) do
+      clauses_kw = InMemoryShared.normalize_clauses(clauses)
+      records = InMemoryShared.records_for_schema(store, queryable)
+      matching = Enum.filter(records, &InMemoryShared.fields_match?(&1, clauses_kw))
+      {matching, store}
+    end
+
+    def dispatch(contract, :all_by, [queryable, clauses], store),
+      do: dispatch_via_fallback(contract, :all_by, [queryable, clauses], store)
+
+    def dispatch(contract, :all_by, [queryable, clauses, _opts], store),
+      do: dispatch(contract, :all_by, [queryable, clauses], store)
+
+    # -----------------------------------------------------------------
     # Collection reads — scan (closed-world, bare schema)
     # -----------------------------------------------------------------
 
