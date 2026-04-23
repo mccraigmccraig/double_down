@@ -143,6 +143,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Test coverage:** `insert_or_update!` opts-accepting 2-arity variant
   tested through InMemory and OpenInMemory.
 
+- **TOCTOU race in `DynamicFacade.register_module/1` documented** —
+  harmless in practice since `setup/1` is called sequentially in
+  `test_helper.exs`.
+
 ## [0.47.2]
 
 ### Added

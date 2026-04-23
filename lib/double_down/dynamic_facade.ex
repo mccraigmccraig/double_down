@@ -253,6 +253,10 @@ defmodule DoubleDown.DynamicFacade do
   # -- Registry --
 
   @doc false
+  # NOTE: This has a theoretical TOCTOU race — two concurrent calls could
+  # both read the list, both pass the `unless` check, and both prepend,
+  # resulting in a duplicate. In practice this is harmless because setup/1
+  # is called sequentially in test_helper.exs before ExUnit.start().
   def register_module(module) do
     modules = registered_modules()
 
