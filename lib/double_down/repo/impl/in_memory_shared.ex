@@ -33,6 +33,13 @@ if Code.ensure_loaded?(Ecto) do
     def new(seed \\ %{}, opts \\ [])
 
     # Legacy keyword-only form: new(seed: [...], fallback_fn: fn ...)
+    #
+    # Disambiguation: when called with one non-empty list arg and no second
+    # arg (opts defaults to []), we check if the list is a keyword list.
+    # - Keyword list → legacy form: extract :seed and :fallback_fn keys
+    # - Non-keyword list → positional form: treat as a list of seed structs
+    #
+    # This is unambiguous because seed structs are never {atom, value} tuples.
     def new(opts, []) when is_list(opts) and opts != [] do
       case Keyword.keyword?(opts) do
         true ->

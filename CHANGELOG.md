@@ -147,6 +147,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   harmless in practice since `setup/1` is called sequentially in
   `test_helper.exs`.
 
+- **`InMemoryShared.new/2` disambiguation documented** — inline
+  comments explain how the legacy keyword-only form is distinguished
+  from the positional seed-list form.
+
 ## [0.47.2]
 
 ### Added
