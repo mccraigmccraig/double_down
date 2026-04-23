@@ -168,6 +168,13 @@ if Code.ensure_loaded?(Ecto) do
       do: InMemoryShared.dispatch_delete!([record], store)
 
     # -----------------------------------------------------------------
+    # Load — stateless
+    # -----------------------------------------------------------------
+
+    def dispatch(_contract, :load, args, store),
+      do: InMemoryShared.dispatch_load(args, store)
+
+    # -----------------------------------------------------------------
     # Reload — closed-world
     # -----------------------------------------------------------------
 

@@ -290,6 +290,45 @@ if Code.ensure_loaded?(Ecto) do
       end
     end
 
+    # -------------------------------------------------------------------
+    # Load operation (stateless)
+    # -------------------------------------------------------------------
+
+    @doc false
+    def dispatch_load([schema_or_map, data], store) do
+      loader = fn _type, value -> {:ok, value} end
+
+      loaded =
+        case data do
+          data when is_list(data) and is_list(data) ->
+            # Could be keyword list or {columns, values} — normalize
+            case data do
+              [{col, _val} | _] when is_atom(col) ->
+                # keyword list
+                do_load(schema_or_map, Map.new(data), loader)
+
+              _ ->
+                do_load(schema_or_map, data, loader)
+            end
+
+          {fields, values} when is_list(fields) and is_list(values) ->
+            do_load(schema_or_map, Map.new(Enum.zip(fields, values)), loader)
+
+          data when is_map(data) ->
+            do_load(schema_or_map, data, loader)
+        end
+
+      {loaded, store}
+    end
+
+    defp do_load(schema, data, loader) when is_atom(schema) do
+      Ecto.Schema.Loader.unsafe_load(schema, data, loader)
+    end
+
+    defp do_load(types, data, loader) when is_map(types) do
+      Ecto.Schema.Loader.unsafe_load(%{}, types, data, loader)
+    end
+
     defp bang_raise(action, %Ecto.Changeset{} = changeset, store) do
       {%DoubleDown.Contract.Dispatch.Defer{
          fn: fn ->

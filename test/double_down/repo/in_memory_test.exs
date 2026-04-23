@@ -536,6 +536,32 @@ defmodule DoubleDown.Repo.InMemoryTest do
   end
 
   # -------------------------------------------------------------------
+  # load — stateless
+  # -------------------------------------------------------------------
+
+  describe "load" do
+    setup do
+      DoubleDown.Double.fake(DoubleDown.Repo, InMemory)
+      :ok
+    end
+
+    test "loads a schema from a map" do
+      user = DoubleDown.Test.Repo.load(User, %{id: 1, name: "Alice"})
+      assert %User{id: 1, name: "Alice"} = user
+    end
+
+    test "loads a schema from a keyword list" do
+      user = DoubleDown.Test.Repo.load(User, id: 1, name: "Bob")
+      assert %User{id: 1, name: "Bob"} = user
+    end
+
+    test "loads from {columns, values} tuple" do
+      user = DoubleDown.Test.Repo.load(User, {[:id, :name], [1, "Carol"]})
+      assert %User{id: 1, name: "Carol"} = user
+    end
+  end
+
+  # -------------------------------------------------------------------
   # reload / reload! — closed-world
   # -------------------------------------------------------------------
 

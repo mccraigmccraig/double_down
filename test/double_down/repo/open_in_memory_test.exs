@@ -833,6 +833,27 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
   end
 
   # -------------------------------------------------------------------
+  # load — stateless
+  # -------------------------------------------------------------------
+
+  describe "load (open-world)" do
+    setup do
+      DoubleDown.Double.fake(DoubleDown.Repo, Repo.OpenInMemory)
+      :ok
+    end
+
+    test "loads a schema from a map" do
+      user = TestRepo.load(User, %{id: 1, name: "Alice"})
+      assert %User{id: 1, name: "Alice"} = user
+    end
+
+    test "loads a schema from a keyword list" do
+      user = TestRepo.load(User, id: 1, name: "Bob")
+      assert %User{id: 1, name: "Bob"} = user
+    end
+  end
+
+  # -------------------------------------------------------------------
   # reload / reload! (PK-based, authoritative from state)
   # -------------------------------------------------------------------
 

@@ -209,6 +209,13 @@ if Code.ensure_loaded?(Ecto) do
     end
 
     # -----------------------------------------------------------------
+    # Load — stateless
+    # -----------------------------------------------------------------
+
+    def dispatch(_contract, :load, args, store),
+      do: InMemoryShared.dispatch_load(args, store)
+
+    # -----------------------------------------------------------------
     # Reload — PK-based, authoritative from state
     # -----------------------------------------------------------------
 
