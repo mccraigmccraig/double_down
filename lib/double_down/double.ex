@@ -566,6 +566,7 @@ defmodule DoubleDown.Double do
     cond do
       function_exported?(module, :dispatch, 5) -> &module.dispatch/5
       function_exported?(module, :dispatch, 4) -> &module.dispatch/4
+      true -> raise ArgumentError, "#{inspect(module)} must export dispatch/4 or dispatch/5"
     end
   end
 
