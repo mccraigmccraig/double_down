@@ -124,6 +124,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Stale "X.Port" placeholder fixed** in `Testing.enable_log/1` doc.
 
+- **`test_helper.exs` reordered** — `DoubleDown.Testing.start()` now
+  called before `ExUnit.start()`, matching documented guidance.
+
 ## [0.47.2]
 
 ### Added
