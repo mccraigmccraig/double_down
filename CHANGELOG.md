@@ -127,6 +127,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`test_helper.exs` reordered** — `DoubleDown.Testing.start()` now
   called before `ExUnit.start()`, matching documented guidance.
 
+- **Internals doc group expanded** — `Autogenerate`, `EctoParity`,
+  `InMemoryShared`, `Preloader` added to the Internals group in
+  `mix.exs` so they appear in hexdocs.
+
 ## [0.47.2]
 
 ### Added

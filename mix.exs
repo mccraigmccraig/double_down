@@ -70,7 +70,11 @@ defmodule DoubleDown.MixProject do
           ],
           Internals: [
             DoubleDown.Contract.Dispatch,
-            DoubleDown.Repo.Impl.MultiStepper
+            DoubleDown.Repo.Impl.MultiStepper,
+            DoubleDown.Repo.Impl.Autogenerate,
+            DoubleDown.Repo.Impl.EctoParity,
+            DoubleDown.Repo.Impl.InMemoryShared,
+            DoubleDown.Repo.Impl.Preloader
           ]
         ]
       ]
