@@ -236,6 +236,13 @@ if Code.ensure_loaded?(Ecto) do
     @transaction_key DoubleDown.Repo.InTransaction
 
     @doc false
+    def dispatch_in_transaction?(store) do
+      {%DoubleDown.Contract.Dispatch.Defer{
+         fn: fn -> Process.get(@transaction_key, false) end
+       }, store}
+    end
+
+    @doc false
     def dispatch_rollback([value], store) do
       {%DoubleDown.Contract.Dispatch.Defer{
          fn: fn ->

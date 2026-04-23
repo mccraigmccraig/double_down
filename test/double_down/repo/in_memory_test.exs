@@ -1026,6 +1026,31 @@ defmodule DoubleDown.Repo.InMemoryTest do
   end
 
   # -------------------------------------------------------------------
+  # in_transaction?
+  # -------------------------------------------------------------------
+
+  describe "in_transaction?" do
+    setup do
+      DoubleDown.Double.fake(DoubleDown.Repo, InMemory)
+      :ok
+    end
+
+    test "returns false outside a transaction" do
+      refute DoubleDown.Test.Repo.in_transaction?()
+    end
+
+    test "returns true inside a transaction" do
+      DoubleDown.Test.Repo.transact(
+        fn ->
+          assert DoubleDown.Test.Repo.in_transaction?()
+          {:ok, :done}
+        end,
+        []
+      )
+    end
+  end
+
+  # -------------------------------------------------------------------
   # Ecto.Multi bulk operations
   # -------------------------------------------------------------------
 

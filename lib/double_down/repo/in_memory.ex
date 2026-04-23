@@ -404,6 +404,9 @@ if Code.ensure_loaded?(Ecto) do
     def dispatch(_contract, :rollback, args, store),
       do: InMemoryShared.dispatch_rollback(args, store)
 
+    def dispatch(_contract, :in_transaction?, [], store),
+      do: InMemoryShared.dispatch_in_transaction?(store)
+
     # -----------------------------------------------------------------
     # Fallback dispatch (closed-world error messages)
     # -----------------------------------------------------------------

@@ -1563,4 +1563,29 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
       assert {:error, :fake_rollback} = result
     end
   end
+
+  # -------------------------------------------------------------------
+  # in_transaction?
+  # -------------------------------------------------------------------
+
+  describe "in_transaction?" do
+    setup do
+      DoubleDown.Double.fake(DoubleDown.Repo, Repo.OpenInMemory)
+      :ok
+    end
+
+    test "returns false outside a transaction" do
+      refute TestRepo.in_transaction?()
+    end
+
+    test "returns true inside a transaction" do
+      TestRepo.transact(
+        fn ->
+          assert TestRepo.in_transaction?()
+          {:ok, :done}
+        end,
+        []
+      )
+    end
+  end
 end
