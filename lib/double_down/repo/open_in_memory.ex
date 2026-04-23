@@ -209,6 +209,17 @@ if Code.ensure_loaded?(Ecto) do
     end
 
     # -----------------------------------------------------------------
+    # Preload — resolve associations from state
+    # -----------------------------------------------------------------
+
+    def dispatch(contract, :preload, [struct_or_structs, preloads, _opts], store),
+      do: dispatch(contract, :preload, [struct_or_structs, preloads], store)
+
+    def dispatch(_contract, :preload, [struct_or_structs, preloads], store) do
+      {DoubleDown.Repo.Impl.Preloader.preload(struct_or_structs, preloads, store), store}
+    end
+
+    # -----------------------------------------------------------------
     # Load — stateless
     # -----------------------------------------------------------------
 
