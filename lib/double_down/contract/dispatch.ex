@@ -80,20 +80,29 @@ defmodule DoubleDown.Contract.Dispatch do
   Returns the domain state — for Double-managed handlers this is
   the `fallback_state` field; for raw stateful handlers this is
   the entire state value. Used to snapshot state before a transaction.
+
+  Respects the `$callers` chain, so state is accessible from child
+  processes (e.g. `Task.async`).
   """
   @spec get_state(module()) :: term()
   def get_state(contract) do
     state_key = Module.concat(DoubleDown.State, contract)
 
-    case NimbleOwnership.get_owned(@ownership_server, self()) do
-      %{^state_key => %{fallback_state: fallback_state}} ->
-        fallback_state
-
-      %{^state_key => state} ->
-        state
-
-      _ ->
+    case resolve_owner_pid(contract) do
+      nil ->
         nil
+
+      owner_pid ->
+        case NimbleOwnership.get_owned(@ownership_server, owner_pid) do
+          %{^state_key => %{fallback_state: fallback_state}} ->
+            fallback_state
+
+          %{^state_key => state} ->
+            state
+
+          _ ->
+            nil
+        end
     end
   end
 
@@ -134,30 +143,15 @@ defmodule DoubleDown.Contract.Dispatch do
   # -- Test handler resolution --
 
   @doc false
-  # credo:disable-for-next-line Credo.Check.Refactor.CyclomaticComplexity
   def resolve_test_handler(contract) do
-    case GenServer.whereis(@ownership_server) do
+    case resolve_owner_pid(contract) do
       nil ->
         :none
 
-      _pid ->
-        callers = [self() | Process.get(:"$callers", [])]
-
-        case NimbleOwnership.fetch_owner(@ownership_server, callers, contract) do
-          {:ok, owner_pid} ->
-            case NimbleOwnership.get_owned(@ownership_server, owner_pid) do
-              %{^contract => handler_meta} -> {:ok, owner_pid, handler_meta}
-              _ -> :none
-            end
-
-          {:shared_owner, owner_pid} ->
-            case NimbleOwnership.get_owned(@ownership_server, owner_pid) do
-              %{^contract => handler_meta} -> {:ok, owner_pid, handler_meta}
-              _ -> :none
-            end
-
-          :error ->
-            :none
+      owner_pid ->
+        case NimbleOwnership.get_owned(@ownership_server, owner_pid) do
+          %{^contract => handler_meta} -> {:ok, owner_pid, handler_meta}
+          _ -> :none
         end
     end
   end
@@ -179,6 +173,27 @@ defmodule DoubleDown.Contract.Dispatch do
     case resolve_test_handler(contract) do
       {:ok, _owner_pid, _handler} -> true
       :none -> false
+    end
+  end
+
+  # -- Owner resolution --
+
+  # Resolve the owner pid for the given contract by walking the $callers
+  # chain. Returns nil if the ownership server isn't running or no owner
+  # is found.
+  defp resolve_owner_pid(contract) do
+    case GenServer.whereis(@ownership_server) do
+      nil ->
+        nil
+
+      _pid ->
+        callers = [self() | Process.get(:"$callers", [])]
+
+        case NimbleOwnership.fetch_owner(@ownership_server, callers, contract) do
+          {:ok, pid} -> pid
+          {:shared_owner, pid} -> pid
+          :error -> nil
+        end
     end
   end
 

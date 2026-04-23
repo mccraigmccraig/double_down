@@ -261,4 +261,32 @@ defmodule DoubleDown.Contract.DispatchTest do
       refute DoubleDown.Contract.Dispatch.handler_active?(Counter)
     end
   end
+
+  # -- get_state --
+
+  describe "get_state" do
+    test "returns nil when no handler installed" do
+      assert DoubleDown.Contract.Dispatch.get_state(Greeter) == nil
+    end
+
+    test "returns state from current process" do
+      DoubleDown.Double.fake(DoubleDown.Repo, DoubleDown.Repo.InMemory)
+      state = DoubleDown.Contract.Dispatch.get_state(DoubleDown.Repo)
+      assert is_map(state)
+    end
+
+    test "returns state from child process via $callers chain" do
+      DoubleDown.Double.fake(DoubleDown.Repo, DoubleDown.Repo.InMemory)
+
+      parent_state = DoubleDown.Contract.Dispatch.get_state(DoubleDown.Repo)
+
+      child_state =
+        Task.async(fn ->
+          DoubleDown.Contract.Dispatch.get_state(DoubleDown.Repo)
+        end)
+        |> Task.await()
+
+      assert child_state == parent_state
+    end
+  end
 end
