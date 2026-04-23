@@ -136,6 +136,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `transact` vs `transaction` naming, and which callbacks are
   intentionally excluded.
 
+- **OpenInMemory bulk ops documented** — clarified that `insert_all`,
+  `update_all`, `delete_all` always delegate to fallback and do not
+  mutate in-memory state (unlike InMemory).
+
 ## [0.47.2]
 
 ### Added

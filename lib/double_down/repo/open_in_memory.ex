@@ -57,6 +57,12 @@ if Code.ensure_loaded?(Ecto) do
     | **Bulk** | `insert_all`, `update_all`, `delete_all` | Always fallback |
     | **Transactions** | `transact`, `rollback` | Delegate to sub-operations |
 
+    **Note:** Unlike `Repo.InMemory` (closed-world), bulk operations
+    (`insert_all`, `update_all`, `delete_all`) in OpenInMemory always
+    delegate to the fallback function and do **not** mutate in-memory
+    state. This is consistent with open-world semantics — the state
+    is partial, so bulk mutations could produce incorrect results.
+
     For reads, the dispatch stages are:
 
     1. **State lookup** — if the record is in state, return it
