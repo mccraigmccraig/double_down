@@ -337,6 +337,17 @@ defmodule DoubleDown.Repo.InMemoryTest do
       {user, _store} = InMemory.dispatch(DoubleDown.Repo, :delete!, [%User{id: 1}], store)
       assert user.id == 1
     end
+
+    test "raises on invalid changeset" do
+      store = InMemory.new([%User{id: 1, name: "Alice"}])
+      cs = User.changeset(%User{id: 1, name: "Alice"}, %{}) |> Ecto.Changeset.add_error(:name, "required")
+      cs = %{cs | valid?: false}
+
+      {%DoubleDown.Contract.Dispatch.Defer{fn: raise_fn}, _} =
+        InMemory.dispatch(DoubleDown.Repo, :delete!, [cs], store)
+
+      assert_raise Ecto.InvalidChangesetError, fn -> raise_fn.() end
+    end
   end
 
   # -------------------------------------------------------------------

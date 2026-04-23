@@ -195,8 +195,10 @@ if Code.ensure_loaded?(Ecto) do
 
     @doc false
     def dispatch_delete!(args, store) do
-      {{:ok, record}, new_store} = dispatch_delete(args, store)
-      {record, new_store}
+      case dispatch_delete(args, store) do
+        {{:ok, record}, new_store} -> {record, new_store}
+        {{:error, changeset}, store} -> bang_raise(:delete!, changeset, store)
+      end
     end
 
     # -------------------------------------------------------------------
