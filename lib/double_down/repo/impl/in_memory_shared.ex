@@ -301,15 +301,7 @@ if Code.ensure_loaded?(Ecto) do
       loaded =
         case data do
           data when is_list(data) ->
-            # Could be keyword list — normalize
-            case data do
-              [{col, _val} | _] when is_atom(col) ->
-                # keyword list
-                do_load(schema_or_map, Map.new(data), loader)
-
-              _ ->
-                do_load(schema_or_map, data, loader)
-            end
+            do_load(schema_or_map, Map.new(data), loader)
 
           {fields, values} when is_list(fields) and is_list(values) ->
             do_load(schema_or_map, Map.new(Enum.zip(fields, values)), loader)
