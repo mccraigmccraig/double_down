@@ -42,10 +42,10 @@ defmodule DoubleDown.Testing do
   @doc """
   Register a function as the handler for a contract.
 
-  The function receives `(operation, args)` and returns the result.
+  The function receives `(contract, operation, args)` and returns the result.
   """
-  @spec set_fn_handler(module(), (atom(), [term()] -> term())) :: :ok
-  def set_fn_handler(contract, fun) when is_function(fun, 2) do
+  @spec set_fn_handler(module(), (module(), atom(), [term()] -> term())) :: :ok
+  def set_fn_handler(contract, fun) when is_function(fun, 3) do
     set_meta(contract, %HandlerMeta.Fn{fun: fun})
   end
 

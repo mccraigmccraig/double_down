@@ -250,7 +250,7 @@ defmodule DoubleDown.DoubleTest do
     end
 
     test "stub/3 with StubHandler module and fallback_fn" do
-      Double.stub(Repo, Repo.Stub, fn :all, [SimpleUser] ->
+      Double.stub(Repo, Repo.Stub, fn _contract, :all, [SimpleUser] ->
         [%SimpleUser{id: 1, name: "Alice"}]
       end)
 
@@ -287,14 +287,16 @@ defmodule DoubleDown.DoubleTest do
 
   describe "stub/2 function fallback" do
     test "returns contract module for piping" do
-      result = Double.stub(Greeter, fn _op, _args -> :fallback end)
+      result = Double.stub(Greeter, fn _contract, _op, _args -> :fallback end)
       assert result == Greeter
     end
 
     test "handles operations without specific stubs" do
-      Double.stub(Greeter, fn
-        :greet, [name] -> "fallback: #{name}"
-        :fetch_greeting, [name] -> {:ok, "fallback: #{name}"}
+      Double.stub(Greeter, fn _contract, operation, args ->
+        case {operation, args} do
+          {:greet, [name]} -> "fallback: #{name}"
+          {:fetch_greeting, [name]} -> {:ok, "fallback: #{name}"}
+        end
       end)
 
       assert "fallback: Alice" = Greeter.Port.greet("Alice")
@@ -304,14 +306,14 @@ defmodule DoubleDown.DoubleTest do
     test "per-op stub takes priority over fallback" do
       Greeter
       |> Double.stub(:greet, fn [name] -> "per-op: #{name}" end)
-      |> Double.stub(fn _op, [name] -> "fallback: #{name}" end)
+      |> Double.stub(fn _contract, _op, [name] -> "fallback: #{name}" end)
 
       assert "per-op: Alice" = Greeter.Port.greet("Alice")
     end
 
     test "expects take priority over fallback" do
       Greeter
-      |> Double.stub(fn _op, [name] -> "fallback: #{name}" end)
+      |> Double.stub(fn _contract, _op, [name] -> "fallback: #{name}" end)
       |> Double.expect(:greet, fn [_] -> "expected" end)
 
       assert "expected" = Greeter.Port.greet("Alice")
@@ -320,7 +322,7 @@ defmodule DoubleDown.DoubleTest do
 
     test "FunctionClauseError in fallback raises descriptive error" do
       Double.stub(Greeter, fn
-        :greet, [name] -> "only greet: #{name}"
+        _contract, :greet, [name] -> "only greet: #{name}"
       end)
 
       assert "only greet: Alice" = Greeter.Port.greet("Alice")
@@ -331,9 +333,11 @@ defmodule DoubleDown.DoubleTest do
     end
 
     test "reuses set_fn_handler-style functions" do
-      handler_fn = fn
-        :greet, [name] -> "handler: #{name}"
-        :fetch_greeting, [name] -> {:ok, "handler: #{name}"}
+      handler_fn = fn _contract, operation, args ->
+        case {operation, args} do
+          {:greet, [name]} -> "handler: #{name}"
+          {:fetch_greeting, [name]} -> {:ok, "handler: #{name}"}
+        end
       end
 
       Double.stub(Greeter, handler_fn)
@@ -666,7 +670,7 @@ defmodule DoubleDown.DoubleTest do
   describe "fallback mutual exclusivity" do
     test "module replaces fn fallback" do
       Greeter
-      |> Double.stub(fn _op, _args -> :fn_fallback end)
+      |> Double.stub(fn _contract, _op, _args -> :fn_fallback end)
       |> Double.fake(Greeter.Impl)
 
       assert "Hello, Alice!" = Greeter.Port.greet("Alice")
@@ -675,7 +679,7 @@ defmodule DoubleDown.DoubleTest do
     test "fn replaces module fallback" do
       Greeter
       |> Double.fake(Greeter.Impl)
-      |> Double.stub(fn :greet, [name] -> "fn: #{name}" end)
+      |> Double.stub(fn _contract, :greet, [name] -> "fn: #{name}" end)
 
       assert "fn: Alice" = Greeter.Port.greet("Alice")
     end
@@ -933,7 +937,7 @@ defmodule DoubleDown.DoubleTest do
 
     test "passthrough() works with fn fallback" do
       Greeter
-      |> Double.stub(fn :greet, [name] -> "stub: #{name}" end)
+      |> Double.stub(fn _contract, :greet, [name] -> "stub: #{name}" end)
       |> Double.expect(:greet, fn [_name] ->
         Double.passthrough()
       end)
@@ -971,7 +975,7 @@ defmodule DoubleDown.DoubleTest do
   describe ":passthrough expects" do
     test "delegates to fn fallback" do
       Greeter
-      |> Double.stub(fn :greet, [name] -> "fallback: #{name}" end)
+      |> Double.stub(fn _contract, :greet, [name] -> "fallback: #{name}" end)
       |> Double.expect(:greet, :passthrough)
 
       assert "fallback: Alice" = Greeter.Port.greet("Alice")

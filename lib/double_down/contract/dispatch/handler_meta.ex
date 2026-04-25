@@ -10,7 +10,7 @@ defmodule DoubleDown.Contract.Dispatch.HandlerMeta do
   ## Variants
 
   * `HandlerMeta.Module` — delegate to a module implementing the contract behaviour
-  * `HandlerMeta.Fn` — dispatch via a 2-arity `fn operation, args -> result end`
+  * `HandlerMeta.Fn` — dispatch via a 3-arity `fn contract, operation, args -> result end`
   * `HandlerMeta.Stateful` — dispatch via a 4/5-arity stateful function with
     mutable state stored inline in the `:state` field
   """
@@ -26,12 +26,12 @@ defmodule DoubleDown.Contract.Dispatch.HandlerMeta do
   end
 
   defmodule Fn do
-    @moduledoc "Handler meta for a 2-arity function handler."
+    @moduledoc "Handler meta for a 3-arity function handler `(contract, operation, args)`."
     @enforce_keys [:fun]
     defstruct [:fun]
 
     @type t :: %__MODULE__{
-            fun: (atom(), [term()] -> term())
+            fun: (module(), atom(), [term()] -> term())
           }
   end
 

@@ -321,9 +321,11 @@ defmodule DoubleDown.Repo.StubTest do
 
       handler =
         Repo.Stub.new(
-          fallback_fn: fn
-            :get, [User, 1] -> alice
-            :get, [User, _] -> nil
+          fallback_fn: fn _contract, operation, args ->
+            case {operation, args} do
+              {:get, [User, 1]} -> alice
+              {:get, [User, _]} -> nil
+            end
           end
         )
 
@@ -337,7 +339,7 @@ defmodule DoubleDown.Repo.StubTest do
       alice = %User{id: 1, name: "Alice"}
 
       handler =
-        Repo.Stub.new(fallback_fn: fn :get!, [User, 1] -> alice end)
+        Repo.Stub.new(fallback_fn: fn _contract, :get!, [User, 1] -> alice end)
 
       DoubleDown.Testing.set_fn_handler(Repo, handler)
       assert ^alice = TestRepo.get!(User, 1)
@@ -347,7 +349,7 @@ defmodule DoubleDown.Repo.StubTest do
       alice = %User{id: 1, name: "Alice"}
 
       handler =
-        Repo.Stub.new(fallback_fn: fn :get_by, [User, [name: "Alice"]] -> alice end)
+        Repo.Stub.new(fallback_fn: fn _contract, :get_by, [User, [name: "Alice"]] -> alice end)
 
       DoubleDown.Testing.set_fn_handler(Repo, handler)
       assert ^alice = TestRepo.get_by(User, name: "Alice")
@@ -357,7 +359,7 @@ defmodule DoubleDown.Repo.StubTest do
       users = [%User{id: 1, name: "Alice"}, %User{id: 2, name: "Bob"}]
 
       handler =
-        Repo.Stub.new(fallback_fn: fn :all, [User] -> users end)
+        Repo.Stub.new(fallback_fn: fn _contract, :all, [User] -> users end)
 
       DoubleDown.Testing.set_fn_handler(Repo, handler)
       assert ^users = TestRepo.all(User)
@@ -365,7 +367,7 @@ defmodule DoubleDown.Repo.StubTest do
 
     test "exists? dispatches to fallback" do
       handler =
-        Repo.Stub.new(fallback_fn: fn :exists?, [User] -> true end)
+        Repo.Stub.new(fallback_fn: fn _contract, :exists?, [User] -> true end)
 
       DoubleDown.Testing.set_fn_handler(Repo, handler)
       assert TestRepo.exists?(User) == true
@@ -373,7 +375,7 @@ defmodule DoubleDown.Repo.StubTest do
 
     test "aggregate dispatches to fallback" do
       handler =
-        Repo.Stub.new(fallback_fn: fn :aggregate, [User, :count, :id] -> 42 end)
+        Repo.Stub.new(fallback_fn: fn _contract, :aggregate, [User, :count, :id] -> 42 end)
 
       DoubleDown.Testing.set_fn_handler(Repo, handler)
       assert 42 = TestRepo.aggregate(User, :count, :id)
@@ -381,7 +383,7 @@ defmodule DoubleDown.Repo.StubTest do
 
     test "fallback raises on unmatched clause" do
       handler =
-        Repo.Stub.new(fallback_fn: fn :get, [User, 1] -> nil end)
+        Repo.Stub.new(fallback_fn: fn _contract, :get, [User, 1] -> nil end)
 
       DoubleDown.Testing.set_fn_handler(Repo, handler)
 
@@ -538,7 +540,7 @@ defmodule DoubleDown.Repo.StubTest do
 
       DoubleDown.Testing.set_fn_handler(
         Repo,
-        Repo.Stub.new(fallback_fn: fn :get, [User, 1] -> alice end)
+        Repo.Stub.new(fallback_fn: fn _contract, :get, [User, 1] -> alice end)
       )
 
       DoubleDown.Testing.enable_log(Repo)
@@ -947,8 +949,8 @@ defmodule DoubleDown.Repo.StubTest do
     test "delegates to fallback" do
       DoubleDown.Double.stub(
         Repo,
-        Repo.Stub.new(fn
-          :preload, [struct, [:posts]] -> %{struct | name: "preloaded"}
+        Repo.Stub.new(fn _contract, :preload, [struct, [:posts]] ->
+          %{struct | name: "preloaded"}
         end)
       )
 
@@ -967,8 +969,8 @@ defmodule DoubleDown.Repo.StubTest do
     test "opts-stripping variant works" do
       DoubleDown.Double.stub(
         Repo,
-        Repo.Stub.new(fn
-          :preload, [struct, [:posts]] -> %{struct | name: "preloaded"}
+        Repo.Stub.new(fn _contract, :preload, [struct, [:posts]] ->
+          %{struct | name: "preloaded"}
         end)
       )
 
@@ -981,8 +983,8 @@ defmodule DoubleDown.Repo.StubTest do
     test "delegates to fallback" do
       DoubleDown.Double.stub(
         Repo,
-        Repo.Stub.new(fn
-          :reload, [%User{id: 1}] -> %User{id: 1, name: "Reloaded"}
+        Repo.Stub.new(fn _contract, :reload, [%User{id: 1}] ->
+          %User{id: 1, name: "Reloaded"}
         end)
       )
 
@@ -1000,8 +1002,8 @@ defmodule DoubleDown.Repo.StubTest do
     test "opts-stripping variant works" do
       DoubleDown.Double.stub(
         Repo,
-        Repo.Stub.new(fn
-          :reload, [%User{id: 1}] -> %User{id: 1, name: "Reloaded"}
+        Repo.Stub.new(fn _contract, :reload, [%User{id: 1}] ->
+          %User{id: 1, name: "Reloaded"}
         end)
       )
 
@@ -1013,8 +1015,8 @@ defmodule DoubleDown.Repo.StubTest do
     test "delegates to fallback" do
       DoubleDown.Double.stub(
         Repo,
-        Repo.Stub.new(fn
-          :reload!, [%User{id: 1}] -> %User{id: 1, name: "Reloaded"}
+        Repo.Stub.new(fn _contract, :reload!, [%User{id: 1}] ->
+          %User{id: 1, name: "Reloaded"}
         end)
       )
 
@@ -1032,8 +1034,8 @@ defmodule DoubleDown.Repo.StubTest do
     test "opts-stripping variant works" do
       DoubleDown.Double.stub(
         Repo,
-        Repo.Stub.new(fn
-          :reload!, [%User{id: 1}] -> %User{id: 1, name: "Reloaded"}
+        Repo.Stub.new(fn _contract, :reload!, [%User{id: 1}] ->
+          %User{id: 1, name: "Reloaded"}
         end)
       )
 
@@ -1045,8 +1047,8 @@ defmodule DoubleDown.Repo.StubTest do
     test "delegates to fallback" do
       DoubleDown.Double.stub(
         Repo,
-        Repo.Stub.new(fn
-          :all_by, [User, [name: "Alice"]] -> [%User{id: 1, name: "Alice"}]
+        Repo.Stub.new(fn _contract, :all_by, [User, [name: "Alice"]] ->
+          [%User{id: 1, name: "Alice"}]
         end)
       )
 
@@ -1064,8 +1066,8 @@ defmodule DoubleDown.Repo.StubTest do
     test "opts-stripping variant works" do
       DoubleDown.Double.stub(
         Repo,
-        Repo.Stub.new(fn
-          :all_by, [User, [name: "Alice"]] -> [%User{id: 1, name: "Alice"}]
+        Repo.Stub.new(fn _contract, :all_by, [User, [name: "Alice"]] ->
+          [%User{id: 1, name: "Alice"}]
         end)
       )
 
@@ -1081,8 +1083,8 @@ defmodule DoubleDown.Repo.StubTest do
     test "delegates to fallback" do
       DoubleDown.Double.stub(
         Repo,
-        Repo.Stub.new(fn
-          :stream, [User] -> Stream.map([%User{id: 1, name: "Alice"}], & &1)
+        Repo.Stub.new(fn _contract, :stream, [User] ->
+          Stream.map([%User{id: 1, name: "Alice"}], & &1)
         end)
       )
 
@@ -1101,8 +1103,8 @@ defmodule DoubleDown.Repo.StubTest do
     test "opts-stripping variant works" do
       DoubleDown.Double.stub(
         Repo,
-        Repo.Stub.new(fn
-          :stream, [User] -> Stream.map([%User{id: 1, name: "Alice"}], & &1)
+        Repo.Stub.new(fn _contract, :stream, [User] ->
+          Stream.map([%User{id: 1, name: "Alice"}], & &1)
         end)
       )
 

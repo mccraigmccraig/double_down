@@ -12,13 +12,13 @@ defmodule DoubleDown.Contract.Dispatch.StubHandler do
       Double.stub(Repo, Repo.Stub)
 
       # With a fallback function:
-      Double.stub(Repo, Repo.Stub, fn :all, [User] -> [] end)
+      Double.stub(Repo, Repo.Stub, fn _contract, :all, [User] -> [] end)
 
   ## Callbacks
 
-    * `new/2` — build a 2-arity dispatch function from a fallback
+    * `new/2` — build a 3-arity dispatch function from a fallback
       function and options. The returned function has the signature
-      `fn operation, args -> result end`.
+      `fn contract, operation, args -> result end`.
 
   ## Example
 
@@ -27,10 +27,10 @@ defmodule DoubleDown.Contract.Dispatch.StubHandler do
 
         @impl true
         def new(fallback_fn, _opts) do
-          fn operation, args ->
+          fn contract, operation, args ->
             case {operation, args} do
               {:get, [id]} -> %{id: id}
-              _ when is_function(fallback_fn) -> fallback_fn.(operation, args)
+              _ when is_function(fallback_fn) -> fallback_fn.(contract, operation, args)
               _ -> raise "unhandled"
             end
           end
@@ -39,17 +39,17 @@ defmodule DoubleDown.Contract.Dispatch.StubHandler do
   """
 
   @doc """
-  Build a 2-arity dispatch function from a fallback function and options.
+  Build a 3-arity dispatch function from a fallback function and options.
 
-    * `fallback_fn` — an optional 2-arity function `(operation, args) -> result`
+    * `fallback_fn` — an optional 3-arity function `(contract, operation, args) -> result`
       for operations the stub doesn't handle directly. `nil` if not provided.
     * `opts` — additional options for configuring the stub.
 
-  Returns a 2-arity function `fn operation, args -> result end` suitable
+  Returns a 3-arity function `fn contract, operation, args -> result end` suitable
   for use as a `Double.stub` function fallback.
   """
   @callback new(
-              fallback_fn :: (atom(), [term()] -> term()) | nil,
+              fallback_fn :: (module(), atom(), [term()] -> term()) | nil,
               opts :: keyword()
-            ) :: (atom(), [term()] -> term())
+            ) :: (module(), atom(), [term()] -> term())
 end

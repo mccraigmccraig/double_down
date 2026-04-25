@@ -59,7 +59,7 @@ defmodule DoubleDown.ContractTest do
 
     test "Port facade dispatches through DoubleDown.Contract.Dispatch" do
       DoubleDown.Testing.set_fn_handler(DoubleDown.Test.Greeter, fn
-        :greet, [name] -> "Dispatched: #{name}"
+        _contract, :greet, [name] -> "Dispatched: #{name}"
       end)
 
       assert DoubleDown.Test.Greeter.Port.greet("test") == "Dispatched: test"
@@ -67,7 +67,7 @@ defmodule DoubleDown.ContractTest do
 
     test "Port facade passes all arguments" do
       DoubleDown.Testing.set_fn_handler(DoubleDown.Test.MultiParam, fn
-        :find, [tenant, type, id] -> {:ok, %{tenant: tenant, type: type, id: id}}
+        _contract, :find, [tenant, type, id] -> {:ok, %{tenant: tenant, type: type, id: id}}
       end)
 
       assert {:ok, %{tenant: "t1", type: :user, id: "u1"}} =
@@ -75,9 +75,11 @@ defmodule DoubleDown.ContractTest do
     end
 
     test "zero-arg Port functions work" do
-      DoubleDown.Testing.set_fn_handler(DoubleDown.Test.ZeroArg, fn
-        :health_check, [] -> :ok
-        :get_version, [] -> {:ok, "1.0.0"}
+      DoubleDown.Testing.set_fn_handler(DoubleDown.Test.ZeroArg, fn _contract, operation, args ->
+        case {operation, args} do
+          {:health_check, []} -> :ok
+          {:get_version, []} -> {:ok, "1.0.0"}
+        end
       end)
 
       assert :ok = DoubleDown.Test.ZeroArg.Port.health_check()
@@ -114,7 +116,7 @@ defmodule DoubleDown.ContractTest do
       # The contract module reference is captured and used by dispatch
       # We verify this indirectly — dispatch resolves using it.
       DoubleDown.Testing.set_fn_handler(DoubleDown.Test.Greeter, fn
-        :greet, [name] -> "via-contract: #{name}"
+        _contract, :greet, [name] -> "via-contract: #{name}"
       end)
 
       assert DoubleDown.Test.Greeter.Port.greet("check") == "via-contract: check"
@@ -348,7 +350,7 @@ defmodule DoubleDown.ContractTest do
       mod = DoubleDown.Test.CombinedDispatch
 
       DoubleDown.Testing.set_fn_handler(mod, fn
-        :greet, ["Alice"] -> "Hello, Alice!"
+        _contract, :greet, ["Alice"] -> "Hello, Alice!"
       end)
 
       assert "Hello, Alice!" = apply(mod, :greet, ["Alice"])
@@ -443,9 +445,11 @@ defmodule DoubleDown.ContractTest do
     end
 
     test "Port facade with aliased types dispatches correctly" do
-      DoubleDown.Testing.set_fn_handler(DoubleDown.Test.AliasedTypes, fn
-        :get_widget, [id] -> {:ok, %DoubleDown.Test.Deep.Nested.Widget{id: id, label: "test"}}
-        :list_widgets, [_filter] -> []
+      DoubleDown.Testing.set_fn_handler(DoubleDown.Test.AliasedTypes, fn _contract, operation, args ->
+        case {operation, args} do
+          {:get_widget, [id]} -> {:ok, %DoubleDown.Test.Deep.Nested.Widget{id: id, label: "test"}}
+          {:list_widgets, [_filter]} -> []
+        end
       end)
 
       assert {:ok, %DoubleDown.Test.Deep.Nested.Widget{id: "w1"}} =

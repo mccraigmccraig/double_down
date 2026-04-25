@@ -27,10 +27,12 @@ defmodule DoubleDown.DynamicFacadeTest do
 
   describe "dispatch with Double.stub" do
     test "fn stub overrides all operations" do
-      Double.stub(DynamicTarget, fn
-        :greet, [name] -> "Stubbed: #{name}"
-        :add, [a, b] -> a * b
-        :zero_arity, [] -> :stubbed
+      Double.stub(DynamicTarget, fn _contract, operation, args ->
+        case {operation, args} do
+          {:greet, [name]} -> "Stubbed: #{name}"
+          {:add, [a, b]} -> a * b
+          {:zero_arity, []} -> :stubbed
+        end
       end)
 
       assert "Stubbed: Alice" = DynamicTarget.greet("Alice")
@@ -41,7 +43,7 @@ defmodule DoubleDown.DynamicFacadeTest do
 
   describe "dispatch with Double.expect" do
     test "expects are consumed in order" do
-      Double.stub(DynamicTarget, fn :greet, [name] -> "Stub: #{name}" end)
+      Double.stub(DynamicTarget, fn _contract, :greet, [name] -> "Stub: #{name}" end)
 
       Double.expect(DynamicTarget, :greet, fn [_] -> "First" end)
       Double.expect(DynamicTarget, :greet, fn [_] -> "Second" end)
@@ -123,8 +125,8 @@ defmodule DoubleDown.DynamicFacadeTest do
 
   describe "dispatch logging" do
     test "logs dispatched calls" do
-      Double.stub(DynamicTarget, fn
-        :greet, [name] -> "Logged: #{name}"
+      Double.stub(DynamicTarget, fn _contract, :greet, [name] ->
+        "Logged: #{name}"
       end)
 
       DoubleDown.Testing.enable_log(DynamicTarget)
@@ -225,10 +227,12 @@ defmodule DoubleDown.DynamicFacadeTest do
 
   describe "per-operation stubs with dynamic facade" do
     test "per-op stub overrides specific operation" do
-      Double.stub(DynamicTarget, fn
-        :greet, [name] -> "Fallback: #{name}"
-        :add, [a, b] -> a + b
-        :zero_arity, [] -> :fallback
+      Double.stub(DynamicTarget, fn _contract, operation, args ->
+        case {operation, args} do
+          {:greet, [name]} -> "Fallback: #{name}"
+          {:add, [a, b]} -> a + b
+          {:zero_arity, []} -> :fallback
+        end
       end)
       |> Double.stub(:greet, fn [name] -> "Stubbed: #{name}" end)
 

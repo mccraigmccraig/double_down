@@ -24,9 +24,11 @@ defmodule DoubleDown.Contract.DispatchTest do
 
   describe "fn handler" do
     test "dispatches to a function handler" do
-      DoubleDown.Testing.set_fn_handler(Greeter, fn
-        :greet, [name] -> "Howdy, #{name}!"
-        :fetch_greeting, [name] -> {:ok, "Howdy, #{name}!"}
+      DoubleDown.Testing.set_fn_handler(Greeter, fn _contract, operation, args ->
+        case {operation, args} do
+          {:greet, [name]} -> "Howdy, #{name}!"
+          {:fetch_greeting, [name]} -> {:ok, "Howdy, #{name}!"}
+        end
       end)
 
       assert "Howdy, Alice!" = Greeter.Port.greet("Alice")
@@ -99,9 +101,11 @@ defmodule DoubleDown.Contract.DispatchTest do
 
   describe "dispatch logging" do
     test "logs dispatches when logging is enabled" do
-      DoubleDown.Testing.set_fn_handler(Greeter, fn
-        :greet, [name] -> "Hi, #{name}!"
-        :fetch_greeting, [name] -> {:ok, "Hi, #{name}!"}
+      DoubleDown.Testing.set_fn_handler(Greeter, fn _contract, operation, args ->
+        case {operation, args} do
+          {:greet, [name]} -> "Hi, #{name}!"
+          {:fetch_greeting, [name]} -> {:ok, "Hi, #{name}!"}
+        end
       end)
 
       DoubleDown.Testing.enable_log(Greeter)
@@ -119,7 +123,7 @@ defmodule DoubleDown.Contract.DispatchTest do
 
     test "returns empty log when logging not enabled" do
       DoubleDown.Testing.set_fn_handler(Greeter, fn
-        :greet, [name] -> "Hi, #{name}!"
+        _contract, :greet, [name] -> "Hi, #{name}!"
       end)
 
       Greeter.Port.greet("Alice")
@@ -177,7 +181,7 @@ defmodule DoubleDown.Contract.DispatchTest do
   describe "allow/3" do
     test "allows a child Task to use the parent's handler" do
       DoubleDown.Testing.set_fn_handler(Greeter, fn
-        :greet, [name] -> "Hello from parent, #{name}!"
+        _contract, :greet, [name] -> "Hello from parent, #{name}!"
       end)
 
       task =
@@ -223,7 +227,7 @@ defmodule DoubleDown.Contract.DispatchTest do
 
     test "returns true after a fn handler is installed" do
       DoubleDown.Testing.set_fn_handler(Greeter, fn
-        :greet, [name] -> "Hi, #{name}!"
+        _contract, :greet, [name] -> "Hi, #{name}!"
       end)
 
       assert DoubleDown.Contract.Dispatch.handler_active?(Greeter)
@@ -237,7 +241,7 @@ defmodule DoubleDown.Contract.DispatchTest do
 
     test "respects $callers chain — handler visible in spawned child" do
       DoubleDown.Testing.set_fn_handler(Greeter, fn
-        :greet, [name] -> "Hi, #{name}!"
+        _contract, :greet, [name] -> "Hi, #{name}!"
       end)
 
       # Task.async sets $callers to [self()], so the child can see
@@ -253,7 +257,7 @@ defmodule DoubleDown.Contract.DispatchTest do
 
     test "returns false for a different contract with no handler" do
       DoubleDown.Testing.set_fn_handler(Greeter, fn
-        :greet, [name] -> "Hi, #{name}!"
+        _contract, :greet, [name] -> "Hi, #{name}!"
       end)
 
       # Greeter has a handler, but Counter does not

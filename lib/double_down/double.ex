@@ -56,14 +56,16 @@ defmodule DoubleDown.Double do
 
   ### Function fallback (stub)
 
-  A stateless 2-arity `fn operation, args -> result end` — canned
+  A stateless 3-arity `fn contract, operation, args -> result end` — canned
   responses, same signature as `set_fn_handler`:
 
       MyContract
       |> DoubleDown.Double.expect(:get, fn [id] -> %Thing{id: id} end)
-      |> DoubleDown.Double.stub(fn
-        :list, [_] -> []
-        :count, [] -> 0
+      |> DoubleDown.Double.stub(fn _contract, operation, args ->
+        case {operation, args} do
+          {:list, [_]} -> []
+          {:count, []} -> 0
+        end
       end)
 
   ### Stateful fake
@@ -312,16 +314,18 @@ defmodule DoubleDown.Double do
 
       DoubleDown.Double.stub(MyContract, :list, fn [_] -> [] end)
 
-  ## Function fallback (2-arity function)
+  ## Function fallback (3-arity function)
 
-  When the function is 2-arity `fn operation, args -> result end`,
+  When the function is 3-arity `fn contract, operation, args -> result end`,
   it acts as a fallback for any operation on the contract that has
   no per-operation expect or stub. This is the same signature as
   `set_fn_handler`, so existing handler functions can be reused:
 
-      DoubleDown.Double.stub(MyContract, fn
-        :list, [_] -> []
-        :count, [] -> 0
+      DoubleDown.Double.stub(MyContract, fn _contract, operation, args ->
+        case {operation, args} do
+          {:list, [_]} -> []
+          {:count, []} -> 0
+        end
       end)
 
   ## StubHandler module
@@ -334,7 +338,7 @@ defmodule DoubleDown.Double do
 
       # With fallback for reads
       DoubleDown.Double.stub(MyContract, DoubleDown.Repo.Stub,
-        fn :all, [User] -> [] end)
+        fn _contract, :all, [User] -> [] end)
 
   For stateful fakes and module delegation, see `fake/2` and `fake/3`.
 
@@ -347,7 +351,7 @@ defmodule DoubleDown.Double do
   # stub/2 — function fallback or StubHandler module
   @spec stub(module(), function() | module()) :: module()
   def stub(contract, fun)
-      when is_atom(contract) and is_function(fun, 2) do
+      when is_atom(contract) and is_function(fun, 3) do
     ensure_handler_installed(contract)
 
     update_handler_state(contract, fn state ->
@@ -364,9 +368,11 @@ defmodule DoubleDown.Double do
 
   # stub/3 — per-operation stub OR StubHandler module with fallback_fn
   #
-  # Disambiguation: if the second arg is an atom and the third is a 2-arity
+  # Disambiguation: if the second arg is an atom and the third is a 3-arity
   # function or nil, check if the second arg is a StubHandler module.
   # Per-operation stubs have a 1/2/3-arity function as the third arg.
+  # Note: 3-arity is ambiguous (could be StubHandler fallback or per-op
+  # stateful stub with all_states), so we check stub_handler? first.
   @spec stub(module(), atom(), function() | nil) :: module()
   def stub(contract, module_or_operation, fun_or_fallback)
 
@@ -379,8 +385,8 @@ defmodule DoubleDown.Double do
   def stub(contract, module_or_op, fun)
       when is_atom(contract) and is_atom(module_or_op) and is_function(fun) do
     # Function third arg — could be per-op stub or StubHandler with fallback.
-    # Check if second arg is a StubHandler module AND fun is 2-arity (fallback shape).
-    if is_function(fun, 2) and stub_handler?(module_or_op) do
+    # Check if second arg is a StubHandler module AND fun is 3-arity (fallback shape).
+    if is_function(fun, 3) and stub_handler?(module_or_op) do
       do_stub_handler(contract, module_or_op, fun, [])
     else
       # Per-operation stub
@@ -405,10 +411,10 @@ defmodule DoubleDown.Double do
   end
 
   # stub/4 — StubHandler module with fallback_fn and opts
-  @spec stub(module(), module(), (atom(), [term()] -> term()) | nil, keyword()) :: module()
+  @spec stub(module(), module(), (module(), atom(), [term()] -> term()) | nil, keyword()) :: module()
   def stub(contract, module, fallback_fn, opts)
       when is_atom(contract) and is_atom(module) and
-             (is_function(fallback_fn, 2) or is_nil(fallback_fn)) and
+             (is_function(fallback_fn, 3) or is_nil(fallback_fn)) and
              is_list(opts) do
     do_stub_handler(contract, module, fallback_fn, opts)
   end
@@ -887,7 +893,7 @@ defmodule DoubleDown.Double do
   end
 
   defp invoke_fn_fallback(fallback_fn, state, operation, args) do
-    result = fallback_fn.(operation, args)
+    result = fallback_fn.(state.contract, operation, args)
     {result, state}
   rescue
     # NOTE: This rescue cannot distinguish between a FunctionClauseError from

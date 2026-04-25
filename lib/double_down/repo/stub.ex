@@ -25,10 +25,12 @@ if Code.ensure_loaded?(Ecto) do
 
         # With fallback for specific reads:
         DoubleDown.Double.stub(DoubleDown.Repo, DoubleDown.Repo.Stub,
-          fn
-            :get, [User, 1] -> %User{id: 1, name: "Alice"}
-            :all, [User] -> [%User{id: 1, name: "Alice"}]
-            :exists?, [User] -> true
+          fn _contract, operation, args ->
+            case {operation, args} do
+              {:get, [User, 1]} -> %User{id: 1, name: "Alice"}
+              {:all, [User]} -> [%User{id: 1, name: "Alice"}]
+              {:exists?, [User]} -> true
+            end
           end
         )
 
@@ -58,12 +60,12 @@ if Code.ensure_loaded?(Ecto) do
     @doc """
     Create a new Test handler function.
 
-    Returns a 2-arity function `(operation, args) -> result` suitable for
+    Returns a 3-arity function `(contract, operation, args) -> result` suitable for
     use with `DoubleDown.Double.stub/2` or `DoubleDown.Testing.set_fn_handler/2`.
 
     ## Arguments
 
-      * `fallback_fn` — an optional 2-arity function `(operation, args) -> result`
+      * `fallback_fn` — an optional 3-arity function `(contract, operation, args) -> result`
         that handles read operations. If the function raises `FunctionClauseError`
         (no matching clause), dispatch falls through to an error. If omitted or
         `nil`, all reads raise immediately.
@@ -76,19 +78,21 @@ if Code.ensure_loaded?(Ecto) do
 
         # With fallback for specific reads
         DoubleDown.Double.stub(DoubleDown.Repo, DoubleDown.Repo.Stub,
-          fn
-            :get, [User, 1] -> %User{id: 1, name: "Alice"}
-            :all, [User] -> [%User{id: 1, name: "Alice"}]
-            :exists?, [User] -> true
+          fn _contract, operation, args ->
+            case {operation, args} do
+              {:get, [User, 1]} -> %User{id: 1, name: "Alice"}
+              {:all, [User]} -> [%User{id: 1, name: "Alice"}]
+              {:exists?, [User]} -> true
+            end
           end
         )
 
     ## Legacy keyword-only form (still supported)
 
-        DoubleDown.Repo.Stub.new(fallback_fn: fn :get, [User, 1] -> %User{} end)
+        DoubleDown.Repo.Stub.new(fallback_fn: fn _contract, :get, [User, 1] -> %User{} end)
     """
     @impl DoubleDown.Contract.Dispatch.StubHandler
-    @spec new((atom(), [term()] -> term()) | nil, keyword()) :: (atom(), [term()] -> term())
+    @spec new((module(), atom(), [term()] -> term()) | nil, keyword()) :: (module(), atom(), [term()] -> term())
     def new(fallback_fn \\ nil, opts \\ [])
 
     # Legacy keyword-only form: new(fallback_fn: fn ...)
@@ -107,8 +111,8 @@ if Code.ensure_loaded?(Ecto) do
     end
 
     defp build_handler(fallback_fn) do
-      fn operation, args ->
-        dispatch(operation, args, fallback_fn)
+      fn contract, operation, args ->
+        dispatch(contract, operation, args, fallback_fn)
       end
     end
 
@@ -116,35 +120,35 @@ if Code.ensure_loaded?(Ecto) do
     # Write Operations — always authoritative
     # -----------------------------------------------------------------
 
-    defp dispatch(:insert, [%Ecto.Changeset{valid?: false} = changeset], _fallback_fn) do
+    defp dispatch(_contract, :insert, [%Ecto.Changeset{valid?: false} = changeset], _fallback_fn) do
       {:error, changeset}
     end
 
-    defp dispatch(:insert, [%Ecto.Changeset{} = changeset], _fallback_fn) do
+    defp dispatch(_contract, :insert, [%Ecto.Changeset{} = changeset], _fallback_fn) do
       do_insert(Ecto.Changeset.apply_changes(changeset))
     end
 
-    defp dispatch(:insert, [%{__struct__: _} = struct], _fallback_fn) do
+    defp dispatch(_contract, :insert, [%{__struct__: _} = struct], _fallback_fn) do
       do_insert(struct)
     end
 
-    defp dispatch(:update, [%Ecto.Changeset{valid?: false} = changeset], _fallback_fn) do
+    defp dispatch(_contract, :update, [%Ecto.Changeset{valid?: false} = changeset], _fallback_fn) do
       {:error, changeset}
     end
 
-    defp dispatch(:update, [changeset], _fallback_fn) do
+    defp dispatch(_contract, :update, [changeset], _fallback_fn) do
       {:ok, DoubleDown.Repo.Impl.Autogenerate.apply_changes(changeset, :update)}
     end
 
-    defp dispatch(:delete, [%Ecto.Changeset{valid?: false} = changeset], _fallback_fn) do
+    defp dispatch(_contract, :delete, [%Ecto.Changeset{valid?: false} = changeset], _fallback_fn) do
       {:error, changeset}
     end
 
-    defp dispatch(:delete, [%Ecto.Changeset{} = changeset], _fallback_fn) do
+    defp dispatch(_contract, :delete, [%Ecto.Changeset{} = changeset], _fallback_fn) do
       {:ok, Ecto.Changeset.apply_changes(changeset)}
     end
 
-    defp dispatch(:delete, [record], _fallback_fn) do
+    defp dispatch(_contract, :delete, [record], _fallback_fn) do
       {:ok, record}
     end
 
@@ -152,8 +156,8 @@ if Code.ensure_loaded?(Ecto) do
     # Bang Write Operations
     # -----------------------------------------------------------------
 
-    defp dispatch(:insert!, [changeset], fallback_fn) do
-      case dispatch(:insert, [changeset], fallback_fn) do
+    defp dispatch(contract, :insert!, [changeset], fallback_fn) do
+      case dispatch(contract, :insert, [changeset], fallback_fn) do
         {:ok, record} ->
           record
 
@@ -162,8 +166,8 @@ if Code.ensure_loaded?(Ecto) do
       end
     end
 
-    defp dispatch(:update!, [changeset], fallback_fn) do
-      case dispatch(:update, [changeset], fallback_fn) do
+    defp dispatch(contract, :update!, [changeset], fallback_fn) do
+      case dispatch(contract, :update, [changeset], fallback_fn) do
         {:ok, record} ->
           record
 
@@ -172,8 +176,8 @@ if Code.ensure_loaded?(Ecto) do
       end
     end
 
-    defp dispatch(:delete!, [record], fallback_fn) do
-      case dispatch(:delete, [record], fallback_fn) do
+    defp dispatch(contract, :delete!, [record], fallback_fn) do
+      case dispatch(contract, :delete, [record], fallback_fn) do
         {:ok, record} ->
           record
 
@@ -186,16 +190,16 @@ if Code.ensure_loaded?(Ecto) do
     # Insert-or-update — delegate to insert/update based on meta state
     # -----------------------------------------------------------------
 
-    defp dispatch(:insert_or_update, [%Ecto.Changeset{} = changeset], fallback_fn) do
+    defp dispatch(contract, :insert_or_update, [%Ecto.Changeset{} = changeset], fallback_fn) do
       if Ecto.get_meta(changeset.data, :state) == :loaded do
-        dispatch(:update, [changeset], fallback_fn)
+        dispatch(contract, :update, [changeset], fallback_fn)
       else
-        dispatch(:insert, [changeset], fallback_fn)
+        dispatch(contract, :insert, [changeset], fallback_fn)
       end
     end
 
-    defp dispatch(:insert_or_update!, [changeset], fallback_fn) do
-      case dispatch(:insert_or_update, [changeset], fallback_fn) do
+    defp dispatch(contract, :insert_or_update!, [changeset], fallback_fn) do
+      case dispatch(contract, :insert_or_update, [changeset], fallback_fn) do
         {:ok, record} ->
           record
 
@@ -208,7 +212,7 @@ if Code.ensure_loaded?(Ecto) do
     # Load — stateless struct loading
     # -----------------------------------------------------------------
 
-    defp dispatch(:load, [schema_or_map, data], _fallback_fn) do
+    defp dispatch(_contract, :load, [schema_or_map, data], _fallback_fn) do
       loader = fn _type, value -> {:ok, value} end
 
       case data do
@@ -227,77 +231,77 @@ if Code.ensure_loaded?(Ecto) do
     # Ecto.Repo operations all accept an optional opts keyword list as
     # the last argument. These are called by Ecto.Multi's internal :run
     # callbacks and by user code passing opts through the facade.
-    defp dispatch(:insert, [changeset, _opts], fallback_fn),
-      do: dispatch(:insert, [changeset], fallback_fn)
+    defp dispatch(contract, :insert, [changeset, _opts], fallback_fn),
+      do: dispatch(contract, :insert, [changeset], fallback_fn)
 
-    defp dispatch(:update, [changeset, _opts], fallback_fn),
-      do: dispatch(:update, [changeset], fallback_fn)
+    defp dispatch(contract, :update, [changeset, _opts], fallback_fn),
+      do: dispatch(contract, :update, [changeset], fallback_fn)
 
-    defp dispatch(:delete, [record, _opts], fallback_fn),
-      do: dispatch(:delete, [record], fallback_fn)
+    defp dispatch(contract, :delete, [record, _opts], fallback_fn),
+      do: dispatch(contract, :delete, [record], fallback_fn)
 
-    defp dispatch(:insert!, [changeset, _opts], fallback_fn),
-      do: dispatch(:insert!, [changeset], fallback_fn)
+    defp dispatch(contract, :insert!, [changeset, _opts], fallback_fn),
+      do: dispatch(contract, :insert!, [changeset], fallback_fn)
 
-    defp dispatch(:update!, [changeset, _opts], fallback_fn),
-      do: dispatch(:update!, [changeset], fallback_fn)
+    defp dispatch(contract, :update!, [changeset, _opts], fallback_fn),
+      do: dispatch(contract, :update!, [changeset], fallback_fn)
 
-    defp dispatch(:delete!, [record, _opts], fallback_fn),
-      do: dispatch(:delete!, [record], fallback_fn)
+    defp dispatch(contract, :delete!, [record, _opts], fallback_fn),
+      do: dispatch(contract, :delete!, [record], fallback_fn)
 
-    defp dispatch(:get, [queryable, id, _opts], fallback_fn),
-      do: dispatch(:get, [queryable, id], fallback_fn)
+    defp dispatch(contract, :get, [queryable, id, _opts], fallback_fn),
+      do: dispatch(contract, :get, [queryable, id], fallback_fn)
 
-    defp dispatch(:get!, [queryable, id, _opts], fallback_fn),
-      do: dispatch(:get!, [queryable, id], fallback_fn)
+    defp dispatch(contract, :get!, [queryable, id, _opts], fallback_fn),
+      do: dispatch(contract, :get!, [queryable, id], fallback_fn)
 
-    defp dispatch(:get_by, [queryable, clauses, _opts], fallback_fn),
-      do: dispatch(:get_by, [queryable, clauses], fallback_fn)
+    defp dispatch(contract, :get_by, [queryable, clauses, _opts], fallback_fn),
+      do: dispatch(contract, :get_by, [queryable, clauses], fallback_fn)
 
-    defp dispatch(:get_by!, [queryable, clauses, _opts], fallback_fn),
-      do: dispatch(:get_by!, [queryable, clauses], fallback_fn)
+    defp dispatch(contract, :get_by!, [queryable, clauses, _opts], fallback_fn),
+      do: dispatch(contract, :get_by!, [queryable, clauses], fallback_fn)
 
-    defp dispatch(:one, [queryable, _opts], fallback_fn),
-      do: dispatch(:one, [queryable], fallback_fn)
+    defp dispatch(contract, :one, [queryable, _opts], fallback_fn),
+      do: dispatch(contract, :one, [queryable], fallback_fn)
 
-    defp dispatch(:one!, [queryable, _opts], fallback_fn),
-      do: dispatch(:one!, [queryable], fallback_fn)
+    defp dispatch(contract, :one!, [queryable, _opts], fallback_fn),
+      do: dispatch(contract, :one!, [queryable], fallback_fn)
 
-    defp dispatch(:all, [queryable, _opts], fallback_fn),
-      do: dispatch(:all, [queryable], fallback_fn)
+    defp dispatch(contract, :all, [queryable, _opts], fallback_fn),
+      do: dispatch(contract, :all, [queryable], fallback_fn)
 
-    defp dispatch(:exists?, [queryable, _opts], fallback_fn),
-      do: dispatch(:exists?, [queryable], fallback_fn)
+    defp dispatch(contract, :exists?, [queryable, _opts], fallback_fn),
+      do: dispatch(contract, :exists?, [queryable], fallback_fn)
 
-    defp dispatch(:aggregate, [queryable, aggregate, field, _opts], fallback_fn),
-      do: dispatch(:aggregate, [queryable, aggregate, field], fallback_fn)
+    defp dispatch(contract, :aggregate, [queryable, aggregate, field, _opts], fallback_fn),
+      do: dispatch(contract, :aggregate, [queryable, aggregate, field], fallback_fn)
 
-    defp dispatch(:insert_or_update, [changeset, _opts], fallback_fn),
-      do: dispatch(:insert_or_update, [changeset], fallback_fn)
+    defp dispatch(contract, :insert_or_update, [changeset, _opts], fallback_fn),
+      do: dispatch(contract, :insert_or_update, [changeset], fallback_fn)
 
-    defp dispatch(:insert_or_update!, [changeset, _opts], fallback_fn),
-      do: dispatch(:insert_or_update!, [changeset], fallback_fn)
+    defp dispatch(contract, :insert_or_update!, [changeset, _opts], fallback_fn),
+      do: dispatch(contract, :insert_or_update!, [changeset], fallback_fn)
 
-    defp dispatch(:all_by, [queryable, clauses, _opts], fallback_fn),
-      do: dispatch(:all_by, [queryable, clauses], fallback_fn)
+    defp dispatch(contract, :all_by, [queryable, clauses, _opts], fallback_fn),
+      do: dispatch(contract, :all_by, [queryable, clauses], fallback_fn)
 
-    defp dispatch(:preload, [struct_or_structs, preloads, _opts], fallback_fn),
-      do: dispatch(:preload, [struct_or_structs, preloads], fallback_fn)
+    defp dispatch(contract, :preload, [struct_or_structs, preloads, _opts], fallback_fn),
+      do: dispatch(contract, :preload, [struct_or_structs, preloads], fallback_fn)
 
-    defp dispatch(:reload, [struct_or_structs, _opts], fallback_fn),
-      do: dispatch(:reload, [struct_or_structs], fallback_fn)
+    defp dispatch(contract, :reload, [struct_or_structs, _opts], fallback_fn),
+      do: dispatch(contract, :reload, [struct_or_structs], fallback_fn)
 
-    defp dispatch(:reload!, [struct_or_structs, _opts], fallback_fn),
-      do: dispatch(:reload!, [struct_or_structs], fallback_fn)
+    defp dispatch(contract, :reload!, [struct_or_structs, _opts], fallback_fn),
+      do: dispatch(contract, :reload!, [struct_or_structs], fallback_fn)
 
-    defp dispatch(:stream, [queryable, _opts], fallback_fn),
-      do: dispatch(:stream, [queryable], fallback_fn)
+    defp dispatch(contract, :stream, [queryable, _opts], fallback_fn),
+      do: dispatch(contract, :stream, [queryable], fallback_fn)
 
     # -----------------------------------------------------------------
     # Read and bulk operations — fallback or error
     # -----------------------------------------------------------------
 
-    defp dispatch(operation, args, fallback_fn)
+    defp dispatch(contract, operation, args, fallback_fn)
          when operation in [
                 :get,
                 :get!,
@@ -317,7 +321,7 @@ if Code.ensure_loaded?(Ecto) do
                 :update_all,
                 :delete_all
               ] do
-      try_fallback(fallback_fn, operation, args)
+      try_fallback(contract, fallback_fn, operation, args)
     end
 
     # -----------------------------------------------------------------
@@ -327,11 +331,11 @@ if Code.ensure_loaded?(Ecto) do
     # so implementations always receive a 0-arity fn or an Ecto.Multi.
     # -----------------------------------------------------------------
 
-    defp dispatch(:transact, [fun, _opts], _fallback_fn) when is_function(fun, 0) do
+    defp dispatch(_contract, :transact, [fun, _opts], _fallback_fn) when is_function(fun, 0) do
       %DoubleDown.Contract.Dispatch.Defer{fn: fn -> run_in_transaction(fun) end}
     end
 
-    defp dispatch(:transact, [%Ecto.Multi{} = multi, opts], _fallback_fn) do
+    defp dispatch(_contract, :transact, [%Ecto.Multi{} = multi, opts], _fallback_fn) do
       repo_facade = Keyword.get(opts, DoubleDown.Repo.Facade)
 
       %DoubleDown.Contract.Dispatch.Defer{
@@ -341,11 +345,11 @@ if Code.ensure_loaded?(Ecto) do
       }
     end
 
-    defp dispatch(:transaction, [fun, _opts], _fallback_fn) when is_function(fun, 0) do
+    defp dispatch(_contract, :transaction, [fun, _opts], _fallback_fn) when is_function(fun, 0) do
       %DoubleDown.Contract.Dispatch.Defer{fn: fn -> run_in_transaction(fun) end}
     end
 
-    defp dispatch(:transaction, [%Ecto.Multi{} = multi, opts], _fallback_fn) do
+    defp dispatch(_contract, :transaction, [%Ecto.Multi{} = multi, opts], _fallback_fn) do
       repo_facade = Keyword.get(opts, DoubleDown.Repo.Facade)
 
       %DoubleDown.Contract.Dispatch.Defer{
@@ -357,7 +361,7 @@ if Code.ensure_loaded?(Ecto) do
 
     @transaction_key DoubleDown.Repo.InTransaction
 
-    defp dispatch(:rollback, [value], _fallback_fn) do
+    defp dispatch(_contract, :rollback, [value], _fallback_fn) do
       %DoubleDown.Contract.Dispatch.Defer{
         fn: fn ->
           if Process.get(@transaction_key, false) do
@@ -370,7 +374,7 @@ if Code.ensure_loaded?(Ecto) do
       }
     end
 
-    defp dispatch(:in_transaction?, [], _fallback_fn) do
+    defp dispatch(_contract, :in_transaction?, [], _fallback_fn) do
       %DoubleDown.Contract.Dispatch.Defer{
         fn: fn -> Process.get(@transaction_key, false) end
       }
@@ -423,12 +427,12 @@ if Code.ensure_loaded?(Ecto) do
     # Fallback dispatch
     # -----------------------------------------------------------------
 
-    defp try_fallback(nil, operation, args) do
+    defp try_fallback(_contract, nil, operation, args) do
       raise_no_fallback(operation, args)
     end
 
-    defp try_fallback(fallback_fn, operation, args) when is_function(fallback_fn, 2) do
-      fallback_fn.(operation, args)
+    defp try_fallback(contract, fallback_fn, operation, args) when is_function(fallback_fn, 3) do
+      fallback_fn.(contract, operation, args)
     rescue
       FunctionClauseError -> raise_no_fallback(operation, args)
     end

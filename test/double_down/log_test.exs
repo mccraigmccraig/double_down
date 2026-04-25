@@ -84,7 +84,7 @@ defmodule DoubleDown.LogTest do
     end
 
     test "single matcher satisfied" do
-      with_logged_calls(Greeter, fn :greet, [name] -> "Hi, #{name}!" end, fn ->
+      with_logged_calls(Greeter, fn _contract, :greet, [name] -> "Hi, #{name}!" end, fn ->
         Greeter.Port.greet("Alice")
       end)
 
@@ -98,9 +98,11 @@ defmodule DoubleDown.LogTest do
     test "multiple matchers in order" do
       with_logged_calls(
         Greeter,
-        fn
-          :greet, [name] -> "Hi, #{name}!"
-          :fetch_greeting, [name] -> {:ok, "Hello, #{name}!"}
+        fn _contract, operation, args ->
+          case {operation, args} do
+            {:greet, [name]} -> "Hi, #{name}!"
+            {:fetch_greeting, [name]} -> {:ok, "Hello, #{name}!"}
+          end
         end,
         fn ->
           Greeter.Port.greet("Alice")
@@ -119,7 +121,7 @@ defmodule DoubleDown.LogTest do
     end
 
     test "extra log entries between matchers are ignored" do
-      with_logged_calls(Greeter, fn :greet, [name] -> "Hi, #{name}!" end, fn ->
+      with_logged_calls(Greeter, fn _contract, :greet, [name] -> "Hi, #{name}!" end, fn ->
         Greeter.Port.greet("Alice")
         Greeter.Port.greet("Bob")
         Greeter.Port.greet("Carol")
@@ -137,7 +139,7 @@ defmodule DoubleDown.LogTest do
     end
 
     test "times: n matching" do
-      with_logged_calls(Greeter, fn :greet, [name] -> "Hi, #{name}!" end, fn ->
+      with_logged_calls(Greeter, fn _contract, :greet, [name] -> "Hi, #{name}!" end, fn ->
         Greeter.Port.greet("A")
         Greeter.Port.greet("B")
         Greeter.Port.greet("C")
@@ -149,7 +151,7 @@ defmodule DoubleDown.LogTest do
     end
 
     test "matcher with pattern matching on args" do
-      with_logged_calls(Greeter, fn :greet, [name] -> "Hi, #{name}!" end, fn ->
+      with_logged_calls(Greeter, fn _contract, :greet, [name] -> "Hi, #{name}!" end, fn ->
         Greeter.Port.greet("Alice")
       end)
 
@@ -161,7 +163,7 @@ defmodule DoubleDown.LogTest do
     end
 
     test "matcher with pattern matching on results" do
-      with_logged_calls(Greeter, fn :fetch_greeting, [name] -> {:ok, "Hello, #{name}!"} end, fn ->
+      with_logged_calls(Greeter, fn _contract, :fetch_greeting, [name] -> {:ok, "Hello, #{name}!"} end, fn ->
         Greeter.Port.fetch_greeting("Alice")
       end)
 
@@ -173,7 +175,7 @@ defmodule DoubleDown.LogTest do
     end
 
     test "matcher with multiple clauses" do
-      with_logged_calls(Greeter, fn :greet, [name] -> "Hi, #{name}!" end, fn ->
+      with_logged_calls(Greeter, fn _contract, :greet, [name] -> "Hi, #{name}!" end, fn ->
         Greeter.Port.greet("Alice")
       end)
 
@@ -186,7 +188,7 @@ defmodule DoubleDown.LogTest do
     end
 
     test "FunctionClauseError treated as no-match, scans forward" do
-      with_logged_calls(Greeter, fn :greet, [name] -> "Hi, #{name}!" end, fn ->
+      with_logged_calls(Greeter, fn _contract, :greet, [name] -> "Hi, #{name}!" end, fn ->
         Greeter.Port.greet("Alice")
         Greeter.Port.greet("Bob")
       end)
@@ -200,7 +202,7 @@ defmodule DoubleDown.LogTest do
     end
 
     test "unsatisfied matcher raises with descriptive error" do
-      with_logged_calls(Greeter, fn :greet, [name] -> "Hi, #{name}!" end, fn ->
+      with_logged_calls(Greeter, fn _contract, :greet, [name] -> "Hi, #{name}!" end, fn ->
         Greeter.Port.greet("Alice")
       end)
 
@@ -220,9 +222,11 @@ defmodule DoubleDown.LogTest do
     test "matchers for different operations matched independently" do
       with_logged_calls(
         Greeter,
-        fn
-          :greet, [name] -> "Hi, #{name}!"
-          :fetch_greeting, [name] -> {:ok, "Hello, #{name}!"}
+        fn _contract, operation, args ->
+          case {operation, args} do
+            {:greet, [name]} -> "Hi, #{name}!"
+            {:fetch_greeting, [name]} -> {:ok, "Hello, #{name}!"}
+          end
         end,
         fn ->
           Greeter.Port.fetch_greeting("Bob")
@@ -243,7 +247,7 @@ defmodule DoubleDown.LogTest do
 
   describe "verify!/2..3 reject" do
     test "reject passes when operation absent from log" do
-      with_logged_calls(Greeter, fn :greet, [name] -> "Hi, #{name}!" end, fn ->
+      with_logged_calls(Greeter, fn _contract, :greet, [name] -> "Hi, #{name}!" end, fn ->
         Greeter.Port.greet("Alice")
       end)
 
@@ -256,9 +260,11 @@ defmodule DoubleDown.LogTest do
     test "reject raises when operation present in log" do
       with_logged_calls(
         Greeter,
-        fn
-          :greet, [name] -> "Hi, #{name}!"
-          :fetch_greeting, [name] -> {:ok, "Hello, #{name}!"}
+        fn _contract, operation, args ->
+          case {operation, args} do
+            {:greet, [name]} -> "Hi, #{name}!"
+            {:fetch_greeting, [name]} -> {:ok, "Hello, #{name}!"}
+          end
         end,
         fn ->
           Greeter.Port.greet("Alice")
@@ -283,7 +289,7 @@ defmodule DoubleDown.LogTest do
 
   describe "verify!/2..3 strict mode" do
     test "strict passes when all entries matched" do
-      with_logged_calls(Greeter, fn :greet, [name] -> "Hi, #{name}!" end, fn ->
+      with_logged_calls(Greeter, fn _contract, :greet, [name] -> "Hi, #{name}!" end, fn ->
         Greeter.Port.greet("Alice")
         Greeter.Port.greet("Bob")
       end)
@@ -296,9 +302,11 @@ defmodule DoubleDown.LogTest do
     test "strict raises when unmatched entries exist" do
       with_logged_calls(
         Greeter,
-        fn
-          :greet, [name] -> "Hi, #{name}!"
-          :fetch_greeting, [name] -> {:ok, "Hello, #{name}!"}
+        fn _contract, operation, args ->
+          case {operation, args} do
+            {:greet, [name]} -> "Hi, #{name}!"
+            {:fetch_greeting, [name]} -> {:ok, "Hello, #{name}!"}
+          end
         end,
         fn ->
           Greeter.Port.greet("Alice")
@@ -318,7 +326,7 @@ defmodule DoubleDown.LogTest do
     end
 
     test "strict error message lists unmatched entries" do
-      with_logged_calls(Greeter, fn :greet, [name] -> "Hi, #{name}!" end, fn ->
+      with_logged_calls(Greeter, fn _contract, :greet, [name] -> "Hi, #{name}!" end, fn ->
         Greeter.Port.greet("Alice")
         Greeter.Port.greet("Bob")
         Greeter.Port.greet("Carol")
@@ -341,9 +349,11 @@ defmodule DoubleDown.LogTest do
 
   describe "integration" do
     test "full pipeline: set handler, enable log, dispatch, match, verify" do
-      DoubleDown.Testing.set_fn_handler(Greeter, fn
-        :greet, [name] -> "Hi, #{name}!"
-        :fetch_greeting, [name] -> {:ok, "Hello, #{name}!"}
+      DoubleDown.Testing.set_fn_handler(Greeter, fn _contract, operation, args ->
+        case {operation, args} do
+          {:greet, [name]} -> "Hi, #{name}!"
+          {:fetch_greeting, [name]} -> {:ok, "Hello, #{name}!"}
+        end
       end)
 
       DoubleDown.Testing.enable_log(Greeter)
@@ -358,7 +368,7 @@ defmodule DoubleDown.LogTest do
     end
 
     test "multi-contract verification" do
-      DoubleDown.Testing.set_fn_handler(Greeter, fn :greet, [name] -> "Hi, #{name}!" end)
+      DoubleDown.Testing.set_fn_handler(Greeter, fn _contract, :greet, [name] -> "Hi, #{name}!" end)
       DoubleDown.Testing.enable_log(Greeter)
 
       DoubleDown.Testing.set_stateful_handler(
@@ -387,7 +397,7 @@ defmodule DoubleDown.LogTest do
     end
 
     test "mix of match and reject expectations" do
-      with_logged_calls(Greeter, fn :greet, [name] -> "Hi, #{name}!" end, fn ->
+      with_logged_calls(Greeter, fn _contract, :greet, [name] -> "Hi, #{name}!" end, fn ->
         Greeter.Port.greet("Alice")
       end)
 

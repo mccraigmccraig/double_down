@@ -47,10 +47,12 @@ defmodule DoubleDown.BehaviourFacadeTest do
 
   describe "fn handler dispatch" do
     test "dispatches to a function handler" do
-      DoubleDown.Testing.set_fn_handler(VanillaBehaviour, fn
-        :get_item, [id] -> {:ok, %{id: id}}
-        :list_items, [] -> [%{id: "test"}]
-        :create_item, [attrs, _opts] -> {:ok, attrs}
+      DoubleDown.Testing.set_fn_handler(VanillaBehaviour, fn _contract, operation, args ->
+        case {operation, args} do
+          {:get_item, [id]} -> {:ok, %{id: id}}
+          {:list_items, []} -> [%{id: "test"}]
+          {:create_item, [attrs, _opts]} -> {:ok, attrs}
+        end
       end)
 
       assert {:ok, %{id: "42"}} = VanillaBehaviour.Port.get_item("42")
@@ -59,9 +61,11 @@ defmodule DoubleDown.BehaviourFacadeTest do
     end
 
     test "dispatches zero-arg callbacks via fn handler" do
-      DoubleDown.Testing.set_fn_handler(ZeroArgBehaviour, fn
-        :ping, [] -> :pong
-        :health_check, [] -> {:ok, %{status: :healthy}}
+      DoubleDown.Testing.set_fn_handler(ZeroArgBehaviour, fn _contract, operation, args ->
+        case {operation, args} do
+          {:ping, []} -> :pong
+          {:health_check, []} -> {:ok, %{status: :healthy}}
+        end
       end)
 
       assert :pong = ZeroArgBehaviour.Port.ping()
@@ -69,16 +73,16 @@ defmodule DoubleDown.BehaviourFacadeTest do
     end
 
     test "dispatches bare-type callbacks via fn handler" do
-      DoubleDown.Testing.set_fn_handler(BareTypesBehaviour, fn
-        :fetch, [key, _opts] -> {:ok, key}
+      DoubleDown.Testing.set_fn_handler(BareTypesBehaviour, fn _contract, :fetch, [key, _opts] ->
+        {:ok, key}
       end)
 
       assert {:ok, "mykey"} = BareTypesBehaviour.Port.fetch("mykey", timeout: 5000)
     end
 
     test "dispatches when-clause callbacks via fn handler" do
-      DoubleDown.Testing.set_fn_handler(WhenClauseBehaviour, fn
-        :transform, [input] -> String.upcase(input)
+      DoubleDown.Testing.set_fn_handler(WhenClauseBehaviour, fn _contract, :transform, [input] ->
+        String.upcase(input)
       end)
 
       assert "HELLO" = WhenClauseBehaviour.Port.transform("hello")

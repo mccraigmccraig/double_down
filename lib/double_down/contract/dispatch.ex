@@ -209,8 +209,8 @@ defmodule DoubleDown.Contract.Dispatch do
     end
   end
 
-  def invoke_handler(%HandlerMeta.Fn{fun: fun}, _owner_pid, _contract, operation, args) do
-    case fun.(operation, args) do
+  def invoke_handler(%HandlerMeta.Fn{fun: fun}, _owner_pid, contract, operation, args) do
+    case fun.(contract, operation, args) do
       %DoubleDown.Contract.Dispatch.Defer{fn: deferred_fn} -> deferred_fn.()
       result -> result
     end
@@ -395,7 +395,7 @@ defmodule DoubleDown.Contract.Dispatch do
       In your test setup, call one of:
 
           DoubleDown.Testing.set_handler(#{inspect(contract)}, MyImpl)
-          DoubleDown.Testing.set_fn_handler(#{inspect(contract)}, fn operation, args -> ... end)
+          DoubleDown.Testing.set_fn_handler(#{inspect(contract)}, fn _contract, operation, args -> ... end)
           DoubleDown.Testing.set_stateful_handler(#{inspect(contract)}, handler_fn, initial_state)
 
       If you want to use the production implementation in this test:
