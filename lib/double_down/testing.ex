@@ -167,8 +167,9 @@ defmodule DoubleDown.Testing do
   @doc """
   Reset all handlers and logs for a process.
 
-  Clears all NimbleOwnership entries owned by `pid`. Defaults to
-  `self()`.
+  Clears all NimbleOwnership entries owned by `pid` and reverts
+  the ownership server to private mode (in case global mode was
+  active). Defaults to `self()`.
 
   **`on_exit` caveat:** `reset()` (without arguments) uses `self()`,
   which inside an `on_exit` callback is the callback process — not
@@ -187,6 +188,10 @@ defmodule DoubleDown.Testing do
   @spec reset(pid()) :: :ok
   def reset(pid \\ self()) do
     NimbleOwnership.cleanup_owner(Keys.ownership_server(), pid)
+    # Also revert to private mode — cleanup_owner removes keys but
+    # leaves the server in shared mode if it was set. This is a no-op
+    # if already in private mode.
+    NimbleOwnership.set_mode_to_private(Keys.ownership_server())
   end
 
   # -- Internal --
