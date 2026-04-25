@@ -370,6 +370,9 @@ if Code.ensure_loaded?(Ecto) do
     def dispatch(contract, :transact, args, store),
       do: InMemoryShared.dispatch_transact(args, store, contract)
 
+    def dispatch(contract, :transaction, args, store),
+      do: InMemoryShared.dispatch_transact(args, store, contract)
+
     def dispatch(_contract, :rollback, args, store),
       do: InMemoryShared.dispatch_rollback(args, store)
 
