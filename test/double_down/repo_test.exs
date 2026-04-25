@@ -139,6 +139,7 @@ defmodule DoubleDown.RepoTest do
                :rollback,
                :stream,
                :transact,
+               :transaction,
                :update,
                :update!,
                :update_all
@@ -174,6 +175,12 @@ defmodule DoubleDown.RepoTest do
     def transact(%Ecto.Multi{} = multi, _opts) do
       # Simulate what a real Ecto Repo does: step through the Multi
       # using this module as the repo for :run callbacks
+      DoubleDown.Repo.Impl.MultiStepper.run(multi, __MODULE__)
+    end
+
+    def transaction(fun, _opts) when is_function(fun, 0), do: fun.()
+
+    def transaction(%Ecto.Multi{} = multi, _opts) do
       DoubleDown.Repo.Impl.MultiStepper.run(multi, __MODULE__)
     end
   end
@@ -281,6 +288,34 @@ defmodule DoubleDown.RepoTest do
       # In the Ecto adapter, :run callbacks receive the underlying Ecto Repo module,
       # not the Port facade. This mirrors real Ecto.Repo.transact/2 behaviour.
       assert {:ok, %{check: MockRepo}} = TestRepo.transact(multi, [])
+    end
+
+    test "transaction with 0-arity fun delegates to mock Repo" do
+      result = TestRepo.transaction(fn -> {:ok, :committed} end, [])
+      assert {:ok, :committed} = result
+    end
+
+    test "transaction with 1-arity fun delegates to mock Repo (receives facade module)" do
+      result = TestRepo.transaction(fn repo -> {:ok, repo} end, [])
+      assert {:ok, TestRepo} = result
+    end
+
+    test "transaction with Ecto.Multi delegates to mock Repo" do
+      multi =
+        Ecto.Multi.new()
+        |> Ecto.Multi.insert(:user, User.changeset(%{name: "Alice"}))
+
+      assert {:ok, %{user: %User{name: "Alice"}}} = TestRepo.transaction(multi, [])
+    end
+
+    test "transaction with Ecto.Multi and :run receives the Ecto Repo (MockRepo)" do
+      multi =
+        Ecto.Multi.new()
+        |> Ecto.Multi.run(:check, fn repo, _changes ->
+          {:ok, repo}
+        end)
+
+      assert {:ok, %{check: MockRepo}} = TestRepo.transaction(multi, [])
     end
   end
 end

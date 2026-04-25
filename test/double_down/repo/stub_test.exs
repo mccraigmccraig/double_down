@@ -854,6 +854,68 @@ defmodule DoubleDown.Repo.StubTest do
   end
 
   # -------------------------------------------------------------------
+  # :transaction (alias for :transact)
+  # -------------------------------------------------------------------
+
+  describe "transaction (alias for transact)" do
+    setup do
+      DoubleDown.Testing.set_fn_handler(Repo, Repo.Stub.new())
+      :ok
+    end
+
+    test "0-arity fun success" do
+      assert {:ok, :done} = TestRepo.transaction(fn -> {:ok, :done} end, [])
+    end
+
+    test "1-arity fun receives facade module" do
+      assert {:ok, TestRepo} = TestRepo.transaction(fn repo -> {:ok, repo} end, [])
+    end
+
+    test "1-arity fun can call back into facade" do
+      result =
+        TestRepo.transaction(
+          fn repo ->
+            {:ok, user} = repo.insert(User.changeset(%{name: "Alice"}))
+            {:ok, user}
+          end,
+          []
+        )
+
+      assert {:ok, %User{name: "Alice"}} = result
+    end
+
+    test "Multi via transaction" do
+      multi =
+        Ecto.Multi.new()
+        |> Ecto.Multi.insert(:user, User.changeset(%{name: "Alice"}))
+
+      assert {:ok, %{user: %User{name: "Alice"}}} = TestRepo.transaction(multi, [])
+    end
+
+    test "in_transaction? returns true inside transaction" do
+      TestRepo.transaction(
+        fn ->
+          assert TestRepo.in_transaction?()
+          {:ok, :done}
+        end,
+        []
+      )
+    end
+
+    test "rollback inside transaction returns error" do
+      result =
+        TestRepo.transaction(
+          fn ->
+            TestRepo.rollback(:aborted)
+          end,
+          []
+        )
+
+      assert {:error, :aborted} = result
+    end
+  end
+
+  # -------------------------------------------------------------------
   # load
   # -------------------------------------------------------------------
 

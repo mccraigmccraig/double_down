@@ -1777,6 +1777,57 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
   end
 
   # -------------------------------------------------------------------
+  # :transaction (alias for :transact)
+  # -------------------------------------------------------------------
+
+  describe "transaction (alias for transact)" do
+    setup do
+      DoubleDown.Double.fake(DoubleDown.Repo, Repo.OpenInMemory)
+      :ok
+    end
+
+    test "0-arity fun success" do
+      assert {:ok, :done} = TestRepo.transaction(fn -> {:ok, :done} end, [])
+    end
+
+    test "1-arity fun receives facade module" do
+      assert {:ok, TestRepo} = TestRepo.transaction(fn repo -> {:ok, repo} end, [])
+    end
+
+    test "read-after-write inside transaction" do
+      result =
+        TestRepo.transaction(
+          fn repo ->
+            {:ok, user} = repo.insert(User.changeset(%{name: "Alice"}))
+            found = repo.get(User, user.id)
+            {:ok, {user, found}}
+          end,
+          []
+        )
+
+      assert {:ok, {%User{name: "Alice"}, %User{name: "Alice"}}} = result
+    end
+
+    test "Multi via transaction" do
+      multi =
+        Ecto.Multi.new()
+        |> Ecto.Multi.insert(:user, User.changeset(%{name: "Alice"}))
+
+      assert {:ok, %{user: %User{name: "Alice"}}} = TestRepo.transaction(multi, [])
+    end
+
+    test "in_transaction? returns true inside transaction" do
+      TestRepo.transaction(
+        fn ->
+          assert TestRepo.in_transaction?()
+          {:ok, :done}
+        end,
+        []
+      )
+    end
+  end
+
+  # -------------------------------------------------------------------
   # query / query! — raw SQL, always fallback
   # -------------------------------------------------------------------
 

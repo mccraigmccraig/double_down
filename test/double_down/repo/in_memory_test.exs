@@ -1347,6 +1347,57 @@ defmodule DoubleDown.Repo.InMemoryTest do
   end
 
   # -------------------------------------------------------------------
+  # :transaction (alias for :transact)
+  # -------------------------------------------------------------------
+
+  describe "transaction (alias for transact)" do
+    setup do
+      DoubleDown.Double.fake(DoubleDown.Repo, InMemory)
+      :ok
+    end
+
+    test "0-arity fun success" do
+      assert {:ok, :done} =
+               DoubleDown.Test.Repo.transaction(fn -> {:ok, :done} end, [])
+    end
+
+    test "rollback undoes inserts and restores state" do
+      {:ok, alice} = DoubleDown.Test.Repo.insert(User.changeset(%{name: "Alice"}))
+
+      result =
+        DoubleDown.Test.Repo.transaction(
+          fn ->
+            {:ok, _} = DoubleDown.Test.Repo.insert(User.changeset(%{name: "Bob"}))
+            DoubleDown.Test.Repo.rollback(:aborted)
+          end,
+          []
+        )
+
+      assert {:error, :aborted} = result
+      assert [^alice] = DoubleDown.Test.Repo.all(User)
+    end
+
+    test "Multi via transaction" do
+      multi =
+        Ecto.Multi.new()
+        |> Ecto.Multi.insert(:user, User.changeset(%{name: "Alice"}))
+
+      assert {:ok, %{user: %User{name: "Alice"}}} =
+               DoubleDown.Test.Repo.transaction(multi, [])
+    end
+
+    test "in_transaction? returns true inside transaction" do
+      DoubleDown.Test.Repo.transaction(
+        fn ->
+          assert DoubleDown.Test.Repo.in_transaction?()
+          {:ok, :done}
+        end,
+        []
+      )
+    end
+  end
+
+  # -------------------------------------------------------------------
   # Ecto.Multi bulk operations
   # -------------------------------------------------------------------
 
