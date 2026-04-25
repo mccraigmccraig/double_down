@@ -369,7 +369,8 @@ defmodule DoubleDown.TestDispatchTest do
         Greeter.Port.greet("Alice")
       end
 
-      # Ownership server is still alive — subsequent calls work
+      # Ownership server is still alive — reset and reinstall works
+      DoubleDown.Testing.reset()
       DoubleDown.Testing.set_fn_handler(Greeter, fn _contract, :greet, [name] -> "Hello #{name}" end)
       assert "Hello Bob" = Greeter.Port.greet("Bob")
     end
@@ -384,7 +385,8 @@ defmodule DoubleDown.TestDispatchTest do
 
       assert catch_throw(Greeter.Port.greet("Alice")) == :boom_throw
 
-      # Ownership server is still alive
+      # Ownership server is still alive — reset and reinstall works
+      DoubleDown.Testing.reset()
       DoubleDown.Testing.set_fn_handler(Greeter, fn _contract, :greet, [name] -> "Hello #{name}" end)
       assert "Hello Bob" = Greeter.Port.greet("Bob")
     end
@@ -399,7 +401,8 @@ defmodule DoubleDown.TestDispatchTest do
 
       assert catch_exit(Greeter.Port.greet("Alice")) == :boom_exit
 
-      # Ownership server is still alive
+      # Ownership server is still alive — reset and reinstall works
+      DoubleDown.Testing.reset()
       DoubleDown.Testing.set_fn_handler(Greeter, fn _contract, :greet, [name] -> "Hello #{name}" end)
       assert "Hello Bob" = Greeter.Port.greet("Bob")
     end

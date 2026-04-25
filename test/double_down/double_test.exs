@@ -874,6 +874,66 @@ defmodule DoubleDown.DoubleTest do
     end
   end
 
+  # ── Double/Testing API mixing guard ────────────────────────
+
+  describe "mixing Double and Testing APIs" do
+    test "raises if Double.expect is called on a contract with a raw Testing handler" do
+      DoubleDown.Testing.set_fn_handler(Greeter, fn _contract, :greet, [name] -> name end)
+
+      assert_raise ArgumentError, ~r/Cannot use Double API/, fn ->
+        Double.expect(Greeter, :greet, fn [_] -> "hi" end)
+      end
+    end
+
+    test "raises if Double.stub is called on a contract with a raw Testing handler" do
+      DoubleDown.Testing.set_fn_handler(Greeter, fn _contract, :greet, [name] -> name end)
+
+      assert_raise ArgumentError, ~r/Cannot use Double API/, fn ->
+        Double.stub(Greeter, :greet, fn [_] -> "hi" end)
+      end
+    end
+
+    test "raises if Double.fake is called on a contract with a raw Testing handler" do
+      DoubleDown.Testing.set_stateful_handler(
+        Greeter,
+        fn _contract, :greet, [name], state -> {name, state} end,
+        %{}
+      )
+
+      assert_raise ArgumentError, ~r/Cannot use Double API/, fn ->
+        Double.fake(Greeter, fn _contract, :greet, [name], state -> {name, state} end, %{})
+      end
+    end
+
+    test "raises if Testing.set_fn_handler is called on a contract with a Double handler" do
+      Double.stub(Greeter, :greet, fn [name] -> name end)
+
+      assert_raise ArgumentError, ~r/A handler is already installed/, fn ->
+        DoubleDown.Testing.set_fn_handler(Greeter, fn _contract, :greet, [name] -> name end)
+      end
+    end
+
+    test "raises if Testing.set_handler is called on a contract with a Double handler" do
+      Double.stub(Greeter, :greet, fn [name] -> name end)
+
+      assert_raise ArgumentError, ~r/A handler is already installed/, fn ->
+        DoubleDown.Testing.set_handler(Greeter, Greeter.Impl)
+      end
+    end
+
+    test "raises if Testing.set_stateful_handler is called on a contract with a Double handler" do
+      Double.stub(Greeter, :greet, fn [name] -> name end)
+
+      assert_raise ArgumentError, ~r/A handler is already installed/, fn ->
+        DoubleDown.Testing.set_stateful_handler(
+          Greeter,
+          fn _contract, :greet, [name], state -> {name, state} end,
+          %{}
+        )
+      end
+    end
+  end
+
   # ── :passthrough expects ──────────────────────────────────
 
   describe ":passthrough expects" do

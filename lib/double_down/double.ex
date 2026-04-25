@@ -695,8 +695,20 @@ defmodule DoubleDown.Double do
   defp ensure_handler_installed(contract) do
     # Check if we've already installed the handler for this contract
     case NimbleOwnership.get_owned(Keys.ownership_server(), self()) do
-      %{^contract => %HandlerMeta.Stateful{}} ->
+      %{^contract => %HandlerMeta.Stateful{state: %CanonicalHandlerState{}}} ->
         :ok
+
+      %{^contract => other} ->
+        raise ArgumentError, """
+        Cannot use Double API on #{inspect(contract)} — a non-Double handler \
+        is already installed via Testing.set_*_handler.
+
+        Found: #{inspect(other)}
+
+        Double.expect/stub/fake require the canonical handler installed by \
+        Double itself. Remove the Testing.set_*_handler call and use the \
+        Double API exclusively, or use Testing.set_*_handler exclusively.
+        """
 
       _ ->
         # First touch — install the canonical handler fn.

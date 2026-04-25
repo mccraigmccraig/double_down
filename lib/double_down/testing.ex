@@ -174,10 +174,28 @@ defmodule DoubleDown.Testing do
   # -- Internal --
 
   defp set_meta(contract, meta) do
-    NimbleOwnership.get_and_update(Keys.ownership_server(), self(), contract, fn _ ->
-      {:ok, meta}
-    end)
+    {:ok, result} =
+      NimbleOwnership.get_and_update(Keys.ownership_server(), self(), contract, fn
+        nil ->
+          {:ok, meta}
 
-    :ok
+        existing ->
+          {{:error, existing}, existing}
+      end)
+
+    case result do
+      {:error, existing} ->
+        raise ArgumentError, """
+        A handler is already installed for #{inspect(contract)}.
+
+        Found: #{inspect(existing)}
+
+        Call DoubleDown.Testing.reset() first to clear all handlers \
+        before installing a new one.
+        """
+
+      _ ->
+        :ok
+    end
   end
 end

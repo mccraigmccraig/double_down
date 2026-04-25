@@ -284,6 +284,8 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
     test "insert auto-id increments based on existing records" do
       initial = Repo.OpenInMemory.new(seed: [%User{id: 5, name: "Existing"}])
 
+      DoubleDown.Testing.reset()
+
       DoubleDown.Testing.set_stateful_handler(
         Repo,
         &Repo.OpenInMemory.dispatch/4,
@@ -601,6 +603,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
           fallback_fn: fn _contract, :get, [User, 99], _state -> bob end
         )
 
+      DoubleDown.Testing.reset()
       DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/4, state)
 
       # Found in state
@@ -613,6 +616,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
       state =
         Repo.OpenInMemory.new(fallback_fn: fn _contract, :get, [User, 42], _state -> nil end)
 
+      DoubleDown.Testing.reset()
       DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/4, state)
 
       assert_raise ArgumentError, ~r/InMemory cannot service :get/, fn ->
@@ -639,6 +643,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
           fallback_fn: fn _contract, :get!, [User, 99], _state -> bob end
         )
 
+      DoubleDown.Testing.reset()
       DoubleDown.Testing.set_stateful_handler(Repo, &Repo.OpenInMemory.dispatch/4, state)
 
       assert %User{id: 1, name: "Alice"} = TestRepo.get!(User, 1)

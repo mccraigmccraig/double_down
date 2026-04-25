@@ -86,45 +86,58 @@ defmodule DoubleDown.TestingTest do
 
   # ── handler replacement ───────────────────────────────────
 
-  describe "handler replacement" do
-    test "setting a new handler overwrites the previous one" do
+  describe "handler overwrite protection" do
+    test "raises when setting fn handler over existing fn handler" do
+      DoubleDown.Testing.set_fn_handler(Greeter, fn
+        _contract, :greet, [name] -> "first: #{name}"
+      end)
+
+      assert_raise ArgumentError, ~r/A handler is already installed/, fn ->
+        DoubleDown.Testing.set_fn_handler(Greeter, fn
+          _contract, :greet, [name] -> "second: #{name}"
+        end)
+      end
+    end
+
+    test "raises when setting module handler over existing fn handler" do
+      DoubleDown.Testing.set_fn_handler(Greeter, fn
+        _contract, :greet, [name] -> "fn: #{name}"
+      end)
+
+      assert_raise ArgumentError, ~r/A handler is already installed/, fn ->
+        DoubleDown.Testing.set_handler(Greeter, Greeter.Impl)
+      end
+    end
+
+    test "raises when setting stateful handler over existing module handler" do
+      DoubleDown.Testing.set_handler(Counter, Greeter.Impl)
+
+      assert_raise ArgumentError, ~r/A handler is already installed/, fn ->
+        DoubleDown.Testing.set_stateful_handler(
+          Counter,
+          fn
+            _contract, :increment, [n], state -> {state + n, state + n}
+            _contract, :get_count, [], state -> {state, state}
+          end,
+          100
+        )
+      end
+    end
+
+    test "reset then reinstall works" do
       DoubleDown.Testing.set_fn_handler(Greeter, fn
         _contract, :greet, [name] -> "first: #{name}"
       end)
 
       assert "first: X" = Greeter.Port.greet("X")
 
+      DoubleDown.Testing.reset()
+
       DoubleDown.Testing.set_fn_handler(Greeter, fn
         _contract, :greet, [name] -> "second: #{name}"
       end)
 
       assert "second: X" = Greeter.Port.greet("X")
-    end
-
-    test "replacing fn handler with module handler" do
-      DoubleDown.Testing.set_fn_handler(Greeter, fn
-        _contract, :greet, [name] -> "fn: #{name}"
-      end)
-
-      assert "fn: X" = Greeter.Port.greet("X")
-
-      DoubleDown.Testing.set_handler(Greeter, Greeter.Impl)
-      assert "Hello, X!" = Greeter.Port.greet("X")
-    end
-
-    test "replacing module handler with stateful handler" do
-      DoubleDown.Testing.set_handler(Counter, Greeter.Impl)
-
-      DoubleDown.Testing.set_stateful_handler(
-        Counter,
-        fn
-          _contract, :increment, [n], state -> {state + n, state + n}
-          _contract, :get_count, [], state -> {state, state}
-        end,
-        100
-      )
-
-      assert 105 = Counter.Port.increment(5)
     end
   end
 
