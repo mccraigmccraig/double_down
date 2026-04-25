@@ -5,6 +5,80 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.49.0]
+
+### Added
+
+- **`DoubleDown.Repo` `:transaction` operation.** Added `transaction/1,2`
+  to the Repo contract as an alias for `transact/1,2`, matching the
+  standard `Ecto.Repo.transaction` name. Dispatched through all three
+  Repo doubles (InMemory, OpenInMemory, Stub).
+
+- **`DoubleDown.Contract.Dispatch.Keys` module.** Centralised
+  NimbleOwnership key helpers (`ownership_server/0`, `log_key/1`,
+  `contracts_key/0`). Eliminates duplicated `@ownership_server` module
+  attributes and scattered `Module.concat` calls across Dispatch,
+  Double, and Testing.
+
+- **`DoubleDown.Contract.Dispatch.HandlerMeta` structs.**
+  `HandlerMeta.Module`, `HandlerMeta.Fn`, `HandlerMeta.Stateful` —
+  typed structs replacing the loose maps that described handler types.
+  Pattern matching on struct name replaces the `:type` discriminator key.
+
+- **`DoubleDown.Double.CanonicalHandlerState` struct.** Replaces the
+  loose `@initial_state` map with a typed struct. `new/1` constructor
+  ensures the `:contract` field is never nil. `@enforce_keys [:contract]`.
+
+- **Handler overwrite protection.** `Testing.set_*_handler` now raises
+  `ArgumentError` if a handler is already installed for the contract.
+  Call `Testing.reset()` first to clear all handlers before reinstalling.
+  Prevents accidental silent overwrites and mixing of Double/Testing APIs.
+
+- **Double/Testing API mixing guards.** `Double.ensure_handler_installed`
+  raises if a non-Double handler is already installed. `Testing.set_meta`
+  raises if any handler already exists. Clear error messages direct users
+  to use one API exclusively or call `reset()` first.
+
+### Changed
+
+- **Breaking: fn handler signature changed from 2-arity to 3-arity.**
+  `set_fn_handler`, `Double.stub` function fallbacks, and
+  `StubHandler.new` callbacks now use `fn contract, operation, args -> result end`
+  instead of `fn operation, args -> result end`. This makes fn handlers
+  symmetrical with stateful handlers, which already receive contract as
+  the first argument. `Repo.Stub` updated to return 3-arity fns and
+  accept 3-arity fallback functions.
+
+- **Breaking: stateful per-operation stubs removed.** `Double.stub/3`
+  now only accepts 1-arity (stateless) fns. The 2-arity and 3-arity
+  "stateful stub" variants were conceptually confused — stubs that
+  mutate state are really per-operation fakes. For stateful per-op
+  overrides, use `expect/4` with a 2/3-arity responder, or handle the
+  logic in the fallback fake's dispatch function.
+
+- **Stateful handler state unified under contract key.** Handler state
+  is now stored inline in `HandlerMeta.Stateful.state` instead of under
+  a separate NimbleOwnership key. One contract = one NimbleOwnership key.
+  Eliminates a redundant IPC round-trip (`GenServer.call`) on every
+  stateful dispatch. `Keys.state_key/1` removed.
+
+- **Dispatch pattern matching uses structs.** `invoke_handler` matches
+  on `%HandlerMeta.Module{}`, `%HandlerMeta.Fn{}`,
+  `%HandlerMeta.Stateful{}` instead of `%{type: :module, ...}` maps.
+  `get_state`/`restore_state`/`build_global_state` match on
+  `%CanonicalHandlerState{}` instead of checking for `:fallback_state`
+  key presence — unforgeable struct match vs fragile key-presence check.
+
+### Improved
+
+- **No-handler error message** now mentions the recommended `Double.*`
+  API (`Double.fake`, `Double.stub`, `Double.expect`) first, with the
+  lower-level `Testing.*` API as an alternative.
+
+- **`canonical_handler/5`** now has a `%CanonicalHandlerState{}` guard
+  on the state parameter and a comment explaining why the contract
+  parameter is unused (available via `state.contract`).
+
 ## [0.48.1]
 
 ### Fixed
@@ -1278,6 +1352,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `DoubleDown.Testing` with NimbleOwnership, `Repo.Test` stateless
   adapter, CI setup, Credo, Dialyzer.
 
+[0.49.0]: https://github.com/mccraigmccraig/double_down/compare/v0.48.1...v0.49.0
 [0.48.1]: https://github.com/mccraigmccraig/double_down/compare/v0.48.0...v0.48.1
 [0.48.0]: https://github.com/mccraigmccraig/double_down/compare/v0.47.2...v0.48.0
 [0.47.2]: https://github.com/mccraigmccraig/double_down/compare/v0.47.1...v0.47.2
