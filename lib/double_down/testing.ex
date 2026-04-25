@@ -17,7 +17,7 @@ defmodule DoubleDown.Testing do
   tests are isolated. Use `allow/3` to share handlers with child processes.
   """
 
-  alias DoubleDown.Contract.Dispatch.Keys
+  alias DoubleDown.Contract.Dispatch.{HandlerMeta, Keys}
 
   @doc """
   Start the DoubleDown ownership server.
@@ -36,7 +36,7 @@ defmodule DoubleDown.Testing do
   """
   @spec set_handler(module(), module()) :: :ok
   def set_handler(contract, impl) do
-    set_meta(contract, %{type: :module, impl: impl})
+    set_meta(contract, %HandlerMeta.Module{impl: impl})
   end
 
   @doc """
@@ -46,7 +46,7 @@ defmodule DoubleDown.Testing do
   """
   @spec set_fn_handler(module(), (atom(), [term()] -> term())) :: :ok
   def set_fn_handler(contract, fun) when is_function(fun, 2) do
-    set_meta(contract, %{type: :fn, fun: fun})
+    set_meta(contract, %HandlerMeta.Fn{fun: fun})
   end
 
   @doc """
@@ -75,7 +75,7 @@ defmodule DoubleDown.Testing do
       {:ok, initial_state}
     end)
 
-    set_meta(contract, %{type: :stateful, fun: fun, state_key: state_key})
+    set_meta(contract, %HandlerMeta.Stateful{fun: fun, state_key: state_key})
   end
 
   @doc """

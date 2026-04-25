@@ -29,7 +29,7 @@ defmodule DoubleDown.Contract.Dispatch do
   `call_config/4` if the config is not available at compile time.
   """
 
-  alias DoubleDown.Contract.Dispatch.Keys
+  alias DoubleDown.Contract.Dispatch.{HandlerMeta, Keys}
 
   @doc """
   Dispatch a port operation to the resolved implementation.
@@ -200,14 +200,14 @@ defmodule DoubleDown.Contract.Dispatch do
   # -- Handler invocation --
 
   @doc false
-  def invoke_handler(%{type: :module, impl: impl}, _owner_pid, _contract, operation, args) do
+  def invoke_handler(%HandlerMeta.Module{impl: impl}, _owner_pid, _contract, operation, args) do
     case apply(impl, operation, args) do
       %DoubleDown.Contract.Dispatch.Defer{fn: deferred_fn} -> deferred_fn.()
       result -> result
     end
   end
 
-  def invoke_handler(%{type: :fn, fun: fun}, _owner_pid, _contract, operation, args) do
+  def invoke_handler(%HandlerMeta.Fn{fun: fun}, _owner_pid, _contract, operation, args) do
     case fun.(operation, args) do
       %DoubleDown.Contract.Dispatch.Defer{fn: deferred_fn} -> deferred_fn.()
       result -> result
@@ -215,7 +215,7 @@ defmodule DoubleDown.Contract.Dispatch do
   end
 
   def invoke_handler(
-        %{type: :stateful, fun: fun, state_key: state_key},
+        %HandlerMeta.Stateful{fun: fun, state_key: state_key},
         owner_pid,
         contract,
         operation,
@@ -306,7 +306,7 @@ defmodule DoubleDown.Contract.Dispatch do
     # expose the fallback_state — the user's actual domain state.
     owned
     |> Enum.reduce(%{@global_state_sentinel => true}, fn
-      {contract, %{type: :stateful, state_key: state_key}}, acc ->
+      {contract, %HandlerMeta.Stateful{state_key: state_key}}, acc ->
         case Map.get(owned, state_key) do
           nil ->
             acc

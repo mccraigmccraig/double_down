@@ -1,0 +1,48 @@
+defmodule DoubleDown.Contract.Dispatch.HandlerMeta do
+  @moduledoc """
+  Structs describing the three handler types that can be installed for
+  a contract via `DoubleDown.Testing`.
+
+  Stored in `NimbleOwnership` under the contract module atom as key.
+  `DoubleDown.Contract.Dispatch.invoke_handler/5` pattern-matches on
+  the struct to select the dispatch strategy.
+
+  ## Variants
+
+  * `HandlerMeta.Module` — delegate to a module implementing the contract behaviour
+  * `HandlerMeta.Fn` — dispatch via a 2-arity `fn operation, args -> result end`
+  * `HandlerMeta.Stateful` — dispatch via a 4/5-arity stateful function with
+    mutable state stored under a separate NimbleOwnership key
+  """
+
+  defmodule Module do
+    @moduledoc "Handler meta for a module-based implementation."
+    @enforce_keys [:impl]
+    defstruct [:impl]
+
+    @type t :: %__MODULE__{
+            impl: module()
+          }
+  end
+
+  defmodule Fn do
+    @moduledoc "Handler meta for a 2-arity function handler."
+    @enforce_keys [:fun]
+    defstruct [:fun]
+
+    @type t :: %__MODULE__{
+            fun: (atom(), [term()] -> term())
+          }
+  end
+
+  defmodule Stateful do
+    @moduledoc "Handler meta for a stateful (4/5-arity) function handler."
+    @enforce_keys [:fun, :state_key]
+    defstruct [:fun, :state_key]
+
+    @type t :: %__MODULE__{
+            fun: (... -> {term(), term()}),
+            state_key: atom()
+          }
+  end
+end
