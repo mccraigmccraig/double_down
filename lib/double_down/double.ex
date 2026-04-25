@@ -736,8 +736,13 @@ defmodule DoubleDown.Double do
   # and fallback config from state at dispatch time. Installed once per
   # contract via set_stateful_handler and never replaced — all changes
   # go through state mutations.
+  #
+  # The contract parameter from Dispatch is unused — the contract is
+  # already available as state.contract, set at installation time by
+  # CanonicalHandlerState.new/1. Fallback handlers that need it
+  # (invoke_fn_fallback, invoke_stateful_fallback) read it from there.
   @doc false
-  def canonical_handler(_contract, operation, args, state, all_states) do
+  def canonical_handler(_contract, operation, args, %CanonicalHandlerState{} = state, all_states) do
     case pop_expect(state, operation) do
       {:ok, :passthrough, new_state} ->
         invoke_fallback_or_raise(new_state, operation, args, all_states)
