@@ -126,9 +126,9 @@ defmodule DoubleDown.Testing do
   trees, named GenServers, Broadway pipelines, or Oban workers where
   individual process pids are not easily accessible.
 
-  The calling process becomes the "shared owner". Any handlers set
-  by this process (before or after calling `set_mode_to_global/0`)
-  are accessible to all processes.
+  The calling process becomes the "shared owner". Only the shared
+  owner process can install handlers — calls to `set_*_handler`
+  from other processes will raise `ArgumentError`.
 
   ## Warning
 
@@ -137,15 +137,73 @@ defmodule DoubleDown.Testing do
   tests will interfere with each other. Only use global mode in
   tests with `async: false`.
 
-  Call `set_mode_to_private/0` to restore per-process isolation.
+  ## Correct pattern
 
-  ## Example
+  `set_mode_to_global/0` and `set_*_handler` must be called from
+  the **same process** — the test's `setup` block. Use `reset/1`
+  with a captured pid in `on_exit` to clean up:
 
       setup do
+        pid = self()
         DoubleDown.Testing.set_mode_to_global()
         DoubleDown.Testing.set_handler(MyApp.Repo, MyApp.Repo.OpenInMemory)
-        on_exit(fn -> DoubleDown.Testing.set_mode_to_private() end)
+        on_exit(fn -> DoubleDown.Testing.reset(pid) end)
         :ok
+      end
+
+  ## Common mistakes
+
+  **Don't use `setup_all` for global mode.** `setup_all` runs in a
+  different process than `setup`/tests, so handlers installed in
+  `setup_all` won't be visible to test processes in global mode:
+
+      # BROKEN — setup_all and setup run in different processes
+      setup_all do
+        DoubleDown.Testing.set_mode_to_global()
+        :ok
+      end
+
+      setup do
+        # This RAISES — self() is not the shared owner
+        DoubleDown.Testing.set_handler(MyContract, MyImpl)
+      end
+
+  **Don't call `reset()` without a pid in `on_exit`.** `self()` inside
+  `on_exit` is the callback process, not the test process. Use
+  `reset(pid)` with a captured pid instead. See `reset/1` docs.
+
+  ## Multiple describe blocks
+
+  Each `setup` block runs per-test, so different `describe` blocks
+  can install different handlers. `reset/1` in `on_exit` clears the
+  previous test's state and reverts to private mode:
+
+      describe "with InMemory" do
+        setup do
+          pid = self()
+          DoubleDown.Testing.set_mode_to_global()
+          DoubleDown.Testing.set_handler(MyApp.Repo, MyApp.Repo.InMemory)
+          on_exit(fn -> DoubleDown.Testing.reset(pid) end)
+          :ok
+        end
+
+        test "..." do
+          # ...
+        end
+      end
+
+      describe "with Stub" do
+        setup do
+          pid = self()
+          DoubleDown.Testing.set_mode_to_global()
+          DoubleDown.Testing.set_handler(MyApp.Repo, MyApp.Repo.Stub)
+          on_exit(fn -> DoubleDown.Testing.reset(pid) end)
+          :ok
+        end
+
+        test "..." do
+          # ...
+        end
       end
   """
   @spec set_mode_to_global() :: :ok
