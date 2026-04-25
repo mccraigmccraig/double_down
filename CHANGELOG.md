@@ -5,6 +5,41 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.50.0]
+
+### Added
+
+- **Per-operation fakes.** `Double.fake(contract, :operation, fn [args], state -> {result, new_state} end)`
+  installs a permanent stateful override for a single operation,
+  reading and writing the fallback fake's state. Also supports 3-arity
+  `fn [args], state, all_states -> {result, new_state} end` for
+  cross-contract state access. Requires a stateful fallback fake to be
+  installed first. Replaces the removed "stateful stubs" with the
+  correct abstraction — per-op fakes are fakes (stateful, real logic),
+  not stubs (stateless, canned values).
+
+- **Handler overwrite protection.** `Testing.set_*_handler` now raises
+  `ArgumentError` if a handler is already installed for the contract.
+  Call `Testing.reset()` first to clear all handlers before reinstalling.
+  Prevents accidental silent overwrites and mixing of Double/Testing APIs.
+
+- **Double/Testing API mixing guards.** `Double.ensure_handler_installed`
+  raises if a non-Double handler is already installed. `Testing.set_meta`
+  raises if any handler already exists. Clear error messages direct users
+  to use one API exclusively or call `reset()` first.
+
+### Changed
+
+- **Dispatch priority updated.** Now:
+  expects > per-op fakes > per-op stubs > fallback > raise.
+
+### Improved
+
+- **Documentation updated** across `testing.md`, `getting-started.md`,
+  `repo-doubles.md`, `repo-testing.md`, and `dynamic.md` for all
+  v0.49.0 breaking changes (fn handler 3-arity, stateful stubs replaced
+  by per-op fakes, dispatch priority, handler arities with contract param).
+
 ## [0.49.0]
 
 ### Added
@@ -1360,6 +1395,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `DoubleDown.Testing` with NimbleOwnership, `Repo.Test` stateless
   adapter, CI setup, Credo, Dialyzer.
 
+[0.50.0]: https://github.com/mccraigmccraig/double_down/compare/v0.49.0...v0.50.0
 [0.49.0]: https://github.com/mccraigmccraig/double_down/compare/v0.48.1...v0.49.0
 [0.48.1]: https://github.com/mccraigmccraig/double_down/compare/v0.48.0...v0.48.1
 [0.48.0]: https://github.com/mccraigmccraig/double_down/compare/v0.47.2...v0.48.0
