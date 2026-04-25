@@ -165,11 +165,28 @@ defmodule DoubleDown.Testing do
   end
 
   @doc """
-  Reset all handlers and logs for the current process.
+  Reset all handlers and logs for a process.
+
+  Clears all NimbleOwnership entries owned by `pid`. Defaults to
+  `self()`.
+
+  **`on_exit` caveat:** `reset()` (without arguments) uses `self()`,
+  which inside an `on_exit` callback is the callback process — not
+  the test process. To reset the test process's handlers from
+  `on_exit`, capture the pid first:
+
+      setup do
+        pid = self()
+        on_exit(fn -> DoubleDown.Testing.reset(pid) end)
+        :ok
+      end
+
+  In most cases you don't need explicit cleanup — NimbleOwnership
+  automatically cleans up when the owning process exits.
   """
-  @spec reset() :: :ok
-  def reset do
-    NimbleOwnership.cleanup_owner(Keys.ownership_server(), self())
+  @spec reset(pid()) :: :ok
+  def reset(pid \\ self()) do
+    NimbleOwnership.cleanup_owner(Keys.ownership_server(), pid)
   end
 
   # -- Internal --
