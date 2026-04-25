@@ -17,7 +17,8 @@ defmodule DoubleDown.Testing do
   tests are isolated. Use `allow/3` to share handlers with child processes.
   """
 
-  alias DoubleDown.Contract.Dispatch.{HandlerMeta, Keys}
+  alias DoubleDown.Contract.Dispatch.HandlerMeta
+  alias DoubleDown.Contract.Dispatch.Keys
 
   @doc """
   Start the DoubleDown ownership server.

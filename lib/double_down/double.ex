@@ -172,7 +172,8 @@ defmodule DoubleDown.Double do
   code that might raise `FunctionClauseError`.
   """
 
-  alias DoubleDown.Contract.Dispatch.{HandlerMeta, Keys}
+  alias DoubleDown.Contract.Dispatch.HandlerMeta
+  alias DoubleDown.Contract.Dispatch.Keys
   alias DoubleDown.Double.CanonicalHandlerState
 
   # -- Public API: passthrough sentinel --

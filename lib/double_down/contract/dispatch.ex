@@ -29,7 +29,8 @@ defmodule DoubleDown.Contract.Dispatch do
   `call_config/4` if the config is not available at compile time.
   """
 
-  alias DoubleDown.Contract.Dispatch.{HandlerMeta, Keys}
+  alias DoubleDown.Contract.Dispatch.HandlerMeta
+  alias DoubleDown.Contract.Dispatch.Keys
   alias DoubleDown.Double.CanonicalHandlerState
 
   @doc """
