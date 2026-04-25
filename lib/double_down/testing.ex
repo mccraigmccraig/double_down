@@ -118,6 +118,45 @@ defmodule DoubleDown.Testing do
   end
 
   @doc """
+  Select private or global mode based on the test context.
+
+  When `async: true` is set on the test module, private mode is used
+  (the default — each test process has its own handlers). Otherwise,
+  global mode is used (all processes share the calling process's
+  handlers).
+
+  Use as a setup callback — this is the recommended way to manage
+  mode selection, mirroring Mox's `set_mox_from_context`:
+
+      # In your test module:
+      use ExUnit.Case, async: false
+
+      setup :set_mode_from_context
+
+      setup do
+        DoubleDown.Testing.set_handler(MyApp.Repo, MyApp.Repo.InMemory)
+        :ok
+      end
+
+  Because `set_mode_from_context` runs at the start of every test,
+  it always resets the mode — even if a previous test crashed without
+  cleaning up. NimbleOwnership's automatic `:DOWN` handler removes
+  owned keys when the test process exits, so no explicit `on_exit`
+  cleanup is needed.
+
+  For `async: true` tests, `set_mode_from_context` is a no-op (private
+  mode is the default), so it's safe to include unconditionally.
+  """
+  @spec set_mode_from_context(%{async: boolean()} | map()) :: :ok
+  def set_mode_from_context(context \\ %{}) do
+    if context[:async] do
+      set_mode_to_private()
+    else
+      set_mode_to_global()
+    end
+  end
+
+  @doc """
   Set the ownership server to global mode.
 
   In global mode, all handlers registered by the calling process are
@@ -130,26 +169,25 @@ defmodule DoubleDown.Testing do
   owner process can install handlers — calls to `set_*_handler`
   from other processes will raise `ArgumentError`.
 
+  ## Recommended pattern
+
+  Prefer `set_mode_from_context/1` over calling `set_mode_to_global/0`
+  directly — it handles mode selection automatically and is more
+  robust against stale state from previous tests:
+
+      setup :set_mode_from_context
+
+      setup do
+        DoubleDown.Testing.set_handler(MyApp.Repo, MyApp.Repo.InMemory)
+        :ok
+      end
+
   ## Warning
 
   Global mode is **incompatible with `async: true`**. When global
   mode is active, all tests share the same handlers, so concurrent
   tests will interfere with each other. Only use global mode in
   tests with `async: false`.
-
-  ## Correct pattern
-
-  `set_mode_to_global/0` and `set_*_handler` must be called from
-  the **same process** — the test's `setup` block. Use `reset/1`
-  with a captured pid in `on_exit` to clean up:
-
-      setup do
-        pid = self()
-        DoubleDown.Testing.set_mode_to_global()
-        DoubleDown.Testing.set_handler(MyApp.Repo, MyApp.Repo.OpenInMemory)
-        on_exit(fn -> DoubleDown.Testing.reset(pid) end)
-        :ok
-      end
 
   ## Common mistakes
 
@@ -166,44 +204,6 @@ defmodule DoubleDown.Testing do
       setup do
         # This RAISES — self() is not the shared owner
         DoubleDown.Testing.set_handler(MyContract, MyImpl)
-      end
-
-  **Don't call `reset()` without a pid in `on_exit`.** `self()` inside
-  `on_exit` is the callback process, not the test process. Use
-  `reset(pid)` with a captured pid instead. See `reset/1` docs.
-
-  ## Multiple describe blocks
-
-  Each `setup` block runs per-test, so different `describe` blocks
-  can install different handlers. `reset/1` in `on_exit` clears the
-  previous test's state and reverts to private mode:
-
-      describe "with InMemory" do
-        setup do
-          pid = self()
-          DoubleDown.Testing.set_mode_to_global()
-          DoubleDown.Testing.set_handler(MyApp.Repo, MyApp.Repo.InMemory)
-          on_exit(fn -> DoubleDown.Testing.reset(pid) end)
-          :ok
-        end
-
-        test "..." do
-          # ...
-        end
-      end
-
-      describe "with Stub" do
-        setup do
-          pid = self()
-          DoubleDown.Testing.set_mode_to_global()
-          DoubleDown.Testing.set_handler(MyApp.Repo, MyApp.Repo.Stub)
-          on_exit(fn -> DoubleDown.Testing.reset(pid) end)
-          :ok
-        end
-
-        test "..." do
-          # ...
-        end
       end
   """
   @spec set_mode_to_global() :: :ok

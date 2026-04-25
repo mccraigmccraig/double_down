@@ -572,6 +572,49 @@ defmodule DoubleDown.TestingGlobalModeTest do
     end
   end
 
+  describe "set_mode_from_context/1" do
+    test "sets global mode when async is false" do
+      DoubleDown.Testing.set_mode_from_context(%{async: false})
+      DoubleDown.Testing.set_fn_handler(Greeter, fn _contract, :greet, [name] -> "ctx: #{name}" end)
+
+      # Bare spawn (no $callers) — only works in global mode
+      task = Task.async(fn -> Greeter.Port.greet("from_task") end)
+      assert "ctx: from_task" = Task.await(task)
+    end
+
+    test "sets private mode when async is true" do
+      # First go global so we can prove it switches back
+      DoubleDown.Testing.set_mode_to_global()
+      DoubleDown.Testing.set_mode_from_context(%{async: true})
+      DoubleDown.Testing.set_fn_handler(Greeter, fn _contract, :greet, [name] -> "priv: #{name}" end)
+
+      # Bare spawn — should NOT see the handler in private mode
+      ref = make_ref()
+      parent = self()
+
+      spawn(fn ->
+        result =
+          try do
+            Greeter.Port.greet("should_fail")
+          rescue
+            e -> {:error, e}
+          end
+
+        send(parent, {ref, result})
+      end)
+
+      assert_receive {^ref, {:error, %RuntimeError{}}}
+    end
+
+    test "defaults to global mode when async key is absent" do
+      DoubleDown.Testing.set_mode_from_context(%{})
+      DoubleDown.Testing.set_fn_handler(Greeter, fn _contract, :greet, [name] -> "default: #{name}" end)
+
+      task = Task.async(fn -> Greeter.Port.greet("from_task") end)
+      assert "default: from_task" = Task.await(task)
+    end
+  end
+
   describe "set_mode_to_private/0" do
     test "restores per-process isolation after global mode" do
       DoubleDown.Testing.set_fn_handler(Greeter, fn _contract, :greet, [name] -> "global: #{name}" end)
