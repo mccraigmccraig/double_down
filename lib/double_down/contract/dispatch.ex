@@ -392,14 +392,22 @@ defmodule DoubleDown.Contract.Dispatch do
       raise """
       No test handler set for #{inspect(contract)}.
 
-      In your test setup, call one of:
+      In your test setup, use DoubleDown.Double (recommended):
+
+          #{inspect(contract)}
+          |> DoubleDown.Double.fake(MyFakeImpl)
+
+          #{inspect(contract)}
+          |> DoubleDown.Double.stub(fn _contract, operation, args -> ... end)
+
+          #{inspect(contract)}
+          |> DoubleDown.Double.expect(:operation, fn [args] -> result end)
+
+      Or the lower-level DoubleDown.Testing API:
 
           DoubleDown.Testing.set_handler(#{inspect(contract)}, MyImpl)
           DoubleDown.Testing.set_fn_handler(#{inspect(contract)}, fn _contract, operation, args -> ... end)
           DoubleDown.Testing.set_stateful_handler(#{inspect(contract)}, handler_fn, initial_state)
-
-      If you want to use the production implementation in this test:
-          DoubleDown.Testing.set_handler(#{inspect(contract)}, MyProductionImpl)
       """
     else
       config_example =
