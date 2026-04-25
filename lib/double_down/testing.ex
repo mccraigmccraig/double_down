@@ -17,7 +17,7 @@ defmodule DoubleDown.Testing do
   tests are isolated. Use `allow/3` to share handlers with child processes.
   """
 
-  @ownership_server DoubleDown.Contract.Dispatch.Ownership
+  alias DoubleDown.Contract.Dispatch.Keys
 
   @doc """
   Start the DoubleDown ownership server.
@@ -26,7 +26,7 @@ defmodule DoubleDown.Testing do
   """
   @spec start() :: {:ok, pid()} | {:error, term()}
   def start do
-    NimbleOwnership.start_link(name: @ownership_server)
+    NimbleOwnership.start_link(name: Keys.ownership_server())
   end
 
   @doc """
@@ -68,10 +68,10 @@ defmodule DoubleDown.Testing do
   @spec set_stateful_handler(module(), (... -> {term(), term()}), term()) :: :ok
   def set_stateful_handler(contract, fun, initial_state)
       when is_function(fun, 4) or is_function(fun, 5) do
-    state_key = Module.concat(DoubleDown.State, contract)
+    state_key = Keys.state_key(contract)
 
     # Store the initial state
-    NimbleOwnership.get_and_update(@ownership_server, self(), state_key, fn _ ->
+    NimbleOwnership.get_and_update(Keys.ownership_server(), self(), state_key, fn _ ->
       {:ok, initial_state}
     end)
 
@@ -87,7 +87,7 @@ defmodule DoubleDown.Testing do
   @spec allow(module(), pid() | (-> pid() | [pid()])) :: :ok | {:error, term()}
   @spec allow(module(), pid(), pid() | (-> pid() | [pid()])) :: :ok | {:error, term()}
   def allow(contract, owner_pid \\ self(), child_pid) do
-    NimbleOwnership.allow(@ownership_server, owner_pid, child_pid, contract)
+    NimbleOwnership.allow(Keys.ownership_server(), owner_pid, child_pid, contract)
   end
 
   @doc """
@@ -98,9 +98,9 @@ defmodule DoubleDown.Testing do
   """
   @spec enable_log(module()) :: :ok
   def enable_log(contract) do
-    log_key = Module.concat(DoubleDown.Log, contract)
+    log_key = Keys.log_key(contract)
 
-    NimbleOwnership.get_and_update(@ownership_server, self(), log_key, fn _ ->
+    NimbleOwnership.get_and_update(Keys.ownership_server(), self(), log_key, fn _ ->
       {:ok, []}
     end)
 
@@ -115,9 +115,9 @@ defmodule DoubleDown.Testing do
   """
   @spec get_log(module()) :: [{module(), atom(), [term()], term()}]
   def get_log(contract) do
-    log_key = Module.concat(DoubleDown.Log, contract)
+    log_key = Keys.log_key(contract)
 
-    case NimbleOwnership.get_owned(@ownership_server, self()) do
+    case NimbleOwnership.get_owned(Keys.ownership_server(), self()) do
       %{^log_key => log} -> Enum.reverse(log)
       _ -> []
     end
@@ -156,7 +156,7 @@ defmodule DoubleDown.Testing do
   """
   @spec set_mode_to_global() :: :ok
   def set_mode_to_global do
-    NimbleOwnership.set_mode_to_shared(@ownership_server, self())
+    NimbleOwnership.set_mode_to_shared(Keys.ownership_server(), self())
   end
 
   @doc """
@@ -167,7 +167,7 @@ defmodule DoubleDown.Testing do
   """
   @spec set_mode_to_private() :: :ok
   def set_mode_to_private do
-    NimbleOwnership.set_mode_to_private(@ownership_server)
+    NimbleOwnership.set_mode_to_private(Keys.ownership_server())
   end
 
   @doc """
@@ -175,13 +175,13 @@ defmodule DoubleDown.Testing do
   """
   @spec reset() :: :ok
   def reset do
-    NimbleOwnership.cleanup_owner(@ownership_server, self())
+    NimbleOwnership.cleanup_owner(Keys.ownership_server(), self())
   end
 
   # -- Internal --
 
   defp set_meta(contract, meta) do
-    NimbleOwnership.get_and_update(@ownership_server, self(), contract, fn _ ->
+    NimbleOwnership.get_and_update(Keys.ownership_server(), self(), contract, fn _ ->
       {:ok, meta}
     end)
 

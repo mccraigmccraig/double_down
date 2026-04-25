@@ -29,7 +29,7 @@ defmodule DoubleDown.Contract.Dispatch do
   `call_config/4` if the config is not available at compile time.
   """
 
-  @ownership_server __MODULE__.Ownership
+  alias DoubleDown.Contract.Dispatch.Keys
 
   @doc """
   Dispatch a port operation to the resolved implementation.
@@ -86,14 +86,14 @@ defmodule DoubleDown.Contract.Dispatch do
   """
   @spec get_state(module()) :: term()
   def get_state(contract) do
-    state_key = Module.concat(DoubleDown.State, contract)
+    state_key = Keys.state_key(contract)
 
     case resolve_owner_pid(contract) do
       nil ->
         nil
 
       owner_pid ->
-        case NimbleOwnership.get_owned(@ownership_server, owner_pid) do
+        case NimbleOwnership.get_owned(Keys.ownership_server(), owner_pid) do
           %{^state_key => %{fallback_state: fallback_state}} ->
             fallback_state
 
@@ -120,9 +120,9 @@ defmodule DoubleDown.Contract.Dispatch do
   """
   @spec restore_state(module(), pid(), term()) :: :ok
   def restore_state(contract, owner_pid, snapshot) do
-    state_key = Module.concat(DoubleDown.State, contract)
+    state_key = Keys.state_key(contract)
 
-    NimbleOwnership.get_and_update(@ownership_server, owner_pid, state_key, fn state ->
+    NimbleOwnership.get_and_update(Keys.ownership_server(), owner_pid, state_key, fn state ->
       new_state =
         case state do
           %{fallback_state: _} ->
@@ -149,7 +149,7 @@ defmodule DoubleDown.Contract.Dispatch do
         :none
 
       owner_pid ->
-        case NimbleOwnership.get_owned(@ownership_server, owner_pid) do
+        case NimbleOwnership.get_owned(Keys.ownership_server(), owner_pid) do
           %{^contract => handler_meta} -> {:ok, owner_pid, handler_meta}
           _ -> :none
         end
@@ -182,14 +182,14 @@ defmodule DoubleDown.Contract.Dispatch do
   # chain. Returns nil if the ownership server isn't running or no owner
   # is found.
   defp resolve_owner_pid(contract) do
-    case GenServer.whereis(@ownership_server) do
+    case GenServer.whereis(Keys.ownership_server()) do
       nil ->
         nil
 
       _pid ->
         callers = [self() | Process.get(:"$callers", [])]
 
-        case NimbleOwnership.fetch_owner(@ownership_server, callers, contract) do
+        case NimbleOwnership.fetch_owner(Keys.ownership_server(), callers, contract) do
           {:ok, pid} -> pid
           {:shared_owner, pid} -> pid
           :error -> nil
@@ -248,7 +248,7 @@ defmodule DoubleDown.Contract.Dispatch do
       end
 
     {:ok, result} =
-      NimbleOwnership.get_and_update(@ownership_server, owner_pid, state_key, fn state ->
+      NimbleOwnership.get_and_update(Keys.ownership_server(), owner_pid, state_key, fn state ->
         try do
           handler_result =
             if all_states do
@@ -295,7 +295,7 @@ defmodule DoubleDown.Contract.Dispatch do
   # Keyed by contract module, with a sentinel key to detect accidental return.
   # Internal keys (handler metadata, state refs, log keys) are filtered out.
   defp build_global_state(owner_pid) do
-    owned = NimbleOwnership.get_owned(@ownership_server, owner_pid)
+    owned = NimbleOwnership.get_owned(Keys.ownership_server(), owner_pid)
 
     # Find all stateful handlers and map contract => state.
     # Seed with sentinel key so accidental return of global map is detectable.
@@ -343,13 +343,13 @@ defmodule DoubleDown.Contract.Dispatch do
 
   @doc false
   def maybe_log(owner_pid, contract, operation, args, result) do
-    log_key = Module.concat(DoubleDown.Log, contract)
+    log_key = Keys.log_key(contract)
 
     # Only log if the owner has logging enabled (owns the log key).
     # get_owned returns all keys owned by this pid — check if log_key is present.
-    case NimbleOwnership.get_owned(@ownership_server, owner_pid) do
+    case NimbleOwnership.get_owned(Keys.ownership_server(), owner_pid) do
       %{^log_key => _} ->
-        NimbleOwnership.get_and_update(@ownership_server, owner_pid, log_key, fn log ->
+        NimbleOwnership.get_and_update(Keys.ownership_server(), owner_pid, log_key, fn log ->
           {:ok, [{contract, operation, args, result} | log]}
         end)
 
@@ -416,7 +416,7 @@ defmodule DoubleDown.Contract.Dispatch do
   end
 
   defp testing? do
-    GenServer.whereis(@ownership_server) != nil
+    GenServer.whereis(Keys.ownership_server()) != nil
   end
 
   # -- Key normalization --

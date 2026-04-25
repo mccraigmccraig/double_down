@@ -170,8 +170,7 @@ defmodule DoubleDown.Double do
   code that might raise `FunctionClauseError`.
   """
 
-  @ownership_server DoubleDown.Contract.Dispatch.Ownership
-  @contracts_key DoubleDown.Double.Contracts
+  alias DoubleDown.Contract.Dispatch.Keys
 
   # -- Public API: passthrough sentinel --
 
@@ -269,9 +268,9 @@ defmodule DoubleDown.Double do
   end
 
   defp validate_stateful_fake_exists!(contract, operation, fun) do
-    state_key = Module.concat(DoubleDown.State, contract)
+    state_key = Keys.state_key(contract)
 
-    case NimbleOwnership.get_owned(@ownership_server, self()) do
+    case NimbleOwnership.get_owned(Keys.ownership_server(), self()) do
       %{^state_key => %{fallback: {:stateful, _}}} ->
         :ok
 
@@ -685,14 +684,14 @@ defmodule DoubleDown.Double do
 
     # Prevent NimbleOwnership from cleaning up when the test process
     # exits — the data must survive until the on_exit callback runs.
-    NimbleOwnership.set_owner_to_manual_cleanup(@ownership_server, pid)
+    NimbleOwnership.set_owner_to_manual_cleanup(Keys.ownership_server(), pid)
 
     ExUnit.Callbacks.on_exit(DoubleDown.Double, fn ->
       try do
         verify!(pid)
       after
         # Clean up the ownership entries now that verification is done.
-        NimbleOwnership.cleanup_owner(@ownership_server, pid)
+        NimbleOwnership.cleanup_owner(Keys.ownership_server(), pid)
       end
     end)
 
@@ -704,10 +703,10 @@ defmodule DoubleDown.Double do
   @initial_state %{contract: nil, expects: %{}, stubs: %{}, fallback: nil, fallback_state: nil}
 
   defp ensure_handler_installed(contract) do
-    state_key = Module.concat(DoubleDown.State, contract)
+    state_key = Keys.state_key(contract)
 
     # Check if we've already installed the handler for this contract
-    case NimbleOwnership.get_owned(@ownership_server, self()) do
+    case NimbleOwnership.get_owned(Keys.ownership_server(), self()) do
       %{^state_key => _} ->
         :ok
 
@@ -726,16 +725,16 @@ defmodule DoubleDown.Double do
   end
 
   defp register_contract(contract) do
-    NimbleOwnership.get_and_update(@ownership_server, self(), @contracts_key, fn
+    NimbleOwnership.get_and_update(Keys.ownership_server(), self(), Keys.contracts_key(), fn
       nil -> {:ok, [contract]}
       existing -> {:ok, Enum.uniq([contract | existing])}
     end)
   end
 
   defp update_handler_state(contract, update_fn) do
-    state_key = Module.concat(DoubleDown.State, contract)
+    state_key = Keys.state_key(contract)
 
-    NimbleOwnership.get_and_update(@ownership_server, self(), state_key, fn state ->
+    NimbleOwnership.get_and_update(Keys.ownership_server(), self(), state_key, fn state ->
       {:ok, update_fn.(state)}
     end)
   end
@@ -968,10 +967,11 @@ defmodule DoubleDown.Double do
   # -- Internal: verification --
 
   defp do_verify!(pid) do
-    owned = NimbleOwnership.get_owned(@ownership_server, pid)
+    owned = NimbleOwnership.get_owned(Keys.ownership_server(), pid)
+    contracts_key = Keys.contracts_key()
 
     case owned do
-      %{@contracts_key => contracts} ->
+      %{^contracts_key => contracts} ->
         verify_contracts!(owned, contracts)
 
       _ ->
@@ -983,7 +983,7 @@ defmodule DoubleDown.Double do
   defp verify_contracts!(owned, contracts) do
     unconsumed =
       Enum.flat_map(contracts, fn contract ->
-        state_key = Module.concat(DoubleDown.State, contract)
+        state_key = Keys.state_key(contract)
 
         case owned do
           %{^state_key => %{expects: expects}} ->
