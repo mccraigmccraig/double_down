@@ -30,6 +30,7 @@ defmodule DoubleDown.Contract.Dispatch do
   """
 
   alias DoubleDown.Contract.Dispatch.{HandlerMeta, Keys}
+  alias DoubleDown.Double.CanonicalHandlerState
 
   @doc """
   Dispatch a port operation to the resolved implementation.
@@ -94,7 +95,7 @@ defmodule DoubleDown.Contract.Dispatch do
 
       owner_pid ->
         case NimbleOwnership.get_owned(Keys.ownership_server(), owner_pid) do
-          %{^state_key => %{fallback_state: fallback_state}} ->
+          %{^state_key => %CanonicalHandlerState{fallback_state: fallback_state}} ->
             fallback_state
 
           %{^state_key => state} ->
@@ -125,7 +126,7 @@ defmodule DoubleDown.Contract.Dispatch do
     NimbleOwnership.get_and_update(Keys.ownership_server(), owner_pid, state_key, fn state ->
       new_state =
         case state do
-          %{fallback_state: _} ->
+          %CanonicalHandlerState{} ->
             # Double-managed: restore only the fallback_state
             %{state | fallback_state: snapshot}
 
@@ -301,9 +302,8 @@ defmodule DoubleDown.Contract.Dispatch do
     # Seed with sentinel key so accidental return of global map is detectable.
     #
     # When a contract is managed by DoubleDown.Double, the NimbleOwnership
-    # state is the Double's internal wrapper (%{expects:, stubs:, fallback:,
-    # fallback_state:, ...}). For 4-arity handlers, we unwrap this and
-    # expose the fallback_state — the user's actual domain state.
+    # state is a %CanonicalHandlerState{}. For 4-arity handlers, we unwrap
+    # this and expose the fallback_state — the user's actual domain state.
     owned
     |> Enum.reduce(%{@global_state_sentinel => true}, fn
       {contract, %HandlerMeta.Stateful{state_key: state_key}}, acc ->
@@ -311,7 +311,7 @@ defmodule DoubleDown.Contract.Dispatch do
           nil ->
             acc
 
-          %{fallback_state: fallback_state} ->
+          %CanonicalHandlerState{fallback_state: fallback_state} ->
             # Double-managed: expose the user's fallback state
             Map.put(acc, contract, fallback_state)
 

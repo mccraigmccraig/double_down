@@ -1,0 +1,54 @@
+defmodule DoubleDown.Double.CanonicalHandlerState do
+  @moduledoc """
+  State for `DoubleDown.Double.canonical_handler/5`.
+
+  Stored in `NimbleOwnership` under `Keys.state_key(contract)` when
+  `Double` installs its canonical stateful handler. Tracks queued
+  expectations, per-operation stubs, and the fallback handler
+  (function, stateful fake, or module) with its associated state.
+
+  ## Fields
+
+  * `contract` — the contract module this state belongs to (never nil)
+  * `expects` — `%{operation => [fun | :passthrough]}` queued expectations
+  * `stubs` — `%{operation => fun}` per-operation stub functions
+  * `fallback` — the fallback handler, one of:
+    - `nil` — no fallback configured
+    - `{:fn, fun}` — stateless 2-arity function fallback
+    - `{:stateful, fun}` — 4/5-arity stateful fake function
+    - `{:module, module}` — module implementing the contract behaviour
+  * `fallback_state` — domain state for stateful fakes (only meaningful
+    when `fallback` is `{:stateful, _}`)
+  """
+
+  @enforce_keys [:contract]
+  defstruct [
+    :contract,
+    expects: %{},
+    stubs: %{},
+    fallback: nil,
+    fallback_state: nil
+  ]
+
+  @type fallback ::
+          nil
+          | {:fn, (atom(), [term()] -> term())}
+          | {:stateful, (... -> {term(), term()})}
+          | {:module, module()}
+
+  @type t :: %__MODULE__{
+          contract: module(),
+          expects: %{atom() => [function() | :passthrough]},
+          stubs: %{atom() => function()},
+          fallback: fallback(),
+          fallback_state: term()
+        }
+
+  @doc """
+  Create a new canonical handler state for the given contract.
+  """
+  @spec new(module()) :: t()
+  def new(contract) when is_atom(contract) do
+    %__MODULE__{contract: contract}
+  end
+end

@@ -171,6 +171,7 @@ defmodule DoubleDown.Double do
   """
 
   alias DoubleDown.Contract.Dispatch.Keys
+  alias DoubleDown.Double.CanonicalHandlerState
 
   # -- Public API: passthrough sentinel --
 
@@ -271,7 +272,7 @@ defmodule DoubleDown.Double do
     state_key = Keys.state_key(contract)
 
     case NimbleOwnership.get_owned(Keys.ownership_server(), self()) do
-      %{^state_key => %{fallback: {:stateful, _}}} ->
+      %{^state_key => %CanonicalHandlerState{fallback: {:stateful, _}}} ->
         :ok
 
       _ ->
@@ -700,8 +701,6 @@ defmodule DoubleDown.Double do
 
   # -- Internal: handler installation --
 
-  @initial_state %{contract: nil, expects: %{}, stubs: %{}, fallback: nil, fallback_state: nil}
-
   defp ensure_handler_installed(contract) do
     state_key = Keys.state_key(contract)
 
@@ -717,7 +716,7 @@ defmodule DoubleDown.Double do
         DoubleDown.Testing.set_stateful_handler(
           contract,
           &canonical_handler/5,
-          %{@initial_state | contract: contract}
+          CanonicalHandlerState.new(contract)
         )
 
         register_contract(contract)
@@ -860,7 +859,7 @@ defmodule DoubleDown.Double do
     """
   end
 
-  defp pop_expect(%{expects: expects} = state, operation) do
+  defp pop_expect(%CanonicalHandlerState{expects: expects} = state, operation) do
     case Map.get(expects, operation, []) do
       [entry | rest] ->
         new_expects = Map.put(expects, operation, rest)
@@ -939,7 +938,7 @@ defmodule DoubleDown.Double do
     {%DoubleDown.Contract.Dispatch.Defer{fn: fn -> apply(module, operation, args) end}, state}
   end
 
-  defp unexpected_call_message(contract, %{expects: expects}, operation, args) do
+  defp unexpected_call_message(contract, %CanonicalHandlerState{expects: expects}, operation, args) do
     remaining =
       expects
       |> Enum.reject(fn {_op, queue} -> queue == [] end)
@@ -986,7 +985,7 @@ defmodule DoubleDown.Double do
         state_key = Keys.state_key(contract)
 
         case owned do
-          %{^state_key => %{expects: expects}} ->
+          %{^state_key => %CanonicalHandlerState{expects: expects}} ->
             expects
             |> Enum.reject(fn {_op, queue} -> queue == [] end)
             |> Enum.map(fn {op, queue} -> {contract, op, length(queue)} end)
