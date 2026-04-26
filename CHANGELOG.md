@@ -55,6 +55,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `Testing.set_*_handler` and `Double.update_handler_state` use
   constructors instead of struct literals.
 
+- **`CanonicalHandlerState` mutations encapsulated.** All direct
+  struct manipulations in `Double` replaced with validated functions:
+  `add_expect/3`, `add_expects/3`, `put_stub/3`, `put_fake/3`,
+  `set_stateless_fallback/2`, `set_stateful_fallback/3`,
+  `set_module_fallback/2`, `put_fallback_state/2`, `pop_expect/2`,
+  `stateful_fallback?/1`.
+
+- **`DoubleDown.Double.Dispatch` module.** Dispatch-time logic
+  (`canonical_handler/5` and all `invoke_*` helpers) extracted from
+  `Double` into a dedicated module. `Double` is now purely the
+  setup-time API (expect/stub/fake/fallback/verify). Dispatch code
+  runs inside the NimbleOwnership GenServer — a separate concern.
+
 ## [0.51.0]
 
 ### Added
