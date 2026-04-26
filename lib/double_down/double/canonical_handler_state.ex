@@ -40,9 +40,9 @@ defmodule DoubleDown.Double.CanonicalHandlerState do
 
   @type t :: %__MODULE__{
           contract: module(),
-          expects: %{atom() => [function() | :passthrough]},
-          fakes: %{atom() => function()},
-          stubs: %{atom() => function()},
+          expects: %{atom() => [DoubleDown.Double.Types.expect_fun() | :passthrough]},
+          fakes: %{atom() => DoubleDown.Double.Types.fake_fun()},
+          stubs: %{atom() => DoubleDown.Double.Types.stub_fun()},
           fallback: fallback(),
           fallback_state: term()
         }
@@ -58,14 +58,14 @@ defmodule DoubleDown.Double.CanonicalHandlerState do
   # -- Mutation functions --
 
   @doc "Add a single expect entry for an operation."
-  @spec add_expect(t(), atom(), function() | :passthrough) :: t()
+  @spec add_expect(t(), atom(), DoubleDown.Double.Types.expect_fun() | :passthrough) :: t()
   def add_expect(%__MODULE__{} = state, operation, entry)
       when is_atom(operation) and (is_function(entry) or entry == :passthrough) do
     add_expects(state, operation, [entry])
   end
 
   @doc "Add multiple expect entries for an operation (e.g. from `times: n`)."
-  @spec add_expects(t(), atom(), [function() | :passthrough]) :: t()
+  @spec add_expects(t(), atom(), [DoubleDown.Double.Types.expect_fun() | :passthrough]) :: t()
   def add_expects(%__MODULE__{expects: expects} = state, operation, entries)
       when is_atom(operation) and is_list(entries) do
     existing = Map.get(expects, operation, [])
@@ -73,14 +73,14 @@ defmodule DoubleDown.Double.CanonicalHandlerState do
   end
 
   @doc "Set a per-operation stub."
-  @spec put_stub(t(), atom(), function()) :: t()
+  @spec put_stub(t(), atom(), DoubleDown.Double.Types.stub_fun()) :: t()
   def put_stub(%__MODULE__{} = state, operation, fun)
       when is_atom(operation) and is_function(fun, 1) do
     %{state | stubs: Map.put(state.stubs, operation, fun)}
   end
 
   @doc "Set a per-operation fake."
-  @spec put_fake(t(), atom(), function()) :: t()
+  @spec put_fake(t(), atom(), DoubleDown.Double.Types.fake_fun()) :: t()
   def put_fake(%__MODULE__{} = state, operation, fun)
       when is_atom(operation) and (is_function(fun, 2) or is_function(fun, 3)) do
     %{state | fakes: Map.put(state.fakes, operation, fun)}
@@ -113,7 +113,7 @@ defmodule DoubleDown.Double.CanonicalHandlerState do
   end
 
   @doc "Pop the next expect entry for an operation."
-  @spec pop_expect(t(), atom()) :: {:ok, function() | :passthrough, t()} | :none
+  @spec pop_expect(t(), atom()) :: {:ok, DoubleDown.Double.Types.expect_fun() | :passthrough, t()} | :none
   def pop_expect(%__MODULE__{expects: expects} = state, operation) do
     case Map.get(expects, operation, []) do
       [entry | rest] ->

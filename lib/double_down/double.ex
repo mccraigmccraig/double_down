@@ -187,7 +187,7 @@ defmodule DoubleDown.Double do
     * `:times` — enqueue the same function `n` times (default 1).
       Equivalent to calling `expect` `n` times with the same function.
   """
-  @spec expect(module(), atom(), function() | :passthrough, keyword()) :: module()
+  @spec expect(module(), atom(), DoubleDown.Double.Types.expect_fun() | :passthrough, keyword()) :: module()
   def expect(contract, operation, fun_or_passthrough, opts \\ [])
 
   def expect(contract, operation, fun, opts)
@@ -276,7 +276,7 @@ defmodule DoubleDown.Double do
 
   Returns the contract module for piping.
   """
-  @spec stub(module(), atom(), function()) :: module()
+  @spec stub(module(), atom(), DoubleDown.Double.Types.stub_fun()) :: module()
   def stub(contract, operation, fun)
       when is_atom(contract) and is_atom(operation) and is_function(fun, 1) do
     ensure_handler_installed(contract)
@@ -320,7 +320,7 @@ defmodule DoubleDown.Double do
 
   Returns the contract module for piping.
   """
-  @spec fake(module(), atom(), function()) :: module()
+  @spec fake(module(), atom(), DoubleDown.Double.Types.fake_fun()) :: module()
   def fake(contract, operation, fun)
       when is_atom(contract) and is_atom(operation) and
              (is_function(fun, 2) or is_function(fun, 3)) do
