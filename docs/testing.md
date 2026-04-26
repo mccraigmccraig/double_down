@@ -607,6 +607,13 @@ depending on your preference. DoubleDown's doubles don't require
 defining mock modules or changing config, and the stateful fake
 capability has no Mox equivalent.
 
+## Phoenix testing
+
+For database-free Phoenix controller and LiveView tests, see
+[Phoenix Testing Without a Database](phoenix.md) — covers
+`UnitConnCase` setup, handling `Ecto.Query` operations, and when
+to use `UnitConnCase` vs `ConnCase`.
+
 ---
 
 [< Getting Started](getting-started.md) | [Up: README](../README.md) | [Dynamic Facades >](dynamic.md)
