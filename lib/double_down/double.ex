@@ -221,8 +221,7 @@ defmodule DoubleDown.Double do
     end
 
     update_handler_state(contract, fn state ->
-      existing = Map.get(state.expects, operation, [])
-      %{state | expects: Map.put(state.expects, operation, existing ++ entries)}
+      CanonicalHandlerState.add_expects(state, operation, entries)
     end)
 
     contract
@@ -230,25 +229,27 @@ defmodule DoubleDown.Double do
 
   defp validate_stateful_fake_exists!(contract, operation, fun) do
     case NimbleOwnership.get_owned(Keys.ownership_server(), self()) do
-      %{
-        ^contract => %HandlerMeta.Stateful{
-          state: %CanonicalHandlerState{fallback: {:stateful, _}}
-        }
-      } ->
-        :ok
+      %{^contract => %HandlerMeta.Stateful{state: %CanonicalHandlerState{} = chs}} ->
+        unless CanonicalHandlerState.stateful_fallback?(chs) do
+          raise_no_stateful_fake(contract, operation, fun)
+        end
 
       _ ->
-        arity = :erlang.fun_info(fun)[:arity]
-
-        raise ArgumentError, """
-        expect for :#{operation} received a #{arity}-arity stateful responder, \
-        but no stateful fake is configured on #{inspect(contract)}.
-
-        Stateful responders (2-arity or 3-arity) require a stateful fake \
-        set via Double.fallback/3 before calling expect. Use a 1-arity \
-        fn [args] -> result end for stateless expects.
-        """
+        raise_no_stateful_fake(contract, operation, fun)
     end
+  end
+
+  defp raise_no_stateful_fake(contract, operation, fun) do
+    arity = :erlang.fun_info(fun)[:arity]
+
+    raise ArgumentError, """
+    expect for :#{operation} received a #{arity}-arity stateful responder, \
+    but no stateful fake is configured on #{inspect(contract)}.
+
+    Stateful responders (2-arity or 3-arity) require a stateful fallback \
+    set via Double.fallback/3 before calling expect. Use a 1-arity \
+    fn [args] -> result end for stateless expects.
+    """
   end
 
   # -- Public API: stub --
@@ -281,7 +282,7 @@ defmodule DoubleDown.Double do
     ensure_handler_installed(contract)
 
     update_handler_state(contract, fn state ->
-      %{state | stubs: Map.put(state.stubs, operation, fun)}
+      CanonicalHandlerState.put_stub(state, operation, fun)
     end)
 
     contract
@@ -327,7 +328,7 @@ defmodule DoubleDown.Double do
     validate_stateful_fake_exists!(contract, operation, fun)
 
     update_handler_state(contract, fn state ->
-      %{state | fakes: Map.put(state.fakes, operation, fun)}
+      CanonicalHandlerState.put_fake(state, operation, fun)
     end)
 
     contract
@@ -415,7 +416,7 @@ defmodule DoubleDown.Double do
     ensure_handler_installed(contract)
 
     update_handler_state(contract, fn state ->
-      %{state | fallback: {:stateless, fun}}
+      CanonicalHandlerState.set_stateless_fallback(state, fun)
     end)
 
     contract
@@ -435,7 +436,7 @@ defmodule DoubleDown.Double do
         ensure_handler_installed(contract)
 
         update_handler_state(contract, fn state ->
-          %{state | fallback: {:module, module}}
+          CanonicalHandlerState.set_module_fallback(state, module)
         end)
 
         contract
@@ -450,7 +451,7 @@ defmodule DoubleDown.Double do
     ensure_handler_installed(contract)
 
     update_handler_state(contract, fn state ->
-      %{state | fallback: {:stateful, fun}, fallback_state: init_state}
+      CanonicalHandlerState.set_stateful_fallback(state, fun, init_state)
     end)
 
     contract
@@ -504,7 +505,7 @@ defmodule DoubleDown.Double do
     ensure_handler_installed(contract)
 
     update_handler_state(contract, fn state ->
-      %{state | fallback: {:stateful, dispatch_fn}, fallback_state: init_state}
+      CanonicalHandlerState.set_stateful_fallback(state, dispatch_fn, init_state)
     end)
 
     contract
@@ -516,7 +517,7 @@ defmodule DoubleDown.Double do
     ensure_handler_installed(contract)
 
     update_handler_state(contract, fn state ->
-      %{state | fallback: {:stateless, handler_fn}}
+      CanonicalHandlerState.set_stateless_fallback(state, handler_fn)
     end)
 
     contract
@@ -772,7 +773,7 @@ defmodule DoubleDown.Double do
         invoke_fallback_or_raise(state, operation, args, all_states)
 
       {result, new_fallback_state} ->
-        {result, %{state | fallback_state: new_fallback_state}}
+        {result, CanonicalHandlerState.put_fallback_state(state, new_fallback_state)}
 
       other ->
         raise_bad_stateful_responder_return(:expect, operation, 2, other)
@@ -786,7 +787,7 @@ defmodule DoubleDown.Double do
         invoke_fallback_or_raise(state, operation, args, all_states)
 
       {result, new_fallback_state} ->
-        {result, %{state | fallback_state: new_fallback_state}}
+        {result, CanonicalHandlerState.put_fallback_state(state, new_fallback_state)}
 
       other ->
         raise_bad_stateful_responder_return(:expect, operation, 3, other)
@@ -803,7 +804,7 @@ defmodule DoubleDown.Double do
         invoke_fallback_or_raise(state, operation, args, all_states)
 
       {result, new_fallback_state} ->
-        {result, %{state | fallback_state: new_fallback_state}}
+        {result, CanonicalHandlerState.put_fallback_state(state, new_fallback_state)}
 
       other ->
         raise_bad_stateful_responder_return(:fake, operation, 2, other)
@@ -817,7 +818,7 @@ defmodule DoubleDown.Double do
         invoke_fallback_or_raise(state, operation, args, all_states)
 
       {result, new_fallback_state} ->
-        {result, %{state | fallback_state: new_fallback_state}}
+        {result, CanonicalHandlerState.put_fallback_state(state, new_fallback_state)}
 
       other ->
         raise_bad_stateful_responder_return(:fake, operation, 3, other)
@@ -847,15 +848,8 @@ defmodule DoubleDown.Double do
     """
   end
 
-  defp pop_expect(%CanonicalHandlerState{expects: expects} = state, operation) do
-    case Map.get(expects, operation, []) do
-      [entry | rest] ->
-        new_expects = Map.put(expects, operation, rest)
-        {:ok, entry, %{state | expects: new_expects}}
-
-      [] ->
-        :none
-    end
+  defp pop_expect(%CanonicalHandlerState{} = state, operation) do
+    CanonicalHandlerState.pop_expect(state, operation)
   end
 
   defp invoke_fallback_or_raise(state, operation, args, all_states) do
@@ -898,7 +892,7 @@ defmodule DoubleDown.Double do
 
     case handler_result do
       {result, new_fallback_state} ->
-        {result, %{state | fallback_state: new_fallback_state}}
+        {result, CanonicalHandlerState.put_fallback_state(state, new_fallback_state)}
 
       other ->
         raise_bad_stateful_responder_return(
