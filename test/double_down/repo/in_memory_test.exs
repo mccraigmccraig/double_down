@@ -1362,10 +1362,12 @@ defmodule DoubleDown.Repo.InMemoryTest do
           :double_down,
           DoubleDown.Repo,
           :transaction,
-          [fn _repo ->
-            {:ok, _} = TestRepo.insert(User.changeset(%{name: "Alice"}))
-            {:ok, :inserted}
-          end]
+          [
+            fn _repo ->
+              {:ok, _} = TestRepo.insert(User.changeset(%{name: "Alice"}))
+              {:ok, :inserted}
+            end
+          ]
         )
 
       assert {:ok, :inserted} = result
@@ -1380,10 +1382,13 @@ defmodule DoubleDown.Repo.InMemoryTest do
           :double_down,
           DoubleDown.Repo,
           :transaction,
-          [fn _repo ->
-            {:ok, _} = TestRepo.insert(User.changeset(%{name: "Bob"}))
-            {:ok, :inserted_with_opts}
-          end, [timeout: 5000]]
+          [
+            fn _repo ->
+              {:ok, _} = TestRepo.insert(User.changeset(%{name: "Bob"}))
+              {:ok, :inserted_with_opts}
+            end,
+            [timeout: 5000]
+          ]
         )
 
       assert {:ok, :inserted_with_opts} = result

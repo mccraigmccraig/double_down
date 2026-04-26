@@ -377,11 +377,13 @@ if Code.ensure_loaded?(Ecto) do
       [multi, []]
     end
 
-    defp normalise_transact_args([fun, opts], contract) when is_function(fun, 1) and is_list(opts) do
+    defp normalise_transact_args([fun, opts], contract)
+         when is_function(fun, 1) and is_list(opts) do
       [fn -> fun.(contract) end, opts]
     end
 
-    defp normalise_transact_args([fun, opts], _contract) when is_function(fun, 0) and is_list(opts) do
+    defp normalise_transact_args([fun, opts], _contract)
+         when is_function(fun, 0) and is_list(opts) do
       [fun, opts]
     end
 
