@@ -123,14 +123,15 @@ test "GET /orders filters by status", %{conn: conn} do
 end
 ```
 
-### Option 2: Use OpenInMemory with a fallback function
+### Option 2: Use InMemory with a fallback function
 
-`Repo.OpenInMemory` delegates unhandled operations to a fallback
-function. You can write query-aware logic there:
+`Repo.InMemory` handles bare-schema reads authoritatively from its
+in-memory store. For `Ecto.Query` operations it can't evaluate
+natively, it delegates to the `fallback_fn`:
 
 ```elixir
 setup do
-  DoubleDown.Double.fallback(MyApp.Repo, DoubleDown.Repo.OpenInMemory, [],
+  DoubleDown.Double.fallback(MyApp.Repo, DoubleDown.Repo.InMemory, [],
     fallback_fn: fn
       _contract, :all, [%Ecto.Query{from: %{source: {_, Order}}}], state ->
         state |> Map.get(Order, %{}) |> Map.values()
