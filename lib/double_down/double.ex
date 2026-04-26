@@ -156,7 +156,7 @@ defmodule DoubleDown.Double do
       end)
   """
   @spec passthrough() :: DoubleDown.Contract.Dispatch.Passthrough.t()
-  def passthrough, do: %DoubleDown.Contract.Dispatch.Passthrough{}
+  def passthrough, do: DoubleDown.Contract.Dispatch.Passthrough.new()
 
   # -- Public API: expect --
 

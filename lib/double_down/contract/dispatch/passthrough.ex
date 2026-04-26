@@ -25,4 +25,8 @@ defmodule DoubleDown.Contract.Dispatch.Passthrough do
 
   @type t :: %__MODULE__{}
   defstruct []
+
+  @doc "Create a new Passthrough sentinel."
+  @spec new() :: t()
+  def new, do: %__MODULE__{}
 end
