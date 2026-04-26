@@ -1,4 +1,4 @@
-defmodule DoubleDown.Repo.PreloadTest do
+defmodule DoubleDown.Repo.InMemory.PreloadTest do
   use ExUnit.Case, async: true
 
   alias DoubleDown.Repo.InMemory
@@ -13,8 +13,8 @@ defmodule DoubleDown.Repo.PreloadTest do
 
     schema "authors" do
       field(:name, :string)
-      has_many(:posts, DoubleDown.Repo.PreloadTest.Post)
-      has_one(:profile, DoubleDown.Repo.PreloadTest.Profile)
+      has_many(:posts, DoubleDown.Repo.InMemory.PreloadTest.Post)
+      has_one(:profile, DoubleDown.Repo.InMemory.PreloadTest.Profile)
     end
   end
 
@@ -24,7 +24,7 @@ defmodule DoubleDown.Repo.PreloadTest do
     schema "posts" do
       field(:title, :string)
       belongs_to(:author, Author)
-      has_many(:comments, DoubleDown.Repo.PreloadTest.Comment)
+      has_many(:comments, DoubleDown.Repo.InMemory.PreloadTest.Comment)
     end
   end
 
