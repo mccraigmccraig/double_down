@@ -131,21 +131,21 @@ defmodule DoubleDown.DoubleTest do
     end
   end
 
-  # ── StubHandler module-based stub ──────────────────────────
+  # ── StatelessHandler module-based stub ──────────────────────────
 
-  describe "StubHandler module-based stub" do
+  describe "StatelessHandler module-based stub" do
     alias DoubleDown.Repo
     alias DoubleDown.Test.Repo, as: TestRepo
     alias DoubleDown.Test.SimpleUser
 
-    test "stub/2 with StubHandler module — writes only" do
+    test "stub/2 with StatelessHandler module — writes only" do
       Double.stub(Repo, Repo.Stub)
 
       {:ok, user} = TestRepo.insert(SimpleUser.changeset(%{name: "Alice"}))
       assert %SimpleUser{name: "Alice"} = user
     end
 
-    test "stub/2 with StubHandler — reads raise without fallback" do
+    test "stub/2 with StatelessHandler — reads raise without fallback" do
       Double.stub(Repo, Repo.Stub)
 
       assert_raise ArgumentError, ~r/cannot service :all/, fn ->
@@ -153,7 +153,7 @@ defmodule DoubleDown.DoubleTest do
       end
     end
 
-    test "stub/3 with StubHandler module and fallback_fn" do
+    test "stub/3 with StatelessHandler module and fallback_fn" do
       Double.stub(Repo, Repo.Stub, fn _contract, :all, [SimpleUser] ->
         [%SimpleUser{id: 1, name: "Alice"}]
       end)
@@ -161,7 +161,7 @@ defmodule DoubleDown.DoubleTest do
       assert [%SimpleUser{name: "Alice"}] = TestRepo.all(SimpleUser)
     end
 
-    test "stub/3 with StubHandler supports expects" do
+    test "stub/3 with StatelessHandler supports expects" do
       Repo
       |> Double.stub(Repo.Stub)
       |> Double.expect(:insert, fn [_changeset] -> {:error, :conflict} end)
@@ -172,8 +172,8 @@ defmodule DoubleDown.DoubleTest do
                TestRepo.insert(SimpleUser.changeset(%{name: "Bob"}))
     end
 
-    test "stub/2 with non-StubHandler module raises" do
-      assert_raise ArgumentError, ~r/does not implement.*StubHandler/, fn ->
+    test "stub/2 with non-StatelessHandler module raises" do
+      assert_raise ArgumentError, ~r/does not implement.*StatelessHandler/, fn ->
         Double.stub(Greeter, Greeter.Impl)
       end
     end
@@ -632,28 +632,28 @@ defmodule DoubleDown.DoubleTest do
     end
   end
 
-  # ── FakeHandler module-based fake ──────────────────────────
+  # ── StatefulHandler module-based fake ──────────────────────────
 
-  describe "FakeHandler module-based fake" do
+  describe "StatefulHandler module-based fake" do
     alias DoubleDown.Repo
     alias DoubleDown.Test.Repo, as: TestRepo
     alias DoubleDown.Test.SimpleUser
 
-    test "fake/2 with FakeHandler module uses default state" do
+    test "fake/2 with StatefulHandler module uses default state" do
       Double.fake(Repo, Repo.OpenInMemory)
 
       {:ok, user} = TestRepo.insert(SimpleUser.changeset(%{name: "Alice"}))
       assert %SimpleUser{name: "Alice"} = TestRepo.get(SimpleUser, user.id)
     end
 
-    test "fake/3 with FakeHandler module passes seed as list" do
+    test "fake/3 with StatefulHandler module passes seed as list" do
       alice = %SimpleUser{id: 1, name: "Alice"}
       Double.fake(Repo, Repo.OpenInMemory, [alice])
 
       assert %SimpleUser{name: "Alice"} = TestRepo.get(SimpleUser, 1)
     end
 
-    test "fake/3 with FakeHandler module passes seed as map" do
+    test "fake/3 with StatefulHandler module passes seed as map" do
       alice = %SimpleUser{id: 1, name: "Alice"}
       Double.fake(Repo, Repo.OpenInMemory, %{SimpleUser => %{1 => alice}})
 
@@ -673,7 +673,7 @@ defmodule DoubleDown.DoubleTest do
       assert [%SimpleUser{name: "Alice"}] = TestRepo.all(SimpleUser)
     end
 
-    test "FakeHandler fake supports expects" do
+    test "StatefulHandler fake supports expects" do
       Double.fake(Repo, Repo.OpenInMemory)
       |> Double.expect(:insert, fn [_changeset] ->
         {:error, :conflict}
@@ -686,15 +686,15 @@ defmodule DoubleDown.DoubleTest do
                TestRepo.insert(SimpleUser.changeset(%{name: "Bob"}))
     end
 
-    test "fake/2 with non-FakeHandler module uses module fake" do
-      # Greeter.Impl doesn't implement FakeHandler — should be module fake
+    test "fake/2 with non-StatefulHandler module uses module fake" do
+      # Greeter.Impl doesn't implement StatefulHandler — should be module fake
       Double.fake(Greeter, Greeter.Impl)
 
       assert "Hello, Alice!" = Greeter.Port.greet("Alice")
     end
 
-    test "raises for fake/3 with non-FakeHandler module" do
-      assert_raise ArgumentError, ~r/does not implement.*FakeHandler/, fn ->
+    test "raises for fake/3 with non-StatefulHandler module" do
+      assert_raise ArgumentError, ~r/does not implement.*StatefulHandler/, fn ->
         Double.fake(Greeter, Greeter.Impl, %{})
       end
     end

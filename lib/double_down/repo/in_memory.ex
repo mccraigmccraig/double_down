@@ -1,6 +1,6 @@
 if Code.ensure_loaded?(Ecto) do
   defmodule DoubleDown.Repo.InMemory do
-    @behaviour DoubleDown.Contract.Dispatch.FakeHandler
+    @behaviour DoubleDown.Contract.Dispatch.StatefulHandler
 
     @moduledoc """
     Stateful in-memory Repo fake (closed-world). **Recommended default.**
@@ -9,7 +9,7 @@ if Code.ensure_loaded?(Ecto) do
     it doesn't exist. This makes the adapter authoritative for all
     bare schema operations without needing a fallback function.
 
-    Implements `DoubleDown.Contract.Dispatch.FakeHandler`, so it can
+    Implements `DoubleDown.Contract.Dispatch.StatefulHandler`, so it can
     be used by module name with `Double.fake`:
 
     ## Usage with Double.fake
@@ -115,7 +115,7 @@ if Code.ensure_loaded?(Ecto) do
     @doc """
     Create a new InMemory state map. Same API as `Repo.OpenInMemory.new/2`.
     """
-    @impl DoubleDown.Contract.Dispatch.FakeHandler
+    @impl DoubleDown.Contract.Dispatch.StatefulHandler
     @spec new(term(), keyword()) :: store()
     defdelegate new(seed \\ %{}, opts \\ []), to: InMemoryShared
 
@@ -131,7 +131,7 @@ if Code.ensure_loaded?(Ecto) do
     Bare schema reads are authoritative — the state is the full truth.
     `Ecto.Query` reads fall through to the fallback function.
     """
-    @impl DoubleDown.Contract.Dispatch.FakeHandler
+    @impl DoubleDown.Contract.Dispatch.StatefulHandler
     @spec dispatch(module(), atom(), list(), store()) :: {term(), store()}
 
     # -----------------------------------------------------------------

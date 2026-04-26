@@ -95,13 +95,13 @@ handler module or a function.
 #### Stateless stubs
 
 Stubs provide canned responses without maintaining state. Use
-`Double.stub` with a `StubHandler` module or a 3-arity function:
+`Double.stub` with a `StatelessHandler` module or a 3-arity function:
 
 ```elixir
-# StubHandler module (e.g. Repo.Stub)
+# StatelessHandler module (e.g. Repo.Stub)
 DoubleDown.Double.stub(DoubleDown.Repo, DoubleDown.Repo.Stub)
 
-# StubHandler with a fallback function for reads
+# StatelessHandler with a fallback function for reads
 DoubleDown.Double.stub(DoubleDown.Repo, DoubleDown.Repo.Stub,
   fn
     _contract, :get, [User, 1] -> %User{id: 1, name: "Alice"}
@@ -122,11 +122,11 @@ end)
 #### Stateful fakes
 
 Fakes maintain in-memory state with atomic updates, enabling
-read-after-write consistency. Use `Double.fake` with a `FakeHandler`
+read-after-write consistency. Use `Double.fake` with a `StatefulHandler`
 module or a 3/4-arity function:
 
 ```elixir
-# FakeHandler module (e.g. Repo.InMemory)
+# StatefulHandler module (e.g. Repo.InMemory)
 DoubleDown.Repo
 |> DoubleDown.Double.fake(DoubleDown.Repo.InMemory)
 |> DoubleDown.Double.expect(:insert, fn [changeset] ->
@@ -138,7 +138,7 @@ DoubleDown.Double.fake(DoubleDown.Repo, DoubleDown.Repo.InMemory,
   [%User{id: 1, name: "Alice"}],
   fallback_fn: fn _contract, :all, [User], state -> Map.values(state[User]) end)
 
-# 4-arity function fake (equivalent to FakeHandler)
+# 4-arity function fake (equivalent to StatefulHandler)
 DoubleDown.Double.fake(DoubleDown.Repo,
   &DoubleDown.Repo.InMemory.dispatch/4,
   DoubleDown.Repo.InMemory.new())

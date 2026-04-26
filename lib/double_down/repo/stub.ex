@@ -5,7 +5,7 @@
 #
 if Code.ensure_loaded?(Ecto) do
   defmodule DoubleDown.Repo.Stub do
-    @behaviour DoubleDown.Contract.Dispatch.StubHandler
+    @behaviour DoubleDown.Contract.Dispatch.StatelessHandler
 
     @moduledoc """
     Stateless stub for `DoubleDown.Repo`.
@@ -15,7 +15,7 @@ if Code.ensure_loaded?(Ecto) do
     operations go through an optional fallback function, or raise a
     clear error.
 
-    Implements `DoubleDown.Contract.Dispatch.StubHandler`, so it can
+    Implements `DoubleDown.Contract.Dispatch.StatelessHandler`, so it can
     be used by module name with `Double.stub`:
 
     ## Usage with Double.stub
@@ -73,7 +73,7 @@ if Code.ensure_loaded?(Ecto) do
 
     ## Examples
 
-        # Writes only — via module name (StubHandler)
+        # Writes only — via module name (StatelessHandler)
         DoubleDown.Double.stub(DoubleDown.Repo, DoubleDown.Repo.Stub)
 
         # With fallback for specific reads
@@ -91,7 +91,7 @@ if Code.ensure_loaded?(Ecto) do
 
         DoubleDown.Repo.Stub.new(fallback_fn: fn _contract, :get, [User, 1] -> %User{} end)
     """
-    @impl DoubleDown.Contract.Dispatch.StubHandler
+    @impl DoubleDown.Contract.Dispatch.StatelessHandler
     @spec new((module(), atom(), [term()] -> term()) | nil, keyword()) :: (module(), atom(), [term()] -> term())
     def new(fallback_fn \\ nil, opts \\ [])
 

@@ -324,9 +324,9 @@ defmodule DoubleDown.Double do
         end
       end)
 
-  ## StubHandler module
+  ## StatelessHandler module
 
-  A module implementing `DoubleDown.Contract.Dispatch.StubHandler`. The module's
+  A module implementing `DoubleDown.Contract.Dispatch.StatelessHandler`. The module's
   `new/2` builds a dispatch function from an optional fallback:
 
       # Writes only — reads will raise
@@ -339,12 +339,12 @@ defmodule DoubleDown.Double do
   For stateful fakes and module delegation, see `fake/2` and `fake/3`.
 
   Dispatch priority: expects > per-op fakes > per-op stubs > fallback/fake > raise.
-  Function fallback, StubHandler, stateful fake, and module fake are
+  Function fallback, StatelessHandler, stateful fake, and module fake are
   mutually exclusive as fallbacks — setting one replaces the other.
 
   Returns the contract module for piping.
   """
-  # stub/2 — function fallback or StubHandler module
+  # stub/2 — function fallback or StatelessHandler module
   @spec stub(module(), function() | module()) :: module()
   def stub(contract, fun)
       when is_atom(contract) and is_function(fun, 3) do
@@ -362,24 +362,24 @@ defmodule DoubleDown.Double do
     do_stub_handler(contract, module, nil, [])
   end
 
-  # stub/3 — per-operation stub OR StubHandler module with fallback_fn
+  # stub/3 — per-operation stub OR StatelessHandler module with fallback_fn
   #
   # Disambiguation: if the second arg is an atom and the third is a function
-  # or nil, check if the second arg is a StubHandler module.
-  # Per-operation stubs are 1-arity; StubHandler fallbacks are 3-arity.
+  # or nil, check if the second arg is a StatelessHandler module.
+  # Per-operation stubs are 1-arity; StatelessHandler fallbacks are 3-arity.
   @spec stub(module(), atom(), function() | nil) :: module()
   def stub(contract, module_or_operation, fun_or_fallback)
 
   def stub(contract, module, fallback_fn)
       when is_atom(contract) and is_atom(module) and is_nil(fallback_fn) do
-    # nil third arg — must be StubHandler
+    # nil third arg — must be StatelessHandler
     do_stub_handler(contract, module, nil, [])
   end
 
   def stub(contract, module_or_op, fun)
       when is_atom(contract) and is_atom(module_or_op) and is_function(fun) do
-    # Function third arg — could be per-op stub or StubHandler with fallback.
-    # Check if second arg is a StubHandler module AND fun is 3-arity (fallback shape).
+    # Function third arg — could be per-op stub or StatelessHandler with fallback.
+    # Check if second arg is a StatelessHandler module AND fun is 3-arity (fallback shape).
     if is_function(fun, 3) and stub_handler?(module_or_op) do
       do_stub_handler(contract, module_or_op, fun, [])
     else
@@ -398,7 +398,7 @@ defmodule DoubleDown.Double do
     contract
   end
 
-  # stub/4 — StubHandler module with fallback_fn and opts
+  # stub/4 — StatelessHandler module with fallback_fn and opts
   @spec stub(module(), module(), (module(), atom(), [term()] -> term()) | nil, keyword()) :: module()
   def stub(contract, module, fallback_fn, opts)
       when is_atom(contract) and is_atom(module) and
@@ -410,10 +410,10 @@ defmodule DoubleDown.Double do
   defp do_stub_handler(contract, module, fallback_fn, opts) do
     unless stub_handler?(module) do
       raise ArgumentError, """
-      #{inspect(module)} does not implement the DoubleDown.Contract.Dispatch.StubHandler behaviour.
+      #{inspect(module)} does not implement the DoubleDown.Contract.Dispatch.StatelessHandler behaviour.
 
       To use a module with Double.stub/2..4, it must implement:
-        @behaviour DoubleDown.Contract.Dispatch.StubHandler
+        @behaviour DoubleDown.Contract.Dispatch.StatelessHandler
         @callback new(fallback_fn, opts) :: (atom(), [term()] -> term())
       """
     end
@@ -431,7 +431,7 @@ defmodule DoubleDown.Double do
 
   defp stub_handler?(module) do
     Code.ensure_loaded?(module) and
-      implements_behaviour?(module, DoubleDown.Contract.Dispatch.StubHandler)
+      implements_behaviour?(module, DoubleDown.Contract.Dispatch.StatelessHandler)
   end
 
   # -- Public API: fake --
@@ -470,9 +470,9 @@ defmodule DoubleDown.Double do
   Handles any operation not covered by an `expect`, per-op fake,
   or per-op `stub`. Several forms:
 
-  ### FakeHandler module (recommended for stateful fakes)
+  ### StatefulHandler module (recommended for stateful fakes)
 
-  A module implementing `DoubleDown.Contract.Dispatch.FakeHandler`. The module's
+  A module implementing `DoubleDown.Contract.Dispatch.StatefulHandler`. The module's
   `new/2` builds initial state, and its `dispatch/4` or `dispatch/5`
   handles operations:
 
@@ -489,7 +489,7 @@ defmodule DoubleDown.Double do
 
   ### Module fake
 
-  A module implementing the contract's `@behaviour` (but not FakeHandler).
+  A module implementing the contract's `@behaviour` (but not StatefulHandler).
   All unhandled operations delegate via `apply(module, operation, args)`:
 
       DoubleDown.Double.fake(MyContract, MyApp.Impl)
@@ -520,7 +520,7 @@ defmodule DoubleDown.Double do
 
   Returns the contract module for piping.
   """
-  # fake/2 — module fake or FakeHandler module with default state
+  # fake/2 — module fake or StatefulHandler module with default state
   @spec fake(module(), module()) :: module()
   def fake(contract, module)
       when is_atom(contract) and is_atom(module) do
@@ -538,11 +538,11 @@ defmodule DoubleDown.Double do
     end
   end
 
-  # fake/3 — per-op fake, stateful fake function, OR FakeHandler module with seed
+  # fake/3 — per-op fake, stateful fake function, OR StatefulHandler module with seed
   #
   # Per-op fake: fake(contract, :operation, fn [args], state -> {result, new_state} end)
   # Stateful fake fn: fake(contract, fn/4_or_5, initial_state)
-  # FakeHandler module: fake(contract, Module, seed)
+  # StatefulHandler module: fake(contract, Module, seed)
   @spec fake(module(), atom(), function()) :: module()
   def fake(contract, operation, fun)
       when is_atom(contract) and is_atom(operation) and
@@ -574,7 +574,7 @@ defmodule DoubleDown.Double do
     do_fake_handler(contract, module, seed, [])
   end
 
-  # fake/4 — FakeHandler module with seed and opts
+  # fake/4 — StatefulHandler module with seed and opts
   @spec fake(module(), module(), term(), keyword()) :: module()
   def fake(contract, module, seed, opts)
       when is_atom(contract) and is_atom(module) and is_list(opts) do
@@ -584,10 +584,10 @@ defmodule DoubleDown.Double do
   defp do_fake_handler(contract, module, seed, opts) do
     unless fake_handler?(module) do
       raise ArgumentError, """
-      #{inspect(module)} does not implement the DoubleDown.Contract.Dispatch.FakeHandler behaviour.
+      #{inspect(module)} does not implement the DoubleDown.Contract.Dispatch.StatefulHandler behaviour.
 
       To use a module with Double.fake/3..4, it must implement:
-        @behaviour DoubleDown.Contract.Dispatch.FakeHandler
+        @behaviour DoubleDown.Contract.Dispatch.StatefulHandler
         @callback new(seed, opts) :: state
         @callback dispatch(contract, operation, args, state) :: {result, new_state}
       """
@@ -607,7 +607,7 @@ defmodule DoubleDown.Double do
 
   defp fake_handler?(module) do
     Code.ensure_loaded?(module) and
-      implements_behaviour?(module, DoubleDown.Contract.Dispatch.FakeHandler)
+      implements_behaviour?(module, DoubleDown.Contract.Dispatch.StatefulHandler)
   end
 
   # Prefer dispatch/5 (cross-contract) over dispatch/4

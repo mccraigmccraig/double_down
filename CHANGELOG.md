@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `set_fn_handler` → `set_stateless_handler` (symmetric with `set_stateful_handler`)
   - `{:fn, fun}` → `{:stateless, fun}` (CanonicalHandlerState fallback tag)
   - `CanonicalHandlerState.op_fakes` → `.fakes` (consistent with `.expects`/`.stubs`)
+  - `StubHandler` → `StatelessHandler` (dispatch-layer naming)
+  - `FakeHandler` → `StatefulHandler` (dispatch-layer naming)
 
 ## [0.51.0]
 
