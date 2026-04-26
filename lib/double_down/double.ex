@@ -704,8 +704,8 @@ defmodule DoubleDown.Double do
       Keys.ownership_server(),
       self(),
       contract,
-      fn %HandlerMeta.Stateful{state: state} = meta ->
-        {:ok, %{meta | state: update_fn.(state)}}
+      fn %HandlerMeta.Stateful{} = meta ->
+        {:ok, HandlerMeta.Stateful.update_state(meta, update_fn)}
       end
     )
   end

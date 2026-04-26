@@ -46,6 +46,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   spelled out as a union of 4-arity and 5-arity signatures instead
   of the opaque `(... -> {term(), term()})`.
 
+### Improved
+
+- **`HandlerMeta` structs have validated constructors.**
+  `Module.new/1`, `Stateless.new/1`, `Stateful.new/2` validate
+  params at build time (atom, 3-arity function, 4/5-arity function
+  respectively). `Stateful.update_state/2` encapsulates state mutation.
+  `Testing.set_*_handler` and `Double.update_handler_state` use
+  constructors instead of struct literals.
+
 ## [0.51.0]
 
 ### Added

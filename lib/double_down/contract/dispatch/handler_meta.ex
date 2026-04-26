@@ -23,6 +23,10 @@ defmodule DoubleDown.Contract.Dispatch.HandlerMeta do
     @type t :: %__MODULE__{
             impl: module()
           }
+
+    @doc "Create a new Module handler meta. Validates that `impl` is an atom."
+    @spec new(module()) :: t()
+    def new(impl) when is_atom(impl), do: %__MODULE__{impl: impl}
   end
 
   defmodule Stateless do
@@ -33,6 +37,10 @@ defmodule DoubleDown.Contract.Dispatch.HandlerMeta do
     @type t :: %__MODULE__{
             fun: DoubleDown.Contract.Dispatch.Types.stateless_fun()
           }
+
+    @doc "Create a new Stateless handler meta. Validates that `fun` is a 3-arity function."
+    @spec new(DoubleDown.Contract.Dispatch.Types.stateless_fun()) :: t()
+    def new(fun) when is_function(fun, 3), do: %__MODULE__{fun: fun}
   end
 
   defmodule Stateful do
@@ -50,5 +58,17 @@ defmodule DoubleDown.Contract.Dispatch.HandlerMeta do
             fun: DoubleDown.Contract.Dispatch.Types.stateful_fun(),
             state: term()
           }
+
+    @doc "Create a new Stateful handler meta. Validates that `fun` is a 4 or 5-arity function."
+    @spec new(DoubleDown.Contract.Dispatch.Types.stateful_fun(), term()) :: t()
+    def new(fun, state) when is_function(fun, 4) or is_function(fun, 5) do
+      %__MODULE__{fun: fun, state: state}
+    end
+
+    @doc "Update the state within a Stateful handler meta."
+    @spec update_state(t(), (term() -> term())) :: t()
+    def update_state(%__MODULE__{state: state} = meta, update_fn) when is_function(update_fn, 1) do
+      %{meta | state: update_fn.(state)}
+    end
   end
 end

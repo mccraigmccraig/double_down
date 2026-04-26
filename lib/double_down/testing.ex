@@ -37,7 +37,7 @@ defmodule DoubleDown.Testing do
   """
   @spec set_module_handler(module(), module()) :: :ok
   def set_module_handler(contract, impl) do
-    set_meta(contract, %HandlerMeta.Module{impl: impl})
+    set_meta(contract, HandlerMeta.Module.new(impl))
   end
 
   @doc """
@@ -47,7 +47,7 @@ defmodule DoubleDown.Testing do
   """
   @spec set_stateless_handler(module(), (module(), atom(), [term()] -> term())) :: :ok
   def set_stateless_handler(contract, fun) when is_function(fun, 3) do
-    set_meta(contract, %HandlerMeta.Stateless{fun: fun})
+    set_meta(contract, HandlerMeta.Stateless.new(fun))
   end
 
   @doc """
@@ -69,7 +69,7 @@ defmodule DoubleDown.Testing do
   @spec set_stateful_handler(module(), (... -> {term(), term()}), term()) :: :ok
   def set_stateful_handler(contract, fun, initial_state)
       when is_function(fun, 4) or is_function(fun, 5) do
-    set_meta(contract, %HandlerMeta.Stateful{fun: fun, state: initial_state})
+    set_meta(contract, HandlerMeta.Stateful.new(fun, initial_state))
   end
 
   @doc """
