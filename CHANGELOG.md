@@ -89,6 +89,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   for both the `fallback_fn` parameter and return type, replacing
   inline function type definitions.
 
+- **`DoubleDown.Double.Types` module.** Per-operation function types
+  (`expect_fun`, `stub_fun`, `fake_fun` and their variants) used by
+  `CanonicalHandlerState` field types and `Double` API `@spec`
+  definitions. Replaces bare `function()` with precise arity-specific
+  types. Distinct from `Dispatch.Types` (whole-contract handler
+  signatures).
+
+- **`BehaviourFacade` rejects DoubleDown contract modules.** Raises
+  `CompileError` with a helpful message directing users to
+  `ContractFacade` when a module with `defcallback` operations is
+  passed as the `:behaviour` option.
+
 ## [0.51.0]
 
 ### Added
