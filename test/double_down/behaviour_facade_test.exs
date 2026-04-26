@@ -73,7 +73,9 @@ defmodule DoubleDown.BehaviourFacadeTest do
     end
 
     test "dispatches bare-type callbacks via fn handler" do
-      DoubleDown.Testing.set_stateless_handler(BareTypesBehaviour, fn _contract, :fetch, [key, _opts] ->
+      DoubleDown.Testing.set_stateless_handler(BareTypesBehaviour, fn _contract,
+                                                                      :fetch,
+                                                                      [key, _opts] ->
         {:ok, key}
       end)
 
@@ -81,7 +83,9 @@ defmodule DoubleDown.BehaviourFacadeTest do
     end
 
     test "dispatches when-clause callbacks via fn handler" do
-      DoubleDown.Testing.set_stateless_handler(WhenClauseBehaviour, fn _contract, :transform, [input] ->
+      DoubleDown.Testing.set_stateless_handler(WhenClauseBehaviour, fn _contract,
+                                                                       :transform,
+                                                                       [input] ->
         String.upcase(input)
       end)
 

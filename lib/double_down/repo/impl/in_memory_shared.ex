@@ -131,7 +131,8 @@ if Code.ensure_loaded?(Ecto) do
              |> Enum.filter(&is_integer/1)
            end) do
         {:error, {:no_autogenerate, message}} ->
-          {%DoubleDown.Contract.Dispatch.Defer{fun: fn -> raise ArgumentError, message end}, store}
+          {%DoubleDown.Contract.Dispatch.Defer{fun: fn -> raise ArgumentError, message end},
+           store}
 
         {id, record} ->
           record = Ecto.put_meta(record, state: :loaded)

@@ -442,7 +442,9 @@ defmodule DoubleDown.TestingTest do
     end
 
     test "allow with lazy pid function" do
-      DoubleDown.Testing.set_stateless_handler(Greeter, fn _contract, :greet, [n] -> "lazy: #{n}" end)
+      DoubleDown.Testing.set_stateless_handler(Greeter, fn _contract, :greet, [n] ->
+        "lazy: #{n}"
+      end)
 
       # Use a lazy function that returns the pid
       {:ok, agent} = Agent.start_link(fn -> nil end)
@@ -465,7 +467,9 @@ defmodule DoubleDown.TestingTest do
 
   describe "multiple contracts" do
     test "can register handlers for multiple contracts independently" do
-      DoubleDown.Testing.set_stateless_handler(Greeter, fn _contract, :greet, [n] -> "greet: #{n}" end)
+      DoubleDown.Testing.set_stateless_handler(Greeter, fn _contract, :greet, [n] ->
+        "greet: #{n}"
+      end)
 
       DoubleDown.Testing.set_stateful_handler(
         Counter,
@@ -516,7 +520,10 @@ defmodule DoubleDown.TestingGlobalModeTest do
     end
 
     test "makes handlers accessible to spawned processes without allow" do
-      DoubleDown.Testing.set_stateless_handler(Greeter, fn _contract, :greet, [name] -> "global: #{name}" end)
+      DoubleDown.Testing.set_stateless_handler(Greeter, fn _contract, :greet, [name] ->
+        "global: #{name}"
+      end)
+
       DoubleDown.Testing.set_mode_to_global()
 
       # Spawn a process that has no $callers link and no allow — only global mode makes this work
@@ -529,7 +536,10 @@ defmodule DoubleDown.TestingGlobalModeTest do
     end
 
     test "makes handlers accessible to named GenServer processes" do
-      DoubleDown.Testing.set_stateless_handler(Greeter, fn _contract, :greet, [name] -> "global: #{name}" end)
+      DoubleDown.Testing.set_stateless_handler(Greeter, fn _contract, :greet, [name] ->
+        "global: #{name}"
+      end)
+
       DoubleDown.Testing.set_mode_to_global()
 
       {:ok, agent} = Agent.start_link(fn -> nil end)
@@ -565,7 +575,10 @@ defmodule DoubleDown.TestingGlobalModeTest do
 
     test "handlers set after set_mode_to_global are also visible" do
       DoubleDown.Testing.set_mode_to_global()
-      DoubleDown.Testing.set_stateless_handler(Greeter, fn _contract, :greet, [name] -> "late: #{name}" end)
+
+      DoubleDown.Testing.set_stateless_handler(Greeter, fn _contract, :greet, [name] ->
+        "late: #{name}"
+      end)
 
       task = Task.async(fn -> Greeter.Port.greet("after") end)
       assert "late: after" = Task.await(task)
@@ -575,7 +588,10 @@ defmodule DoubleDown.TestingGlobalModeTest do
   describe "set_mode_from_context/1" do
     test "sets global mode when async is false" do
       DoubleDown.Testing.set_mode_from_context(%{async: false})
-      DoubleDown.Testing.set_stateless_handler(Greeter, fn _contract, :greet, [name] -> "ctx: #{name}" end)
+
+      DoubleDown.Testing.set_stateless_handler(Greeter, fn _contract, :greet, [name] ->
+        "ctx: #{name}"
+      end)
 
       # Bare spawn (no $callers) — only works in global mode
       task = Task.async(fn -> Greeter.Port.greet("from_task") end)
@@ -586,7 +602,10 @@ defmodule DoubleDown.TestingGlobalModeTest do
       # First go global so we can prove it switches back
       DoubleDown.Testing.set_mode_to_global()
       DoubleDown.Testing.set_mode_from_context(%{async: true})
-      DoubleDown.Testing.set_stateless_handler(Greeter, fn _contract, :greet, [name] -> "priv: #{name}" end)
+
+      DoubleDown.Testing.set_stateless_handler(Greeter, fn _contract, :greet, [name] ->
+        "priv: #{name}"
+      end)
 
       # Bare spawn — should NOT see the handler in private mode
       ref = make_ref()
@@ -608,7 +627,10 @@ defmodule DoubleDown.TestingGlobalModeTest do
 
     test "defaults to global mode when async key is absent" do
       DoubleDown.Testing.set_mode_from_context(%{})
-      DoubleDown.Testing.set_stateless_handler(Greeter, fn _contract, :greet, [name] -> "default: #{name}" end)
+
+      DoubleDown.Testing.set_stateless_handler(Greeter, fn _contract, :greet, [name] ->
+        "default: #{name}"
+      end)
 
       task = Task.async(fn -> Greeter.Port.greet("from_task") end)
       assert "default: from_task" = Task.await(task)
@@ -617,7 +639,10 @@ defmodule DoubleDown.TestingGlobalModeTest do
 
   describe "set_mode_to_private/0" do
     test "restores per-process isolation after global mode" do
-      DoubleDown.Testing.set_stateless_handler(Greeter, fn _contract, :greet, [name] -> "global: #{name}" end)
+      DoubleDown.Testing.set_stateless_handler(Greeter, fn _contract, :greet, [name] ->
+        "global: #{name}"
+      end)
+
       DoubleDown.Testing.set_mode_to_global()
 
       # Global mode works — use bare spawn (no $callers) to prove it's global, not $callers

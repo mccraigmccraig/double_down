@@ -75,7 +75,9 @@ defmodule DoubleDown.ContractTest do
     end
 
     test "zero-arg Port functions work" do
-      DoubleDown.Testing.set_stateless_handler(DoubleDown.Test.ZeroArg, fn _contract, operation, args ->
+      DoubleDown.Testing.set_stateless_handler(DoubleDown.Test.ZeroArg, fn _contract,
+                                                                           operation,
+                                                                           args ->
         case {operation, args} do
           {:health_check, []} -> :ok
           {:get_version, []} -> {:ok, "1.0.0"}
@@ -445,7 +447,9 @@ defmodule DoubleDown.ContractTest do
     end
 
     test "Port facade with aliased types dispatches correctly" do
-      DoubleDown.Testing.set_stateless_handler(DoubleDown.Test.AliasedTypes, fn _contract, operation, args ->
+      DoubleDown.Testing.set_stateless_handler(DoubleDown.Test.AliasedTypes, fn _contract,
+                                                                                operation,
+                                                                                args ->
         case {operation, args} do
           {:get_widget, [id]} -> {:ok, %DoubleDown.Test.Deep.Nested.Widget{id: id, label: "test"}}
           {:list_widgets, [_filter]} -> []

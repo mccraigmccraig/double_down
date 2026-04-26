@@ -92,7 +92,10 @@ if Code.ensure_loaded?(Ecto) do
         DoubleDown.Repo.Stub.new(fallback_fn: fn _contract, :get, [User, 1] -> %User{} end)
     """
     @impl DoubleDown.Contract.Dispatch.StatelessHandler
-    @spec new((module(), atom(), [term()] -> term()) | nil, keyword()) :: (module(), atom(), [term()] -> term())
+    @spec new((module(), atom(), [term()] -> term()) | nil, keyword()) :: (module(),
+                                                                           atom(),
+                                                                           [term()] ->
+                                                                             term())
     def new(fallback_fn \\ nil, opts \\ [])
 
     # Legacy keyword-only form: new(fallback_fn: fn ...)

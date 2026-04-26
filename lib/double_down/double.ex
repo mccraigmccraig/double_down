@@ -273,7 +273,11 @@ defmodule DoubleDown.Double do
 
   defp validate_stateful_fake_exists!(contract, operation, fun) do
     case NimbleOwnership.get_owned(Keys.ownership_server(), self()) do
-      %{^contract => %HandlerMeta.Stateful{state: %CanonicalHandlerState{fallback: {:stateful, _}}}} ->
+      %{
+        ^contract => %HandlerMeta.Stateful{
+          state: %CanonicalHandlerState{fallback: {:stateful, _}}
+        }
+      } ->
         :ok
 
       _ ->
@@ -399,7 +403,8 @@ defmodule DoubleDown.Double do
   end
 
   # stub/4 — StatelessHandler module with fallback_fn and opts
-  @spec stub(module(), module(), (module(), atom(), [term()] -> term()) | nil, keyword()) :: module()
+  @spec stub(module(), module(), (module(), atom(), [term()] -> term()) | nil, keyword()) ::
+          module()
   def stub(contract, module, fallback_fn, opts)
       when is_atom(contract) and is_atom(module) and
              (is_function(fallback_fn, 3) or is_nil(fallback_fn)) and
@@ -1004,7 +1009,12 @@ defmodule DoubleDown.Double do
     {%DoubleDown.Contract.Dispatch.Defer{fun: fn -> apply(module, operation, args) end}, state}
   end
 
-  defp unexpected_call_message(contract, %CanonicalHandlerState{expects: expects}, operation, args) do
+  defp unexpected_call_message(
+         contract,
+         %CanonicalHandlerState{expects: expects},
+         operation,
+         args
+       ) do
     remaining =
       expects
       |> Enum.reject(fn {_op, queue} -> queue == [] end)

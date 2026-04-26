@@ -163,9 +163,13 @@ defmodule DoubleDown.LogTest do
     end
 
     test "matcher with pattern matching on results" do
-      with_logged_calls(Greeter, fn _contract, :fetch_greeting, [name] -> {:ok, "Hello, #{name}!"} end, fn ->
-        Greeter.Port.fetch_greeting("Alice")
-      end)
+      with_logged_calls(
+        Greeter,
+        fn _contract, :fetch_greeting, [name] -> {:ok, "Hello, #{name}!"} end,
+        fn ->
+          Greeter.Port.fetch_greeting("Alice")
+        end
+      )
 
       assert {:ok, _} =
                Log.match(:fetch_greeting, fn
@@ -368,7 +372,10 @@ defmodule DoubleDown.LogTest do
     end
 
     test "multi-contract verification" do
-      DoubleDown.Testing.set_stateless_handler(Greeter, fn _contract, :greet, [name] -> "Hi, #{name}!" end)
+      DoubleDown.Testing.set_stateless_handler(Greeter, fn _contract, :greet, [name] ->
+        "Hi, #{name}!"
+      end)
+
       DoubleDown.Testing.enable_log(Greeter)
 
       DoubleDown.Testing.set_stateful_handler(

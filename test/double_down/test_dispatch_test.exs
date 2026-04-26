@@ -346,7 +346,9 @@ defmodule DoubleDown.TestDispatchTest do
       mod = DoubleDown.Test.BothDispatchPort
 
       # Test handler should take priority even though static_dispatch is true
-      DoubleDown.Testing.set_stateless_handler(DoubleDown.Test.Greeter, fn _contract, :greet, [name] ->
+      DoubleDown.Testing.set_stateless_handler(DoubleDown.Test.Greeter, fn _contract,
+                                                                           :greet,
+                                                                           [name] ->
         "test-handler: #{name}"
       end)
 
@@ -371,7 +373,11 @@ defmodule DoubleDown.TestDispatchTest do
 
       # Ownership server is still alive — reset and reinstall works
       DoubleDown.Testing.reset()
-      DoubleDown.Testing.set_stateless_handler(Greeter, fn _contract, :greet, [name] -> "Hello #{name}" end)
+
+      DoubleDown.Testing.set_stateless_handler(Greeter, fn _contract, :greet, [name] ->
+        "Hello #{name}"
+      end)
+
       assert "Hello Bob" = Greeter.Port.greet("Bob")
     end
 
@@ -387,7 +393,11 @@ defmodule DoubleDown.TestDispatchTest do
 
       # Ownership server is still alive — reset and reinstall works
       DoubleDown.Testing.reset()
-      DoubleDown.Testing.set_stateless_handler(Greeter, fn _contract, :greet, [name] -> "Hello #{name}" end)
+
+      DoubleDown.Testing.set_stateless_handler(Greeter, fn _contract, :greet, [name] ->
+        "Hello #{name}"
+      end)
+
       assert "Hello Bob" = Greeter.Port.greet("Bob")
     end
 
@@ -403,7 +413,11 @@ defmodule DoubleDown.TestDispatchTest do
 
       # Ownership server is still alive — reset and reinstall works
       DoubleDown.Testing.reset()
-      DoubleDown.Testing.set_stateless_handler(Greeter, fn _contract, :greet, [name] -> "Hello #{name}" end)
+
+      DoubleDown.Testing.set_stateless_handler(Greeter, fn _contract, :greet, [name] ->
+        "Hello #{name}"
+      end)
+
       assert "Hello Bob" = Greeter.Port.greet("Bob")
     end
   end
