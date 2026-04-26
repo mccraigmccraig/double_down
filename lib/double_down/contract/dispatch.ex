@@ -130,7 +130,7 @@ defmodule DoubleDown.Contract.Dispatch do
           case state do
             %CanonicalHandlerState{} ->
               # Double-managed: restore only the fallback_state
-              %{state | fallback_state: snapshot}
+              CanonicalHandlerState.put_fallback_state(state, snapshot)
 
             _ ->
               # Raw stateful handler: replace entire state

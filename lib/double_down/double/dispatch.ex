@@ -26,7 +26,13 @@ defmodule DoubleDown.Double.Dispatch do
   # time by CanonicalHandlerState.new/1. Fallback handlers that need it
   # (invoke_fn_fallback, invoke_stateful_fallback) read it from there.
   @doc false
-  def canonical_handler(_contract, operation, args, %CanonicalHandlerState{} = state, all_states) do
+  def canonical_handler(
+        _contract,
+        operation,
+        args,
+        %CanonicalHandlerState{fakes: fakes, stubs: stubs} = state,
+        all_states
+      ) do
     case CanonicalHandlerState.pop_expect(state, operation) do
       {:ok, :passthrough, new_state} ->
         invoke_fallback_or_raise(new_state, operation, args, all_states)
@@ -35,9 +41,9 @@ defmodule DoubleDown.Double.Dispatch do
         invoke_expect(fun, args, new_state, all_states, operation)
 
       :none ->
-        case Map.get(state.fakes, operation) do
+        case Map.get(fakes, operation) do
           nil ->
-            case Map.get(state.stubs, operation) do
+            case Map.get(stubs, operation) do
               nil ->
                 invoke_fallback_or_raise(state, operation, args, all_states)
 
@@ -69,9 +75,9 @@ defmodule DoubleDown.Double.Dispatch do
     end
   end
 
-  defp invoke_expect(fun, args, state, all_states, operation)
+  defp invoke_expect(fun, args, %CanonicalHandlerState{fallback_state: fallback_state} = state, all_states, operation)
        when is_function(fun, 2) do
-    case fun.(args, state.fallback_state) do
+    case fun.(args, fallback_state) do
       %DoubleDown.Contract.Dispatch.Passthrough{} ->
         invoke_fallback_or_raise(state, operation, args, all_states)
 
@@ -83,9 +89,9 @@ defmodule DoubleDown.Double.Dispatch do
     end
   end
 
-  defp invoke_expect(fun, args, state, all_states, operation)
+  defp invoke_expect(fun, args, %CanonicalHandlerState{fallback_state: fallback_state} = state, all_states, operation)
        when is_function(fun, 3) do
-    case fun.(args, state.fallback_state, all_states) do
+    case fun.(args, fallback_state, all_states) do
       %DoubleDown.Contract.Dispatch.Passthrough{} ->
         invoke_fallback_or_raise(state, operation, args, all_states)
 
@@ -102,9 +108,9 @@ defmodule DoubleDown.Double.Dispatch do
   # 2-arity receives (args, fallback_state),
   # 3-arity receives (args, fallback_state, all_states). Both return
   # {result, new_fallback_state}. May return passthrough() to delegate.
-  defp invoke_op_fake(fun, args, state, all_states, operation)
+  defp invoke_op_fake(fun, args, %CanonicalHandlerState{fallback_state: fallback_state} = state, all_states, operation)
        when is_function(fun, 2) do
-    case fun.(args, state.fallback_state) do
+    case fun.(args, fallback_state) do
       %DoubleDown.Contract.Dispatch.Passthrough{} ->
         invoke_fallback_or_raise(state, operation, args, all_states)
 
@@ -116,9 +122,9 @@ defmodule DoubleDown.Double.Dispatch do
     end
   end
 
-  defp invoke_op_fake(fun, args, state, all_states, operation)
+  defp invoke_op_fake(fun, args, %CanonicalHandlerState{fallback_state: fallback_state} = state, all_states, operation)
        when is_function(fun, 3) do
-    case fun.(args, state.fallback_state, all_states) do
+    case fun.(args, fallback_state, all_states) do
       %DoubleDown.Contract.Dispatch.Passthrough{} ->
         invoke_fallback_or_raise(state, operation, args, all_states)
 
@@ -146,10 +152,10 @@ defmodule DoubleDown.Double.Dispatch do
 
   # -- Fallback invocation --
 
-  defp invoke_fallback_or_raise(state, operation, args, all_states) do
-    case state.fallback do
+  defp invoke_fallback_or_raise(%CanonicalHandlerState{fallback: fallback, contract: contract} = state, operation, args, all_states) do
+    case fallback do
       nil ->
-        msg = unexpected_call_message(state.contract, state, operation, args)
+        msg = unexpected_call_message(contract, state, operation, args)
         {Defer.new(fn -> raise msg end), state}
 
       {:stateless, fallback_fn} ->
@@ -163,8 +169,8 @@ defmodule DoubleDown.Double.Dispatch do
     end
   end
 
-  defp invoke_fn_fallback(fallback_fn, state, operation, args) do
-    result = fallback_fn.(state.contract, operation, args)
+  defp invoke_fn_fallback(fallback_fn, %CanonicalHandlerState{contract: contract} = state, operation, args) do
+    result = fallback_fn.(contract, operation, args)
     {result, state}
   rescue
     # NOTE: This rescue cannot distinguish between a FunctionClauseError from
@@ -172,16 +178,22 @@ defmodule DoubleDown.Double.Dispatch do
     # the call stack (a bug in the fallback body). See "Known limitations" in
     # the DoubleDown.Double moduledoc.
     FunctionClauseError ->
-      msg = unexpected_call_message(state.contract, state, operation, args)
+      msg = unexpected_call_message(contract, state, operation, args)
       {Defer.new(fn -> reraise msg, __STACKTRACE__ end), state}
   end
 
-  defp invoke_stateful_fallback(fallback_fn, state, operation, args, all_states) do
+  defp invoke_stateful_fallback(
+         fallback_fn,
+         %CanonicalHandlerState{contract: contract, fallback_state: fallback_state} = state,
+         operation,
+         args,
+         all_states
+       ) do
     handler_result =
       if is_function(fallback_fn, 5) do
-        fallback_fn.(state.contract, operation, args, state.fallback_state, all_states)
+        fallback_fn.(contract, operation, args, fallback_state, all_states)
       else
-        fallback_fn.(state.contract, operation, args, state.fallback_state)
+        fallback_fn.(contract, operation, args, fallback_state)
       end
 
     case handler_result do
@@ -200,7 +212,7 @@ defmodule DoubleDown.Double.Dispatch do
     # NOTE: Same limitation as invoke_fn_fallback — see "Known limitations"
     # in the DoubleDown.Double moduledoc.
     FunctionClauseError ->
-      msg = unexpected_call_message(state.contract, state, operation, args)
+      msg = unexpected_call_message(contract, state, operation, args)
       {Defer.new(fn -> reraise msg, __STACKTRACE__ end), state}
   end
 
