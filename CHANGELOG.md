@@ -5,6 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.52.2]
+
+### Fixed
+
+- **`transaction`/`transact` via DynamicFacade now works correctly.**
+  When dispatched through `DynamicFacade` (not `ContractFacade`),
+  transaction args bypass `pre_dispatch` — 1-arity fns aren't wrapped
+  into 0-arity thunks and opts may be missing. Added
+  `normalise_transact_args` to `InMemoryShared` and `Repo.Stub` that
+  handles all variants: `[fun/0]`, `[fun/1]`, `[fun/0, opts]`,
+  `[fun/1, opts]`, `[multi]`, `[multi, opts]`. 9 regression tests
+  (5 InMemory, 4 Stub).
+
+### Added
+
+- **`docs/phoenix.md`** — new guide for database-free Phoenix
+  controller/LiveView tests. Covers `UnitConnCase` template,
+  ExMachina integration, five strategies for handling `Ecto.Query`
+  operations (per-op stubs, InMemory fallback_fn, DynamicFacade on
+  context modules, contract boundaries, expects), advanced patterns
+  (cross-contract state access, Defer for re-entrant Repo calls),
+  and `UnitConnCase` vs `ConnCase` comparison table.
+
+### Improved
+
+- **Test modules reorganised** to match implementation module structure.
+  `PreloadTest` → `InMemory.PreloadTest`, `ExMachinaTest` →
+  `InMemory.ExMachinaIntegrationTest`, `TestDispatchTest` split into
+  `ContractFacade.DispatchOptionsTest` + merged into
+  `Contract.DispatchTest`. 17/17 test modules now correspond to their
+  implementation modules.
+
 ## [0.52.1]
 
 ### Fixed
@@ -1570,6 +1602,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `DoubleDown.Testing` with NimbleOwnership, `Repo.Test` stateless
   adapter, CI setup, Credo, Dialyzer.
 
+[0.52.2]: https://github.com/mccraigmccraig/double_down/compare/v0.52.1...v0.52.2
 [0.52.1]: https://github.com/mccraigmccraig/double_down/compare/v0.52.0...v0.52.1
 [0.52.0]: https://github.com/mccraigmccraig/double_down/compare/v0.51.0...v0.52.0
 [0.51.0]: https://github.com/mccraigmccraig/double_down/compare/v0.50.1...v0.51.0
