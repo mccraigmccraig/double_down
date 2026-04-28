@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.54.0]
+
+### Added
+
+- **Re-entrant dispatch detection.** When a handler body (expect,
+  stub, fake, or fallback) calls another facade without wrapping
+  in `Double.defer/1`, DoubleDown now raises immediately with a
+  descriptive error instead of deadlocking the NimbleOwnership
+  GenServer for 5 seconds then crashing with a cryptic timeout.
+  The error message names the contract and operation, and shows
+  both the `Double.defer/1` and `Defer.new/1` fixes. Zero overhead
+  on the normal dispatch path (`Process.get` on an unset key).
+  6 new tests.
+
+### Fixed
+
+- **`Testing.set_stateful_handler` typespec** now uses
+  `DoubleDown.Contract.Dispatch.Types.stateful_fun()` instead of
+  the opaque `(... -> {term(), term()})`.
+
 ## [0.53.0]
 
 ### Added
