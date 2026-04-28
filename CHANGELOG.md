@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.53.0]
+
+### Added
+
+- **`DoubleDown.Double.defer/1`** — public API shortcut for
+  `DoubleDown.Contract.Dispatch.Defer.new/1`. When an expect, stub,
+  or fake body needs to call another facade (including Repo), wrap
+  the call in `Double.defer(fn -> ... end)` to avoid deadlocking
+  the NimbleOwnership GenServer. The deferred function runs outside
+  the lock, in the calling process, after the handler's state update
+  has been committed. 5 new tests.
+
+### Improved
+
+- **Docs updated to use `Double.defer/1`** instead of the internal
+  `DoubleDown.Contract.Dispatch.Defer.new/1` in `docs/testing.md`
+  and `docs/phoenix.md` code examples.
+
+- **`Defer` moduledoc** now directs Double API users to prefer
+  `Double.defer/1` over constructing the struct directly.
+
 ## [0.52.3]
 
 ### Fixed
