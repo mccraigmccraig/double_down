@@ -1434,4 +1434,84 @@ defmodule DoubleDown.DoubleTest do
       assert {"Hi first", "Hi second", 3} = Counter.Port.increment(3)
     end
   end
+
+  # ── Double.defer/1 public API ──────────────────────────────
+
+  describe "Double.defer/1" do
+    test "stateful fake using Double.defer can call another contract" do
+      Greeter
+      |> Double.fallback(fn _contract, :greet, [name] -> "Hello, #{name}!" end)
+
+      Counter
+      |> Double.fallback(
+        fn
+          _contract, :increment, [n], count ->
+            {Double.defer(fn ->
+               greeting = Greeter.Port.greet("from_counter")
+               {greeting, n}
+             end), count + n}
+
+          _contract, :get_count, [], count ->
+            {count, count}
+        end,
+        0
+      )
+
+      assert {"Hello, from_counter!", _n} = Counter.Port.increment(5)
+      assert 5 = Counter.Port.get_count()
+    end
+
+    test "stateless stub using Double.defer can call another contract" do
+      Greeter
+      |> Double.fallback(fn _contract, :greet, [name] -> "Hi #{name}" end)
+
+      Counter
+      |> Double.stub(:increment, fn [_n] ->
+        Double.defer(fn -> Greeter.Port.greet("deferred") end)
+      end)
+
+      assert "Hi deferred" = Counter.Port.increment(1)
+    end
+
+    test "expect using Double.defer can call another contract" do
+      Greeter
+      |> Double.fallback(fn _contract, :greet, [name] -> "Hey #{name}" end)
+
+      Counter
+      |> Double.expect(:increment, fn [_n] ->
+        Double.defer(fn -> Greeter.Port.greet("expected") end)
+      end)
+
+      assert "Hey expected" = Counter.Port.increment(1)
+    end
+
+    test "defer thunk result is returned to the caller" do
+      Counter
+      |> Double.fallback(
+        fn _contract, :get_count, [], count ->
+          {Double.defer(fn -> 42 end), count}
+        end,
+        0
+      )
+
+      assert 42 = Counter.Port.get_count()
+    end
+
+    test "state updates are committed before the deferred fn runs" do
+      Counter
+      |> Double.fallback(
+        fn
+          _contract, :increment, [n], count ->
+            {Double.defer(fn -> Counter.Port.get_count() end), count + n}
+
+          _contract, :get_count, [], count ->
+            {count, count}
+        end,
+        0
+      )
+
+      # increment(5) updates state to 5, then the deferred fn reads it back
+      assert 5 = Counter.Port.increment(5)
+    end
+  end
 end

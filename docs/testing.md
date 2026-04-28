@@ -366,8 +366,8 @@ which holds a lock on the NimbleOwnership GenServer. If a fake
 calls another contract's facade directly (e.g. `Repo.insert(...)`)
 this would deadlock — the second call needs the same GenServer.
 
-The solution is `DoubleDown.Contract.Dispatch.Defer`. Return a
-`Defer.new(fn -> ... end)` from the fake, and the deferred
+The solution is `DoubleDown.Double.defer/1`. Return a
+`Double.defer(fn -> ... end)` from the fake, and the deferred
 function runs *after* the lock is released:
 
 ```elixir
@@ -378,7 +378,7 @@ DoubleDown.Double.fallback(
       # Update our own state, then defer the Repo call
       new_state = Map.put(state, :last_params, params)
 
-      {DoubleDown.Contract.Dispatch.Defer.new(fn ->
+      {DoubleDown.Double.defer(fn ->
         # This runs outside the lock — safe to call Repo
         {:ok, record} = DoubleDown.Repo.insert(Todo.changeset(params))
         {:ok, record}

@@ -133,6 +133,44 @@ defmodule DoubleDown.Double do
   alias DoubleDown.Contract.Dispatch.Keys
   alias DoubleDown.Double.CanonicalHandlerState
 
+  # -- Public API: defer --
+
+  @doc """
+  Create a deferred execution marker for use in expect/stub/fake bodies.
+
+  When a handler body needs to call another facade (including
+  `Backend.Repo`), wrapping the call in `defer/1` avoids deadlocking
+  the NimbleOwnership GenServer. The deferred function runs outside
+  the lock, in the calling process, after the handler's state update
+  has been committed.
+
+      # Stateful fake that calls another contract:
+      Counter
+      |> Double.fallback(fn
+        _contract, :increment, [n], count ->
+          {Double.defer(fn ->
+            greeting = Greeter.greet("from_counter")
+            {greeting, n}
+          end), count + n}
+
+        _contract, :get_count, [], count ->
+          {count, count}
+      end, 0)
+
+      # Stateless stub that calls Repo:
+      Double.stub(MyContract, :find_config, fn [org_id] ->
+        Double.defer(fn ->
+          Backend.Repo.get_by(Config, organisation_id: org_id)
+        end)
+      end)
+
+  **When you need `defer`:** any time an expect, stub, or fake body
+  calls through a facade — the handler runs inside a NimbleOwnership
+  lock, and a nested dispatch would deadlock without it.
+  """
+  @spec defer((-> term())) :: DoubleDown.Contract.Dispatch.Defer.t()
+  def defer(fun) when is_function(fun, 0), do: DoubleDown.Contract.Dispatch.Defer.new(fun)
+
   # -- Public API: passthrough sentinel --
 
   @doc """

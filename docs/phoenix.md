@@ -314,7 +314,7 @@ for details.
 ### Context fallback that calls Repo via Defer
 
 When a context fallback needs to *write* to the Repo (not just read
-its state), use `Defer` to break out of the NimbleOwnership lock
+its state), use `Double.defer/1` to break out of the NimbleOwnership lock
 and make re-entrant Repo calls:
 
 ```elixir
@@ -322,7 +322,7 @@ DoubleDown.Double.fallback(
   MyApp.Orders,
   fn
     _contract, :create_order, [params], state ->
-      {DoubleDown.Contract.Dispatch.Defer.new(fn ->
+      {DoubleDown.Double.defer(fn ->
         # Runs outside the lock — safe to call Repo
         changeset = Order.changeset(%Order{}, params)
         {:ok, order} = MyApp.Repo.insert(changeset)
@@ -333,7 +333,7 @@ DoubleDown.Double.fallback(
       end), state}
 
     _contract, :list_orders, [user_id], state ->
-      {DoubleDown.Contract.Dispatch.Defer.new(fn ->
+      {DoubleDown.Double.defer(fn ->
         # Read all orders from InMemory via Repo
         MyApp.Repo.all(Order)
         |> Enum.filter(&(&1.user_id == user_id))
@@ -343,7 +343,7 @@ DoubleDown.Double.fallback(
 )
 ```
 
-The Defer thunk runs after the context's state update is committed.
+The deferred function runs after the context's state update is committed.
 Its return value is what the caller receives. See
 [Re-entrant dispatch via Defer](testing.md#re-entrant-dispatch-via-defer)
 for details.
