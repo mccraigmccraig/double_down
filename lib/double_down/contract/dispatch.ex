@@ -247,10 +247,11 @@ defmodule DoubleDown.Contract.Dispatch do
     # under the contract key. get_and_update on that key gives us
     # atomic read-modify-write of the entire meta (including state).
     #
-    # If the handler returns %DoubleDown.Contract.Dispatch.Defer{fun: deferred_fn}, we skip
-    # the state update and call deferred_fn outside the lock. This supports
-    # operations like `transact` whose body re-enters the dispatch system
-    # (which would otherwise deadlock on the NimbleOwnership GenServer).
+    # If the handler returns {%DoubleDown.Contract.Dispatch.Defer{fun: deferred_fn}, new_state},
+    # the state is updated normally inside the lock, but deferred_fn is called
+    # outside the lock in the calling process. This supports operations like
+    # `transact` whose body re-enters the dispatch system (which would
+    # otherwise deadlock on the NimbleOwnership GenServer).
     #
     # IMPORTANT: The handler function runs inside NimbleOwnership.get_and_update,
     # which executes in the NimbleOwnership GenServer's handle_call. If the
