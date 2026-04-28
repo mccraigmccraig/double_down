@@ -1514,4 +1514,113 @@ defmodule DoubleDown.DoubleTest do
       assert 5 = Counter.Port.increment(5)
     end
   end
+
+  # ── Re-entrant dispatch detection ──────────────────────────
+
+  describe "re-entrant dispatch detection" do
+    test "handler body calling another facade without Defer raises immediately" do
+      Greeter
+      |> Double.fallback(fn _contract, :greet, [name] -> "Hello, #{name}!" end)
+
+      Counter
+      |> Double.fallback(
+        fn _contract, :increment, [_n], count ->
+          # This calls Greeter WITHOUT Defer — should raise, not deadlock
+          greeting = Greeter.Port.greet("boom")
+          {{greeting}, count}
+        end,
+        0
+      )
+
+      assert_raise RuntimeError, ~r/Re-entrant dispatch detected/, fn ->
+        Counter.Port.increment(1)
+      end
+    end
+
+    test "handler body calling same contract without Defer raises immediately" do
+      Counter
+      |> Double.fallback(
+        fn
+          _contract, :increment, [_n], count ->
+            # Re-entrant call to same contract — should raise
+            Counter.Port.get_count()
+            {0, count}
+
+          _contract, :get_count, [], count ->
+            {count, count}
+        end,
+        0
+      )
+
+      assert_raise RuntimeError, ~r/Re-entrant dispatch detected/, fn ->
+        Counter.Port.increment(1)
+      end
+    end
+
+    test "error message includes contract and operation" do
+      Greeter
+      |> Double.fallback(fn _contract, :greet, [_name] -> "hi" end)
+
+      Counter
+      |> Double.fallback(
+        fn _contract, :increment, [_n], count ->
+          Greeter.Port.greet("test")
+          {0, count}
+        end,
+        0
+      )
+
+      error =
+        assert_raise RuntimeError, fn ->
+          Counter.Port.increment(1)
+        end
+
+      assert error.message =~ "DoubleDown.Test.Greeter"
+      assert error.message =~ "greet"
+      assert error.message =~ "Double.defer"
+      assert error.message =~ "Defer.new"
+    end
+
+    test "handler body calling another facade with Defer works (no false positive)" do
+      Greeter
+      |> Double.fallback(fn _contract, :greet, [name] -> "Hello, #{name}!" end)
+
+      Counter
+      |> Double.fallback(
+        fn _contract, :increment, [n], count ->
+          {Double.defer(fn ->
+             Greeter.Port.greet("from_counter")
+           end), count + n}
+        end,
+        0
+      )
+
+      # This should work — Defer moves the call outside the lock
+      assert "Hello, from_counter!" = Counter.Port.increment(5)
+    end
+
+    test "normal (non-re-entrant) dispatch is unaffected" do
+      Greeter
+      |> Double.fallback(fn _contract, :greet, [name] -> "Hello, #{name}!" end)
+
+      Counter
+      |> Double.fallback(
+        fn _contract, :get_count, [], count -> {count, count} end,
+        42
+      )
+
+      # Normal dispatch — no re-entrancy
+      assert "Hello, world!" = Greeter.Port.greet("world")
+      assert 42 = Counter.Port.get_count()
+    end
+
+    test "stateless handler does not trigger re-entrant detection" do
+      # Stateless handlers don't use get_and_update, so no flag is set
+      DoubleDown.Testing.set_stateless_handler(Greeter, fn _contract, :greet, [name] ->
+        "Hi #{name}"
+      end)
+
+      assert "Hi world" = Greeter.Port.greet("world")
+    end
+  end
 end

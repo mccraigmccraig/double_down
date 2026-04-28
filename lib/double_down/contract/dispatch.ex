@@ -34,6 +34,12 @@ defmodule DoubleDown.Contract.Dispatch do
   alias DoubleDown.Contract.Dispatch.Keys
   alias DoubleDown.Double.CanonicalHandlerState
 
+  # Process dictionary key set inside the NimbleOwnership GenServer while
+  # a stateful handler is executing. Used to detect re-entrant dispatch
+  # (handler body calling another facade) and raise immediately instead
+  # of deadlocking.
+  @inside_handler_key :doubledown_inside_handler
+
   @doc """
   Dispatch a port operation to the resolved implementation.
 
@@ -44,6 +50,10 @@ defmodule DoubleDown.Contract.Dispatch do
   """
   @spec call(atom() | nil, module(), atom(), [term()]) :: term()
   def call(otp_app, contract, operation, args) do
+    if Process.get(@inside_handler_key) do
+      raise_reentrant_dispatch(contract, operation, args)
+    end
+
     case resolve_test_handler(contract) do
       {:ok, owner_pid, handler} ->
         result = invoke_handler(handler, owner_pid, contract, operation, args)
@@ -163,6 +173,32 @@ defmodule DoubleDown.Contract.Dispatch do
     end
   end
 
+  defp raise_reentrant_dispatch(contract, operation, args) do
+    raise """
+    Re-entrant dispatch detected: a handler body called \
+    #{inspect(contract)}.#{operation}/#{length(args)}.
+
+    Handler functions (expects, stubs, fakes, fallbacks) run inside \
+    the NimbleOwnership GenServer. Calling another facade from within \
+    a handler will deadlock because it re-enters the same GenServer.
+
+    Wrap the call in a deferred function so it runs outside the lock:
+
+        # Using the Double API (recommended):
+        DoubleDown.Double.defer(fn ->
+          #{inspect(contract)}.#{operation}(...)
+        end)
+
+        # Using the lower-level API:
+        DoubleDown.Contract.Dispatch.Defer.new(fn ->
+          #{inspect(contract)}.#{operation}(...)
+        end)
+
+    The deferred function runs after the handler's state update has \
+    been committed, in the calling process.
+    """
+  end
+
   defp raise_invalid_handler_meta(contract, value) do
     raise ArgumentError, """
     Invalid handler meta stored for #{inspect(contract)}.
@@ -277,6 +313,8 @@ defmodule DoubleDown.Contract.Dispatch do
         owner_pid,
         contract,
         fn %HandlerMeta.Stateful{state: state} = meta ->
+          Process.put(@inside_handler_key, true)
+
           try do
             handler_result =
               if all_states do
@@ -305,6 +343,8 @@ defmodule DoubleDown.Contract.Dispatch do
 
             :exit, reason ->
               {Defer.new(fn -> exit(reason) end), meta}
+          after
+            Process.delete(@inside_handler_key)
           end
         end
       )

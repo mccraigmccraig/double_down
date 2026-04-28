@@ -66,7 +66,8 @@ defmodule DoubleDown.Testing do
 
   State is stored in NimbleOwnership and updated atomically on each dispatch.
   """
-  @spec set_stateful_handler(module(), (... -> {term(), term()}), term()) :: :ok
+  @spec set_stateful_handler(module(), DoubleDown.Contract.Dispatch.Types.stateful_fun(), term()) ::
+          :ok
   def set_stateful_handler(contract, fun, initial_state)
       when is_function(fun, 4) or is_function(fun, 5) do
     set_meta(contract, HandlerMeta.Stateful.new(fun, initial_state))
