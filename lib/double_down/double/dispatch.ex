@@ -33,9 +33,9 @@ defmodule DoubleDown.Double.Dispatch do
         %CanonicalHandlerState{fakes: fakes, stubs: stubs, contract: contract} = state,
         all_states
       ) do
-    # Rejections are checked first — if an operation is rejected,
+    # Rejections are checked first — if an operation/arity is rejected,
     # calling it is an immediate error (raised via Defer in the caller).
-    if CanonicalHandlerState.rejected?(state, operation) do
+    if CanonicalHandlerState.rejected?(state, operation, length(args)) do
       msg = rejected_call_message(contract, operation, args)
       {Defer.new(fn -> raise msg end), state}
     else
@@ -290,7 +290,7 @@ defmodule DoubleDown.Double.Dispatch do
 
     Args: #{inspect(args)}
 
-    This operation was explicitly rejected via Double.reject/2 — \
+    This operation/arity was explicitly rejected via Double.reject/3 — \
     it must not be called during this test.
     """
   end

@@ -131,18 +131,18 @@ defmodule DoubleDown.DoubleTest do
     end
   end
 
-  # ── reject/2 ────────────────────────────────────────────────────────
+  # ── reject/3 ────────────────────────────────────────────────────────
 
-  describe "reject/2" do
+  describe "reject/3" do
     test "returns contract module for piping" do
-      result = Double.reject(Greeter, :greet)
+      result = Double.reject(Greeter, :greet, 1)
       assert result == Greeter
     end
 
-    test "raises when rejected operation is called" do
-      Double.reject(Greeter, :greet)
+    test "raises when rejected operation/arity is called" do
+      Double.reject(Greeter, :greet, 1)
 
-      assert_raise RuntimeError, ~r/Rejected call.*greet/, fn ->
+      assert_raise RuntimeError, ~r/Rejected call.*greet\/1/, fn ->
         Greeter.Port.greet("Alice")
       end
     end
@@ -150,7 +150,7 @@ defmodule DoubleDown.DoubleTest do
     test "rejected operation with fallback still raises" do
       Greeter
       |> Double.fallback(fn _contract, :greet, [name] -> "Hello, #{name}" end)
-      |> Double.reject(:greet)
+      |> Double.reject(:greet, 1)
 
       assert_raise RuntimeError, ~r/Rejected call/, fn ->
         Greeter.Port.greet("Alice")
@@ -163,7 +163,7 @@ defmodule DoubleDown.DoubleTest do
         _contract, :greet, [name] -> "Hello, #{name}"
         _contract, :fetch_greeting, [name] -> {:ok, "Hi, #{name}"}
       end)
-      |> Double.reject(:fetch_greeting)
+      |> Double.reject(:fetch_greeting, 1)
 
       assert "Hello, Alice" = Greeter.Port.greet("Alice")
 
@@ -174,7 +174,7 @@ defmodule DoubleDown.DoubleTest do
 
     test "verify! passes when rejected operation is not called" do
       Double.fallback(Greeter, fn _contract, :greet, [name] -> "Hello, #{name}" end)
-      Double.reject(Greeter, :fetch_greeting)
+      Double.reject(Greeter, :fetch_greeting, 1)
 
       assert "Hello, Alice" = Greeter.Port.greet("Alice")
 
@@ -185,7 +185,7 @@ defmodule DoubleDown.DoubleTest do
       Greeter
       |> Double.fallback(fn _contract, :greet, [name] -> "Hello, #{name}" end)
       |> Double.expect(:greet, fn [_] -> "Expected" end)
-      |> Double.reject(:fetch_greeting)
+      |> Double.reject(:fetch_greeting, 1)
 
       assert "Expected" = Greeter.Port.greet("Alice")
       assert "Hello, Bob" = Greeter.Port.greet("Bob")
@@ -194,7 +194,7 @@ defmodule DoubleDown.DoubleTest do
     end
 
     test "error message is descriptive" do
-      Double.reject(Greeter, :greet)
+      Double.reject(Greeter, :greet, 1)
 
       err =
         assert_raise RuntimeError, fn ->
@@ -203,8 +203,48 @@ defmodule DoubleDown.DoubleTest do
 
       assert err.message =~ "Rejected call"
       assert err.message =~ "Greeter"
-      assert err.message =~ "greet"
-      assert err.message =~ "Double.reject/2"
+      assert err.message =~ "greet/1"
+      assert err.message =~ "Double.reject/3"
+    end
+
+    test "reject one arity, allow another arity of the same operation" do
+      alias DoubleDown.Test.DynamicTarget
+
+      # DynamicTarget.greet/1 and DynamicTarget.greet/2 are both exported.
+      # Reject greet/2, but allow greet/1 via fallback.
+      DynamicTarget
+      |> Double.dynamic()
+      |> Double.reject(:greet, 2)
+
+      # greet/1 works — not rejected
+      assert "Original: Alice" = DynamicTarget.greet("Alice")
+
+      # greet/2 raises — rejected
+      assert_raise RuntimeError, ~r/Rejected call.*greet\/2/, fn ->
+        DynamicTarget.greet("Alice", "Smith")
+      end
+    end
+
+    test "expect one arity and reject another arity of the same operation" do
+      alias DoubleDown.Test.DynamicTarget
+
+      DynamicTarget
+      |> Double.dynamic()
+      |> Double.expect(:greet, fn [name] -> "Expected: #{name}" end)
+      |> Double.reject(:greet, 2)
+
+      # greet/1 uses the expect
+      assert "Expected: Alice" = DynamicTarget.greet("Alice")
+
+      # greet/2 raises — rejected
+      assert_raise RuntimeError, ~r/Rejected call.*greet\/2/, fn ->
+        DynamicTarget.greet("Alice", "Smith")
+      end
+
+      # greet/1 falls through to original after expect consumed
+      assert "Original: Bob" = DynamicTarget.greet("Bob")
+
+      Double.verify!()
     end
   end
 

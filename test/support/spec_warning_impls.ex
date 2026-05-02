@@ -44,6 +44,7 @@ end
 # Module for dynamic dispatch testing.
 defmodule DoubleDown.Test.DynamicTarget do
   def greet(name), do: "Original: #{name}"
+  def greet(first, last), do: "Original: #{first} #{last}"
   def add(a, b), do: a + b
   def zero_arity, do: :original
 end

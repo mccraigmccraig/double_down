@@ -295,27 +295,32 @@ defmodule DoubleDown.Double do
   # -- Public API: reject --
 
   @doc """
-  Reject an operation — assert it must not be called.
+  Reject an operation/arity — assert it must not be called.
 
-  If the rejected operation is called during the test, an error is
-  raised immediately. If it is never called, `verify!` passes (there
-  are no expectations to consume).
+  If the rejected operation is called with the specified arity during
+  the test, an error is raised immediately. If it is never called,
+  `verify!` passes (there are no expectations to consume).
 
-  Equivalent to Mimic's `reject/3`.
+  The `arity` parameter is the number of arguments the operation
+  receives (matching Mimic's `reject/3` signature). Different arities
+  of the same operation can be independently rejected or expected:
 
       MyContract
-      |> DoubleDown.Double.fallback(fn _contract, :list, [_] -> [] end)
-      |> DoubleDown.Double.reject(:delete)
+      |> DoubleDown.Double.fallback(fn _contract, :fetch, [_id] -> nil end)
+      |> DoubleDown.Double.reject(:delete, 1)
+
+      # fetch/1 still works, delete/1 raises if called
 
   Returns the contract module for piping.
   """
-  @spec reject(module(), atom()) :: module()
-  def reject(contract, operation)
-      when is_atom(contract) and is_atom(operation) do
+  @spec reject(module(), atom(), non_neg_integer()) :: module()
+  def reject(contract, operation, arity)
+      when is_atom(contract) and is_atom(operation) and
+             is_integer(arity) and arity >= 0 do
     ensure_handler_installed(contract)
 
     update_handler_state(contract, fn state ->
-      CanonicalHandlerState.add_reject(state, operation)
+      CanonicalHandlerState.add_reject(state, operation, arity)
     end)
 
     contract

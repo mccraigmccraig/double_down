@@ -128,16 +128,17 @@ defmodule DoubleDown.Double.CanonicalHandlerState do
     end
   end
 
-  @doc "Mark an operation as rejected (must not be called)."
-  @spec add_reject(t(), atom()) :: t()
-  def add_reject(%__MODULE__{rejects: rejects} = state, operation) when is_atom(operation) do
-    %{state | rejects: MapSet.put(rejects, operation)}
+  @doc "Mark an operation/arity as rejected (must not be called)."
+  @spec add_reject(t(), atom(), non_neg_integer()) :: t()
+  def add_reject(%__MODULE__{rejects: rejects} = state, operation, arity)
+      when is_atom(operation) and is_integer(arity) and arity >= 0 do
+    %{state | rejects: MapSet.put(rejects, {operation, arity})}
   end
 
-  @doc "Check if an operation has been rejected."
-  @spec rejected?(t(), atom()) :: boolean()
-  def rejected?(%__MODULE__{rejects: rejects}, operation) do
-    MapSet.member?(rejects, operation)
+  @doc "Check if an operation/arity has been rejected."
+  @spec rejected?(t(), atom(), non_neg_integer()) :: boolean()
+  def rejected?(%__MODULE__{rejects: rejects}, operation, arity) do
+    MapSet.member?(rejects, {operation, arity})
   end
 
   @doc "Check if a stateful fallback is configured."
