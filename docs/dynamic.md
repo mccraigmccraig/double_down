@@ -153,6 +153,47 @@ DoubleDown.Double.fallback(MyApp.Legacy,
 )
 ```
 
+## Struct modules
+
+If the original module defines a struct (`defstruct`), the shim
+preserves full struct support:
+
+- `%Module{}` literal syntax works at compile time in tests
+- `__info__(:struct)` returns correct field metadata
+- `@enforce_keys` and default values are preserved
+- `__struct__/0` and `__struct__/1` calls route through `dispatch/3`,
+  so `Double.fallback` / `Double.expect` handlers can intercept
+  struct construction at runtime
+
+```elixir
+# Original module
+defmodule MyApp.Config do
+  @enforce_keys [:env]
+  defstruct [:env, timeout: 5000]
+
+  def load, do: %__MODULE__{env: :prod}
+end
+
+# In test
+Double.fallback(MyApp.Config, fn
+  _contract, :load, [] -> %MyApp.Config{env: :test, timeout: 100}
+end)
+
+# Struct literal syntax works in tests
+assert %MyApp.Config{env: :test} = MyApp.Config.load()
+```
+
+## Behaviour and macro modules
+
+**`@behaviour` declarations** are copied from the original module
+to the shim, so behaviour-based dispatch and compliance checks work
+through the dynamic facade.
+
+**Macros** (`defmacro`) are proxied via `defmacro` wrappers that
+delegate to the original implementation. Macros expand at compile
+time so they always use the original — they cannot be intercepted
+by `Double` handlers.
+
 ## Guardrails
 
 `DynamicFacade.setup/1` refuses to set up facades for:

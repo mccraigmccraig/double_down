@@ -31,6 +31,28 @@ defmodule DoubleDown.DynamicFacade do
   Tests that don't install a handler get the original module's
   behaviour — zero impact on unrelated tests.
 
+  ## Struct modules
+
+  If the original module defines a struct (`defstruct`), the shim
+  preserves full struct support:
+
+    * `%Module{}` literal syntax works at compile time in tests
+    * `__info__(:struct)` returns correct field metadata
+    * `@enforce_keys` and default values are preserved
+    * `__struct__/0` and `__struct__/1` calls route through
+      `dispatch/3`, so `Double.fallback` / `Double.expect` handlers
+      can intercept struct construction at runtime
+
+  ## Behaviour and macro modules
+
+    * **`@behaviour` declarations** are copied from the original
+      module to the shim, so behaviour-based dispatch and compliance
+      checks work correctly.
+    * **Macros** (`defmacro`) are proxied via `defmacro` wrappers
+      that delegate to the original implementation. Macros expand at
+      compile time so they always use the original — they cannot be
+      intercepted by `Double` handlers.
+
   ## Constraints
 
   - Call `setup/1` before tests start (in `test_helper.exs`). Bytecode
