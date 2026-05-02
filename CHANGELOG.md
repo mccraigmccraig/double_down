@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.56.0]
+
+### Added
+
+- **`Double.reject/2`** — assert that an operation must not be called.
+  `Double.reject(contract, :operation)` marks the operation as
+  rejected; if it is called during the test, an error is raised
+  immediately. If it is never called, `verify!` passes. Pipeable
+  with `expect`, `stub`, `fallback`. Equivalent to Mimic's
+  `reject/3`. 7 new tests.
+
+  Dispatch priority updated:
+  rejects > expects > per-op fakes > per-op stubs > fallback > raise.
+
 ## [0.55.0]
 
 ### Fixed
