@@ -13,6 +13,7 @@ defmodule DoubleDown.Double.CanonicalHandlerState do
   * `expects` — `%{operation => [fun | :passthrough]}` queued expectations
   * `fakes` — `%{operation => fun}` per-operation stateful fake overrides
   * `stubs` — `%{operation => fun}` per-operation stateless stub functions
+  * `rejects` — `MapSet` of operation atoms that must not be called
   * `fallback` — the fallback handler, one of:
     - `nil` — no fallback configured
     - `{:stateless, fun}` — stateless 3-arity function fallback
@@ -28,6 +29,7 @@ defmodule DoubleDown.Double.CanonicalHandlerState do
     expects: %{},
     fakes: %{},
     stubs: %{},
+    rejects: MapSet.new(),
     fallback: nil,
     fallback_state: nil
   ]
@@ -43,6 +45,7 @@ defmodule DoubleDown.Double.CanonicalHandlerState do
           expects: %{atom() => [DoubleDown.Double.Types.expect_fun() | :passthrough]},
           fakes: %{atom() => DoubleDown.Double.Types.fake_fun()},
           stubs: %{atom() => DoubleDown.Double.Types.stub_fun()},
+          rejects: MapSet.t(atom()),
           fallback: fallback(),
           fallback_state: term()
         }
@@ -123,6 +126,18 @@ defmodule DoubleDown.Double.CanonicalHandlerState do
       [] ->
         :none
     end
+  end
+
+  @doc "Mark an operation as rejected (must not be called)."
+  @spec add_reject(t(), atom()) :: t()
+  def add_reject(%__MODULE__{rejects: rejects} = state, operation) when is_atom(operation) do
+    %{state | rejects: MapSet.put(rejects, operation)}
+  end
+
+  @doc "Check if an operation has been rejected."
+  @spec rejected?(t(), atom()) :: boolean()
+  def rejected?(%__MODULE__{rejects: rejects}, operation) do
+    MapSet.member?(rejects, operation)
   end
 
   @doc "Check if a stateful fallback is configured."

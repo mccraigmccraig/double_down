@@ -131,6 +131,83 @@ defmodule DoubleDown.DoubleTest do
     end
   end
 
+  # ── reject/2 ────────────────────────────────────────────────────────
+
+  describe "reject/2" do
+    test "returns contract module for piping" do
+      result = Double.reject(Greeter, :greet)
+      assert result == Greeter
+    end
+
+    test "raises when rejected operation is called" do
+      Double.reject(Greeter, :greet)
+
+      assert_raise RuntimeError, ~r/Rejected call.*greet/, fn ->
+        Greeter.Port.greet("Alice")
+      end
+    end
+
+    test "rejected operation with fallback still raises" do
+      Greeter
+      |> Double.fallback(fn _contract, :greet, [name] -> "Hello, #{name}" end)
+      |> Double.reject(:greet)
+
+      assert_raise RuntimeError, ~r/Rejected call/, fn ->
+        Greeter.Port.greet("Alice")
+      end
+    end
+
+    test "non-rejected operations still work" do
+      Greeter
+      |> Double.fallback(fn
+        _contract, :greet, [name] -> "Hello, #{name}"
+        _contract, :fetch_greeting, [name] -> {:ok, "Hi, #{name}"}
+      end)
+      |> Double.reject(:fetch_greeting)
+
+      assert "Hello, Alice" = Greeter.Port.greet("Alice")
+
+      assert_raise RuntimeError, ~r/Rejected call/, fn ->
+        Greeter.Port.fetch_greeting("Alice")
+      end
+    end
+
+    test "verify! passes when rejected operation is not called" do
+      Double.fallback(Greeter, fn _contract, :greet, [name] -> "Hello, #{name}" end)
+      Double.reject(Greeter, :fetch_greeting)
+
+      assert "Hello, Alice" = Greeter.Port.greet("Alice")
+
+      Double.verify!()
+    end
+
+    test "pipeable with expect and stub" do
+      Greeter
+      |> Double.fallback(fn _contract, :greet, [name] -> "Hello, #{name}" end)
+      |> Double.expect(:greet, fn [_] -> "Expected" end)
+      |> Double.reject(:fetch_greeting)
+
+      assert "Expected" = Greeter.Port.greet("Alice")
+      assert "Hello, Bob" = Greeter.Port.greet("Bob")
+
+      Double.verify!()
+    end
+
+    test "error message is descriptive" do
+      Double.reject(Greeter, :greet)
+
+      err =
+        assert_raise RuntimeError, fn ->
+          Greeter.Port.greet("Alice")
+        end
+
+      assert err.message =~ "Rejected call"
+      assert err.message =~ "Greeter"
+      assert err.message =~ "greet"
+      assert err.message =~ "Double.reject/2"
+    end
+  end
+
   # ── StatelessHandler module-based fallback ──────────────────────────
 
   describe "StatelessHandler module-based fallback" do

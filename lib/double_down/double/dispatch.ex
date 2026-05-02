@@ -13,7 +13,7 @@ defmodule DoubleDown.Double.Dispatch do
 
   ## Dispatch priority
 
-  expects > per-op fakes > per-op stubs > fallback > raise
+  rejects > expects > per-op fakes > per-op stubs > fallback > raise
   """
 
   alias DoubleDown.Contract.Dispatch.Defer
@@ -30,9 +30,20 @@ defmodule DoubleDown.Double.Dispatch do
         _contract,
         operation,
         args,
-        %CanonicalHandlerState{fakes: fakes, stubs: stubs} = state,
+        %CanonicalHandlerState{fakes: fakes, stubs: stubs, contract: contract} = state,
         all_states
       ) do
+    # Rejections are checked first — if an operation is rejected,
+    # calling it is an immediate error (raised via Defer in the caller).
+    if CanonicalHandlerState.rejected?(state, operation) do
+      msg = rejected_call_message(contract, operation, args)
+      {Defer.new(fn -> raise msg end), state}
+    else
+      dispatch_operation(operation, args, fakes, stubs, state, all_states)
+    end
+  end
+
+  defp dispatch_operation(operation, args, fakes, stubs, state, all_states) do
     case CanonicalHandlerState.pop_expect(state, operation) do
       {:ok, :passthrough, new_state} ->
         invoke_fallback_or_raise(new_state, operation, args, all_states)
@@ -270,6 +281,17 @@ defmodule DoubleDown.Double.Dispatch do
 
     #{arity}-arity #{kind} responders must return a {result, new_fallback_state} tuple. \
     Use a 1-arity fn [args] -> result end for stateless #{kind}s that return bare results.
+    """
+  end
+
+  defp rejected_call_message(contract, operation, args) do
+    """
+    Rejected call to #{inspect(contract)}.#{operation}/#{length(args)}.
+
+    Args: #{inspect(args)}
+
+    This operation was explicitly rejected via Double.reject/2 — \
+    it must not be called during this test.
     """
   end
 

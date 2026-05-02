@@ -74,7 +74,7 @@ defmodule DoubleDown.Double do
   StatelessHandler module, module implementation, stateful function,
   stateless function).
 
-  Dispatch priority: expects > per-op fakes > per-op stubs > fallback > raise.
+  Dispatch priority: rejects > expects > per-op fakes > per-op stubs > fallback > raise.
   Fallback types are mutually exclusive — setting one replaces the other.
 
   ## Passthrough expects
@@ -98,9 +98,10 @@ defmodule DoubleDown.Double do
 
   ## Relationship to Mox
 
-  | Mox | DoubleDown.Double |
+  | Mox / Mimic | DoubleDown.Double |
   |-----|-----------------|
   | `expect(Mock, :fn, n, fun)` | `expect(Contract, :fn, fun, times: n)` |
+  | `reject(Mock, :fn, arity)` | `reject(Contract, :fn)` |
   | `stub(Mock, :fn, fun)` | `stub(Contract, :fn, fun)` — per-operation |
   | (no equivalent) | `fallback(Contract, fn op, args -> ... end)` — stateless fallback |
   | (no equivalent) | `fallback(Contract, fn op, args, state -> ... end, init)` — stateful fallback |
@@ -291,6 +292,35 @@ defmodule DoubleDown.Double do
     """
   end
 
+  # -- Public API: reject --
+
+  @doc """
+  Reject an operation — assert it must not be called.
+
+  If the rejected operation is called during the test, an error is
+  raised immediately. If it is never called, `verify!` passes (there
+  are no expectations to consume).
+
+  Equivalent to Mimic's `reject/3`.
+
+      MyContract
+      |> DoubleDown.Double.fallback(fn _contract, :list, [_] -> [] end)
+      |> DoubleDown.Double.reject(:delete)
+
+  Returns the contract module for piping.
+  """
+  @spec reject(module(), atom()) :: module()
+  def reject(contract, operation)
+      when is_atom(contract) and is_atom(operation) do
+    ensure_handler_installed(contract)
+
+    update_handler_state(contract, fn state ->
+      CanonicalHandlerState.add_reject(state, operation)
+    end)
+
+    contract
+  end
+
   # -- Public API: stub --
 
   @doc """
@@ -311,7 +341,7 @@ defmodule DoubleDown.Double do
 
   For whole-contract fallback handlers, see `fallback/2..4`.
 
-  Dispatch priority: expects > per-op fakes > per-op stubs > fallback > raise.
+  Dispatch priority: rejects > expects > per-op fakes > per-op stubs > fallback > raise.
 
   Returns the contract module for piping.
   """
@@ -355,7 +385,7 @@ defmodule DoubleDown.Double do
 
   For whole-contract fallback handlers, see `fallback/2..4`.
 
-  Dispatch priority: expects > per-op fakes > per-op stubs > fallback > raise.
+  Dispatch priority: rejects > expects > per-op fakes > per-op stubs > fallback > raise.
 
   Returns the contract module for piping.
   """
@@ -443,7 +473,7 @@ defmodule DoubleDown.Double do
 
   Fallback types are mutually exclusive — setting one replaces the other.
 
-  Dispatch priority: expects > per-op fakes > per-op stubs > fallback > raise.
+  Dispatch priority: rejects > expects > per-op fakes > per-op stubs > fallback > raise.
 
   Returns the contract module for piping.
   """
