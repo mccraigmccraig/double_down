@@ -45,7 +45,7 @@ defmodule DoubleDown.Double.CanonicalHandlerState do
           expects: %{atom() => [DoubleDown.Double.Types.expect_fun() | :passthrough]},
           fakes: %{atom() => DoubleDown.Double.Types.fake_fun()},
           stubs: %{atom() => DoubleDown.Double.Types.stub_fun()},
-          rejects: MapSet.t(atom()),
+          rejects: term(),
           fallback: fallback(),
           fallback_state: term()
         }
