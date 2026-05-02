@@ -47,3 +47,12 @@ defmodule DoubleDown.Test.DynamicTarget do
   def add(a, b), do: a + b
   def zero_arity, do: :original
 end
+
+# Struct module for dynamic dispatch testing — verifies that
+# __struct__/0 and __struct__/1 are proxied through the shim.
+defmodule DoubleDown.Test.DynamicStructTarget do
+  @enforce_keys [:name]
+  defstruct [:name, age: 0, role: "user"]
+
+  def greet(name), do: "Original: #{name}"
+end

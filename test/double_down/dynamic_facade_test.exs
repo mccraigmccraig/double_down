@@ -241,6 +241,114 @@ defmodule DoubleDown.DynamicFacadeTest do
     end
   end
 
+  describe "struct modules" do
+    alias DoubleDown.Test.DynamicStructTarget
+
+    # DynamicStructTarget is set up in test_helper.exs via Dynamic.setup/1.
+    # It defines: @enforce_keys [:name], defstruct [:name, age: 0, role: "user"],
+    # and greet/1.
+
+    test "__struct__/0 is proxied through shim (no handler)" do
+      result = DynamicStructTarget.__struct__()
+      assert is_map(result)
+      assert result.__struct__ == DynamicStructTarget
+      assert result.name == nil
+      assert result.age == 0
+      assert result.role == "user"
+    end
+
+    test "__struct__/1 is proxied through shim (no handler)" do
+      result = DynamicStructTarget.__struct__(name: "Alice", age: 30)
+      assert is_map(result)
+      assert result.__struct__ == DynamicStructTarget
+      assert result.name == "Alice"
+      assert result.age == 30
+      assert result.role == "user"
+    end
+
+    test "__info__(:struct) returns correct field metadata" do
+      info = DynamicStructTarget.__info__(:struct)
+      assert is_list(info)
+
+      fields = Enum.map(info, & &1.field)
+      assert :name in fields
+      assert :age in fields
+      assert :role in fields
+    end
+
+    test "@enforce_keys are preserved in shim" do
+      assert_raise ArgumentError, ~r/keys must also be given/, fn ->
+        DynamicStructTarget.__struct__([])
+      end
+    end
+
+    test "struct literal syntax works at compile time" do
+      s = %DynamicStructTarget{name: "Alice"}
+      assert s.name == "Alice"
+      assert s.age == 0
+      assert s.role == "user"
+    end
+
+    test "default values are preserved" do
+      s = DynamicStructTarget.__struct__(name: "Alice")
+      assert s.age == 0
+      assert s.role == "user"
+    end
+
+    test "__struct__/0 can be overridden via fallback" do
+      Double.fallback(DynamicStructTarget, fn
+        _contract, :__struct__, [] ->
+          %{__struct__: DynamicStructTarget, name: "Default", age: 0, role: "admin"}
+
+        _contract, :__struct__, [kv] ->
+          struct(%{__struct__: DynamicStructTarget, name: "Default", age: 0, role: "admin"}, kv)
+
+        _contract, :greet, [name] ->
+          "Fake: #{name}"
+      end)
+
+      result = DynamicStructTarget.__struct__()
+      assert result.name == "Default"
+      assert result.age == 0
+      assert result.role == "admin"
+    end
+
+    test "__struct__/1 can be overridden via fallback" do
+      Double.fallback(DynamicStructTarget, fn
+        _contract, :__struct__, [] ->
+          %{__struct__: DynamicStructTarget, name: "Default", age: 0, role: "admin"}
+
+        _contract, :__struct__, [kv] ->
+          struct(%{__struct__: DynamicStructTarget, name: "Default", age: 0, role: "admin"}, kv)
+
+        _contract, :greet, [name] ->
+          "Fake: #{name}"
+      end)
+
+      result = DynamicStructTarget.__struct__(name: "Override")
+      assert result.name == "Override"
+    end
+
+    test "greet/1 still works on struct module" do
+      assert "Original: Alice" = DynamicStructTarget.greet("Alice")
+    end
+
+    test "Dynamic.dynamic/1 works with struct modules" do
+      DynamicStructTarget
+      |> Double.dynamic()
+      |> Double.expect(:greet, fn [_] -> "Overridden" end)
+
+      assert "Overridden" = DynamicStructTarget.greet("Alice")
+      # __struct__ falls through to original
+      result = DynamicStructTarget.__struct__()
+      assert result.__struct__ == DynamicStructTarget
+      # second greet falls through to original
+      assert "Original: Bob" = DynamicStructTarget.greet("Bob")
+
+      Double.verify!()
+    end
+  end
+
   describe "validation" do
     test "refuses DoubleDown contract modules" do
       assert_raise ArgumentError, ~r/DoubleDown contract/, fn ->
