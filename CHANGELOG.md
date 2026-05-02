@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- **`DynamicFacade` struct module support.** The shim now re-declares
+  `defstruct` (with `@enforce_keys` and default values preserved) so
+  that `__info__(:struct)` returns correct field metadata and
+  `%Module{}` literal syntax works at compile time in tests.
+  `__struct__/0` and `__struct__/1` still route through `dispatch/3`
+  via `defoverridable`, so `Double.fallback` / `Double.expect`
+  handlers can intercept struct construction at runtime.
+
+- **`DynamicFacade` `@behaviour` proxying.** The shim now copies
+  `@behaviour` declarations from the original module, so
+  behaviour-based dispatch and compliance checks work through the
+  dynamic facade.
+
+- **`DynamicFacade` macro proxying.** If the original module exports
+  macros (`defmacro`), the shim now generates `defmacro` wrappers
+  that delegate to the original implementation instead of wrapping
+  the `MACRO-` functions with `def`. Macros expand at compile time
+  so they always use the original — they cannot be intercepted by
+  `Double` handlers.
+
 ## [0.54.0]
 
 ### Added
