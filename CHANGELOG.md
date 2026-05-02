@@ -5,7 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.56.1]
+## [0.57.0]
+
+### Added
+
+- **`Double.reject/3`** — assert that an operation/arity must not be
+  called. `Double.reject(contract, :operation, arity)` marks the
+  specific operation/arity as rejected; if it is called during the
+  test, an error is raised immediately. If it is never called,
+  `verify!` passes. Different arities of the same operation can be
+  independently rejected or expected. Pipeable with `expect`, `stub`,
+  `fallback`. Matches Mimic's `reject/3` signature. 9 tests.
+
+  Dispatch priority:
+  rejects > expects > per-op fakes > per-op stubs > fallback > raise.
 
 ### Fixed
 
@@ -14,20 +27,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Dialyzer rejects opaque types in struct type definitions where
   the struct literal exposes the internal representation. Changed
   to `term()`.
-
-## [0.56.0]
-
-### Added
-
-- **`Double.reject/2`** — assert that an operation must not be called.
-  `Double.reject(contract, :operation)` marks the operation as
-  rejected; if it is called during the test, an error is raised
-  immediately. If it is never called, `verify!` passes. Pipeable
-  with `expect`, `stub`, `fallback`. Equivalent to Mimic's
-  `reject/3`. 7 new tests.
-
-  Dispatch priority updated:
-  rejects > expects > per-op fakes > per-op stubs > fallback > raise.
 
 ## [0.55.0]
 
