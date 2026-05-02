@@ -67,6 +67,18 @@ defmodule DoubleDown.Test.DynamicBehaviourTarget do
   def farewell(name), do: "Goodbye, #{name}"
 end
 
+# Module with macros for dynamic dispatch testing — verifies that
+# macros are correctly proxied through the shim.
+defmodule DoubleDown.Test.DynamicMacroTarget do
+  defmacro with_prefix(prefix, do: block) do
+    quote do
+      "[#{unquote(prefix)}] " <> (fn -> unquote(block) end).()
+    end
+  end
+
+  def greet(name), do: "Hello, #{name}"
+end
+
 defmodule DoubleDown.Test.DynamicStructTarget do
   @enforce_keys [:name]
   defstruct [:name, age: 0, role: "user"]

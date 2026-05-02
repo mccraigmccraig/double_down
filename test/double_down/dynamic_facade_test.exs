@@ -272,6 +272,29 @@ defmodule DoubleDown.DynamicFacadeTest do
     end
   end
 
+  describe "macro modules" do
+    # DynamicMacroTarget is set up in test_helper.exs via Dynamic.setup/1.
+    # It defines: defmacro with_prefix/2 and def greet/1.
+    require DoubleDown.Test.DynamicMacroTarget, as: DynamicMacroTarget
+
+    test "macro works through shim" do
+      result = DynamicMacroTarget.with_prefix("INFO", do: "hello")
+      assert result == "[INFO] hello"
+    end
+
+    test "regular functions still work alongside macros" do
+      assert "Hello, Alice" = DynamicMacroTarget.greet("Alice")
+    end
+
+    test "regular functions can be overridden via fallback" do
+      Double.fallback(DynamicMacroTarget, fn
+        _contract, :greet, [name] -> "Fake: #{name}"
+      end)
+
+      assert "Fake: Alice" = DynamicMacroTarget.greet("Alice")
+    end
+  end
+
   describe "struct modules" do
     alias DoubleDown.Test.DynamicStructTarget
 

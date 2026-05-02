@@ -186,11 +186,21 @@ defmodule DoubleDown.DynamicFacade do
     # 4. Capture @behaviour declarations from the original module
     behaviours = get_behaviours(backup)
 
-    # 5. Create the dispatch shim at the original module name
+    # 5. Detect macros and exclude their MACRO- functions from dispatch wrappers
+    macros = get_macros(backup)
+
+    macro_fns =
+      for {name, arity} <- macros do
+        {String.to_atom("MACRO-#{name}"), arity + 1}
+      end
+
+    functions = Enum.reject(functions, &(&1 in macro_fns))
+
+    # 6. Create the dispatch shim at the original module name
     #    Note: __struct__/0 and __struct__/1 are kept as dispatch wrappers
     #    so they route through Double handlers. The defstruct declaration
     #    only provides __info__(:struct) metadata and compile-time support.
-    create_shim(module, functions, struct_info, behaviours, backup)
+    create_shim(module, functions, struct_info, behaviours, macros, backup)
   end
 
   defp rename_module(module, new_name) do
@@ -234,7 +244,7 @@ defmodule DoubleDown.DynamicFacade do
 
   defp rename_module_attribute([], _new_name), do: []
 
-  defp create_shim(module, functions, struct_info, behaviours, backup) do
+  defp create_shim(module, functions, struct_info, behaviours, macros, backup) do
     dispatch_fns =
       for {name, arity} <- functions do
         args = Macro.generate_arguments(arity, __MODULE__)
@@ -252,10 +262,11 @@ defmodule DoubleDown.DynamicFacade do
 
     behaviour_decls = generate_behaviours(behaviours)
     struct_decl = generate_struct(struct_info, backup)
-    # behaviour_decls first, then struct_decl, then dispatch_fns.
+    macro_decls = generate_macros(macros, backup)
+    # behaviour_decls first, then struct_decl, then dispatch_fns, then macros.
     # dispatch_fns after struct_decl so dispatch __struct__/0,/1
     # wrappers override the defstruct-generated ones.
-    contents = behaviour_decls ++ struct_decl ++ dispatch_fns
+    contents = behaviour_decls ++ struct_decl ++ dispatch_fns ++ macro_decls
 
     prev = Code.compiler_options(ignore_module_conflict: true)
 
@@ -263,6 +274,35 @@ defmodule DoubleDown.DynamicFacade do
       Module.create(module, contents, Macro.Env.location(__ENV__))
     after
       Code.compiler_options(ignore_module_conflict: prev[:ignore_module_conflict])
+    end
+  end
+
+  # -- Macro support --
+  #
+  # If the original module exports macros, we generate defmacro wrappers
+  # that delegate to the backup module's macro implementation. Macros
+  # expand at compile time so they cannot be dispatched through the
+  # runtime Double handler — they always use the original implementation.
+  # Adapted from Mimic.Module.generate_mimic_macros/1.
+
+  defp get_macros(backup) do
+    if function_exported?(backup, :__info__, 1) do
+      backup.__info__(:macros)
+    else
+      []
+    end
+  end
+
+  defp generate_macros(macros, backup) do
+    for {macro_name, arity} <- macros do
+      args = Macro.generate_arguments(arity, __MODULE__)
+      macro_fn = String.to_existing_atom("MACRO-#{macro_name}")
+
+      quote do
+        defmacro unquote(macro_name)(unquote_splicing(args)) do
+          unquote(backup).unquote(macro_fn)(__CALLER__, unquote_splicing(args))
+        end
+      end
     end
   end
 
