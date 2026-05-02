@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.56.1]
+
+### Fixed
+
+- **Dialyzer `contract_with_opaque` error on `CanonicalHandlerState`.**
+  The `rejects` field type used `MapSet.t()` which is opaque —
+  Dialyzer rejects opaque types in struct type definitions where
+  the struct literal exposes the internal representation. Changed
+  to `term()`.
+
 ## [0.56.0]
 
 ### Added
