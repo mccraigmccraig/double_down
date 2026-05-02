@@ -183,11 +183,14 @@ defmodule DoubleDown.DynamicFacade do
     # 3. If the module defines a struct, capture struct info for metadata
     struct_info = get_struct_info(backup)
 
-    # 4. Create the dispatch shim at the original module name
+    # 4. Capture @behaviour declarations from the original module
+    behaviours = get_behaviours(backup)
+
+    # 5. Create the dispatch shim at the original module name
     #    Note: __struct__/0 and __struct__/1 are kept as dispatch wrappers
     #    so they route through Double handlers. The defstruct declaration
     #    only provides __info__(:struct) metadata and compile-time support.
-    create_shim(module, functions, struct_info, backup)
+    create_shim(module, functions, struct_info, behaviours, backup)
   end
 
   defp rename_module(module, new_name) do
@@ -231,7 +234,7 @@ defmodule DoubleDown.DynamicFacade do
 
   defp rename_module_attribute([], _new_name), do: []
 
-  defp create_shim(module, functions, struct_info, backup) do
+  defp create_shim(module, functions, struct_info, behaviours, backup) do
     dispatch_fns =
       for {name, arity} <- functions do
         args = Macro.generate_arguments(arity, __MODULE__)
@@ -247,10 +250,12 @@ defmodule DoubleDown.DynamicFacade do
         end
       end
 
+    behaviour_decls = generate_behaviours(behaviours)
     struct_decl = generate_struct(struct_info, backup)
+    # behaviour_decls first, then struct_decl, then dispatch_fns.
     # dispatch_fns after struct_decl so dispatch __struct__/0,/1
-    # wrappers override the defstruct-generated ones
-    contents = struct_decl ++ dispatch_fns
+    # wrappers override the defstruct-generated ones.
+    contents = behaviour_decls ++ struct_decl ++ dispatch_fns
 
     prev = Code.compiler_options(ignore_module_conflict: true)
 
@@ -258,6 +263,26 @@ defmodule DoubleDown.DynamicFacade do
       Module.create(module, contents, Macro.Env.location(__ENV__))
     after
       Code.compiler_options(ignore_module_conflict: prev[:ignore_module_conflict])
+    end
+  end
+
+  # -- Behaviour support --
+  #
+  # Copy @behaviour declarations from the original module to the shim
+  # so that behaviour-based dispatch and checks work correctly.
+  # Adapted from Mimic.Module.generate_mimic_behaviours/1.
+
+  defp get_behaviours(backup) do
+    backup.module_info(:attributes)
+    |> Keyword.get_values(:behaviour)
+    |> List.flatten()
+  end
+
+  defp generate_behaviours(behaviours) do
+    for behaviour <- behaviours do
+      quote do
+        @behaviour unquote(behaviour)
+      end
     end
   end
 

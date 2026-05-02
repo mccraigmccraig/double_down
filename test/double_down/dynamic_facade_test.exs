@@ -241,6 +241,37 @@ defmodule DoubleDown.DynamicFacadeTest do
     end
   end
 
+  describe "behaviour modules" do
+    alias DoubleDown.Test.DynamicBehaviourTarget
+
+    # DynamicBehaviourTarget is set up in test_helper.exs via Dynamic.setup/1.
+    # It implements @behaviour DoubleDown.Test.DynamicBehaviour.
+
+    test "@behaviour attribute is preserved on shim" do
+      behaviours =
+        DynamicBehaviourTarget.module_info(:attributes)
+        |> Keyword.get_values(:behaviour)
+        |> List.flatten()
+
+      assert DoubleDown.Test.DynamicBehaviour in behaviours
+    end
+
+    test "original functions work through shim" do
+      assert "Hello, Alice" = DynamicBehaviourTarget.greet("Alice")
+      assert "Goodbye, Bob" = DynamicBehaviourTarget.farewell("Bob")
+    end
+
+    test "fallback overrides work on behaviour module" do
+      Double.fallback(DynamicBehaviourTarget, fn
+        _contract, :greet, [name] -> "Fake hello, #{name}"
+        _contract, :farewell, [name] -> "Fake bye, #{name}"
+      end)
+
+      assert "Fake hello, Alice" = DynamicBehaviourTarget.greet("Alice")
+      assert "Fake bye, Bob" = DynamicBehaviourTarget.farewell("Bob")
+    end
+  end
+
   describe "struct modules" do
     alias DoubleDown.Test.DynamicStructTarget
 

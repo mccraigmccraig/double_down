@@ -50,6 +50,23 @@ end
 
 # Struct module for dynamic dispatch testing — verifies that
 # __struct__/0 and __struct__/1 are proxied through the shim.
+# Behaviour for dynamic dispatch testing — verifies that @behaviour
+# declarations are copied to the shim.
+defmodule DoubleDown.Test.DynamicBehaviour do
+  @callback greet(String.t()) :: String.t()
+  @callback farewell(String.t()) :: String.t()
+end
+
+defmodule DoubleDown.Test.DynamicBehaviourTarget do
+  @behaviour DoubleDown.Test.DynamicBehaviour
+
+  @impl true
+  def greet(name), do: "Hello, #{name}"
+
+  @impl true
+  def farewell(name), do: "Goodbye, #{name}"
+end
+
 defmodule DoubleDown.Test.DynamicStructTarget do
   @enforce_keys [:name]
   defstruct [:name, age: 0, role: "user"]
