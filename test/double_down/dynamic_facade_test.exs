@@ -362,9 +362,12 @@ defmodule DoubleDown.DynamicFacadeTest do
       end)
 
       result = DynamicStructTarget.__struct__()
-      assert result.name == "Default"
-      assert result.age == 0
-      assert result.role == "admin"
+      # Map.get avoids a spurious type-checker warning: the checker
+      # infers the defstruct return type (name: nil) but dispatch
+      # routes through the fallback handler at runtime.
+      assert Map.get(result, :name) == "Default"
+      assert Map.get(result, :age) == 0
+      assert Map.get(result, :role) == "admin"
     end
 
     test "__struct__/1 can be overridden via fallback" do

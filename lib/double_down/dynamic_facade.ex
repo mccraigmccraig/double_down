@@ -300,7 +300,7 @@ defmodule DoubleDown.DynamicFacade do
 
       quote do
         defmacro unquote(macro_name)(unquote_splicing(args)) do
-          unquote(backup).unquote(macro_fn)(__CALLER__, unquote_splicing(args))
+          apply(unquote(backup), unquote(macro_fn), [__CALLER__, unquote_splicing(args)])
         end
       end
     end
