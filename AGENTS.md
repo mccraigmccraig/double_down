@@ -35,6 +35,13 @@ Fix any issues and iterate until clean. After that, add a description to the
 `## [Unreleased]` section of `CHANGELOG.md` following the existing format
 (`### Added`, `### Changed`, `### Fixed`, `### Improved`, `### Removed`).
 
+**Never** add or commit files that are not explicitly part of a change you
+have been working on. Research documents, issue descriptions, and
+planning notes left in the working copy are not to be committed —
+even if they describe work that constitutes the current change. If a
+file wasn't created as part of this change and isn't already staged,
+leave it alone. If in doubt about the status of a particular file, ask.
+
 ## 3. Release Process
 
 1. All work must be complete and committed.
