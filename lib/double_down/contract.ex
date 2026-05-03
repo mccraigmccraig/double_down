@@ -220,8 +220,9 @@ defmodule DoubleDown.Contract do
     callbacks_block =
       if emit_callbacks? do
         callbacks = Enum.map(operations, &generate_callback/1)
+
         quote do
-          unquote_splicing(callbacks)
+          (unquote_splicing(callbacks))
         end
       end
 

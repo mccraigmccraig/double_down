@@ -555,8 +555,6 @@ defmodule DoubleDown.ContractTest do
 
       assert "Hello, Alice!" = apply(mod, :greet, ["Alice"])
     end
-
-
   end
 
   # ── @spec generation ──────────────────────────────────────
