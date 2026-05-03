@@ -467,6 +467,98 @@ defmodule DoubleDown.ContractTest do
     end
   end
 
+  # ── callbacks: false option ─────────────────────────────
+
+  describe "callbacks: false option" do
+    test "defcallback still works and __callbacks__/0 is generated" do
+      Code.compile_string("""
+      defmodule DoubleDown.Test.CallbacksFalse do
+        use DoubleDown.Contract, callbacks: false
+
+        defcallback greet(name :: String.t()) :: String.t()
+        defcallback ping() :: :pong
+      end
+      """)
+
+      mod = DoubleDown.Test.CallbacksFalse
+
+      ops = apply(mod, :__callbacks__, [])
+      assert length(ops) == 2
+      op_names = Enum.map(ops, & &1.name)
+      assert :greet in op_names
+      assert :ping in op_names
+
+      op = Enum.find(ops, &(&1.name == :greet))
+      assert op.params == [:name]
+      assert op.arity == 1
+    end
+
+    test "@callback declarations are not emitted" do
+      Code.compile_string("""
+      defmodule DoubleDown.Test.CallbacksFalseNoAt do
+        use DoubleDown.Contract, callbacks: false
+
+        defcallback greet(name :: String.t()) :: String.t()
+      end
+      """)
+
+      mod = DoubleDown.Test.CallbacksFalseNoAt
+
+      refute function_exported?(mod, :behaviour_info, 1)
+    end
+
+    test "default callbacks: true emits @callback declarations" do
+      Code.compile_string("""
+      defmodule DoubleDown.Test.CallbacksTrue do
+        use DoubleDown.Contract, callbacks: true
+
+        defcallback greet(name :: String.t()) :: String.t()
+      end
+      """)
+
+      mod = DoubleDown.Test.CallbacksTrue
+
+      callbacks = apply(mod, :behaviour_info, [:callbacks])
+      assert {:greet, 1} in callbacks
+    end
+
+    test "omitting callbacks option defaults to true (backwards compat)" do
+      Code.compile_string("""
+      defmodule DoubleDown.Test.CallbacksDefault do
+        use DoubleDown.Contract
+
+        defcallback greet(name :: String.t()) :: String.t()
+      end
+      """)
+
+      mod = DoubleDown.Test.CallbacksDefault
+
+      callbacks = apply(mod, :behaviour_info, [:callbacks])
+      assert {:greet, 1} in callbacks
+    end
+
+    test "callbacks: false module can still be used with ContractFacade" do
+      Code.compile_string("""
+      defmodule DoubleDown.Test.CallbacksFalseWithFacade do
+        use DoubleDown.Contract, callbacks: false
+        use DoubleDown.ContractFacade, contract: DoubleDown.Test.CallbacksFalseWithFacade, otp_app: :double_down_test
+
+        defcallback greet(name :: String.t()) :: String.t()
+      end
+      """)
+
+      mod = DoubleDown.Test.CallbacksFalseWithFacade
+
+      DoubleDown.Testing.set_stateless_handler(mod, fn
+        _contract, :greet, ["Alice"] -> "Hello, Alice!"
+      end)
+
+      assert "Hello, Alice!" = apply(mod, :greet, ["Alice"])
+    end
+
+
+  end
+
   # ── @spec generation ──────────────────────────────────────
 
   describe "@spec generation" do
