@@ -214,11 +214,19 @@ defmodule DoubleDown.Contract do
         line: 0
     end
 
-    callbacks = Enum.map(operations, &generate_callback/1)
+    emit_callbacks? = Module.get_attribute(env.module, :emit_callbacks) != false
     introspection = generate_introspection(operations)
 
+    callbacks_block =
+      if emit_callbacks? do
+        callbacks = Enum.map(operations, &generate_callback/1)
+        quote do
+          unquote_splicing(callbacks)
+        end
+      end
+
     quote do
-      unquote_splicing(callbacks)
+      unquote(callbacks_block)
       unquote(introspection)
     end
   end
