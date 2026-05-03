@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **`callbacks: false` option for `DoubleDown.Contract`.** When set,
+  `defcallback` parsing and `__callbacks__/0` introspection are
+  generated as usual, but `@callback` declarations are suppressed.
+  This allows downstream libraries (e.g. Skuld) to derive their own
+  `@callback` declarations from DoubleDown `defcallback` metadata in
+  a single module. Default `callbacks: true` preserves existing
+  behaviour.
+
 ## [0.57.0]
 
 ### Added
