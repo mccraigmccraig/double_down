@@ -48,18 +48,22 @@ defmodule DoubleDown.Contract do
   """
 
   @doc false
-  defmacro __using__(_opts) do
+  defmacro __using__(opts) do
+    emit_callbacks? = Keyword.get(opts, :callbacks, true)
+
     quote do
       # import is always safe to repeat and must be at module scope
       # (imports inside blocks like `unless` are scoped to that block)
       import DoubleDown.Contract, only: [defcallback: 1, defcallback: 2]
 
-      # Guard the non-idempotent parts: registering the accumulator attribute
-      # and the @before_compile hook. This makes `use DoubleDown.Contract`
-      # idempotent, so a module can both `use DoubleDown.Contract` directly and
-      # have it called by a wrapper macro internally.
+      # Guard the non-idempotent parts: registering the accumulator attribute,
+      # emit_callbacks flag, and @before_compile hook. This makes
+      # `use DoubleDown.Contract` idempotent, so a module can both
+      # `use DoubleDown.Contract` directly and have it called by a wrapper
+      # macro internally.
       unless Module.has_attribute?(__MODULE__, :callback_operations) do
         Module.register_attribute(__MODULE__, :callback_operations, accumulate: true)
+        @emit_callbacks unquote(emit_callbacks?)
         @before_compile DoubleDown.Contract
       end
     end
