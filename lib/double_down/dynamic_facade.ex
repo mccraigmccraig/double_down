@@ -432,6 +432,7 @@ defmodule DoubleDown.DynamicFacade do
     mimic_srv = Module.concat(Mimic, Server)
 
     Code.ensure_loaded?(mimic_srv) and
-      (apply(mimic_mod, :copied?, [module]) or apply(mimic_srv, :marked_to_copy?, [module]))
+      ((Code.ensure_loaded?(mimic_mod) && apply(mimic_mod, :copied?, [module])) or
+         apply(mimic_srv, :marked_to_copy?, [module]))
   end
 end
