@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **Mimic conflict detection in `DynamicFacade.setup/1`.** Raises
+  `ArgumentError` if a module is already managed by Mimic (marked
+  to be copied or already copied), preventing silent dispatch
+  breakage at test time.
+
 ## [0.58.0]
 
 ### Added

@@ -172,6 +172,14 @@ defmodule DoubleDown.DynamicFacade do
               "Erlang/OTP modules cannot be shimmed"
     end
 
+    if mimic_managing?(module) do
+      raise ArgumentError,
+            "cannot set up dynamic facade for #{inspect(module)} — " <>
+              "Mimic is already managing this module. " <>
+              "Do not use Mimic and DynamicFacade on the same module. " <>
+              "Use DoubleDown.Double for all test doubles instead."
+    end
+
     case :code.get_object_code(module) do
       :error ->
         raise ArgumentError,
@@ -417,5 +425,13 @@ defmodule DoubleDown.DynamicFacade do
   @doc false
   def original_module(module) do
     Module.concat(module, :__dd_original__)
+  end
+
+  defp mimic_managing?(module) do
+    mimic_mod = Module.concat(Mimic, Module)
+    mimic_srv = Module.concat(Mimic, Server)
+
+    Code.ensure_loaded?(mimic_srv) and
+      (apply(mimic_mod, :copied?, [module]) or apply(mimic_srv, :marked_to_copy?, [module]))
   end
 end
