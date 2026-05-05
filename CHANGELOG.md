@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.60.3]
+
+### Fixed
+
+- **`Cover.merge_all/0` crash when `:cover` is not active.** `merge/1`
+  now checks `enabled_for?` on the backup module before attempting
+  export, and `merge_all/0` returns early if `:cover.modules()` is
+  empty. No more `MatchError` on `:cover.export/2` when called
+  outside a cover-instrumented test run.
+
 ## [0.60.2]
 
 ### Fixed
