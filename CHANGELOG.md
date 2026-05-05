@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.60.0]
 
 ### Added
 
@@ -13,8 +13,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   instrumentation is active, `DynamicFacade.setup/1` now preserves
   coverage data on the renamed backup module by re-instrumenting it
   with `:cover.compile_beams/1`. Includes `DynamicFacade.Cover`
-  module with `merge/1` to rewrite backup coverdata back to the
-  original module name.
+  module with `merge_all/0` to rewrite coverdata back to original
+  module names for all registered DynamicFacades.
+
+- **`DynamicFacade` clean-room sub-modules.** Extracted
+  `DynamicFacade.Validator`, `DynamicFacade.Shader`,
+  `DynamicFacade.Shim` — three focused modules from the main
+  449-line file (now 209). Validation, bytecode manipulation, and
+  AST generation each live in their own module.
+
+- **Mimic API compatibility guard in `Validator`.** Before checking
+  Mimic conflict state, verifies the expected Mimic API exists.
+  Raises a clear error directing users to update DoubleDown if
+  Mimic has changed its API.
 
 ## [0.59.0]
 
