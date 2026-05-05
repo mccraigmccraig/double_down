@@ -77,8 +77,10 @@ defmodule DoubleDown.DynamicFacade.Validator do
     mimic_mod = Module.concat(Mimic, Module)
     mimic_srv = Module.concat(Mimic, Server)
 
-    if Code.ensure_loaded?(mimic_srv) or
-         Code.ensure_loaded?(mimic_mod) do
+    srv_loaded? = Code.ensure_loaded?(mimic_srv)
+    mod_loaded? = Code.ensure_loaded?(mimic_mod)
+
+    if srv_loaded? or mod_loaded? do
       function_exported?(mimic_mod, :copied?, 1) and
         function_exported?(mimic_srv, :marked_to_copy?, 1)
     else
