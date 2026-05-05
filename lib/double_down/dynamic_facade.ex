@@ -201,9 +201,15 @@ defmodule DoubleDown.DynamicFacade do
 
   defp do_setup(module) do
     backup = original_module(module)
+    cover_enabled? = DoubleDown.DynamicFacade.Cover.enabled_for?(module)
+
+    if cover_enabled? do
+      DoubleDown.DynamicFacade.Cover.export_coverdata!(module)
+      DoubleDown.DynamicFacade.Cover.export_private_functions()
+    end
 
     # 1. Rename the original module's beam to the backup name
-    rename_module(module, backup)
+    rename_module(module, backup, cover_enabled?)
 
     # 2. Get the public function exports (from the now-backup module)
     functions = backup.module_info(:exports)
@@ -233,7 +239,7 @@ defmodule DoubleDown.DynamicFacade do
     create_shim(module, functions, struct_info, behaviours, macros, backup)
   end
 
-  defp rename_module(module, new_name) do
+  defp rename_module(module, new_name, _cover_enabled?) do
     beam_code =
       case :code.get_object_code(module) do
         {^module, binary, _path} -> binary

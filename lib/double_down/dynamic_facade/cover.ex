@@ -33,7 +33,11 @@ defmodule DoubleDown.DynamicFacade.Cover do
 
   @doc false
   def enabled_for?(module) do
-    apply(:cover, :is_compiled, [module]) != false
+    cover_loaded?() and apply(:cover, :is_compiled, [module]) != false
+  end
+
+  defp cover_loaded? do
+    is_tuple(:code.is_loaded(:cover))
   end
 
   @doc false
