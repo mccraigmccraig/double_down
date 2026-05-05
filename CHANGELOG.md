@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.60.1]
+
+### Fixed
+
+- **`loaded_mimic_has_expected_api?` logic corrected.** When Mimic
+  is absent the function now correctly returns `true` (no API to
+  check) rather than `false`, preventing a spurious error on every
+  module in projects that don't use Mimic.
+
 ## [0.60.0]
 
 ### Added
