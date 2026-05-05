@@ -66,6 +66,24 @@ defmodule DoubleDown.DynamicFacade.Cover do
     :ok
   end
 
+  @doc """
+  Merge coverdata for all registered DynamicFacade modules.
+
+  Iterates all modules set up via `DynamicFacade.setup/1` and calls
+  `merge/1` for each. No-op if `:cover` is not available.
+
+  Call this from `test/test_helper.exs` after all tests complete:
+
+      ExUnit.after_suite(fn _ -> DoubleDown.DynamicFacade.Cover.merge_all() end)
+  """
+  def merge_all do
+    if cover_loaded?() do
+      Enum.each(DoubleDown.DynamicFacade.registered_modules(), &merge/1)
+    end
+
+    :ok
+  end
+
   # -- Private --
 
   defp private_functions_exported? do

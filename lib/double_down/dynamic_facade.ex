@@ -198,7 +198,8 @@ defmodule DoubleDown.DynamicFacade do
     end
   end
 
-  defp registered_modules do
+  @doc false
+  def registered_modules do
     :persistent_term.get(@registry_key, [])
   end
 
