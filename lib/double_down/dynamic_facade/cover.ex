@@ -58,11 +58,14 @@ defmodule DoubleDown.DynamicFacade.Cover do
   """
   def merge(module) do
     backup = Module.concat(module, :__dd_original__)
-    path = export_coverdata!(backup)
-    rewrite_coverdata!(path, backup, module)
 
-    :ok = apply(:cover, :import, [String.to_charlist(path)])
-    File.rm(path)
+    if enabled_for?(backup) do
+      path = export_coverdata!(backup)
+      rewrite_coverdata!(path, backup, module)
+      :ok = apply(:cover, :import, [String.to_charlist(path)])
+      File.rm(path)
+    end
+
     :ok
   end
 
@@ -70,14 +73,15 @@ defmodule DoubleDown.DynamicFacade.Cover do
   Merge coverdata for all registered DynamicFacade modules.
 
   Iterates all modules set up via `DynamicFacade.setup/1` and calls
-  `merge/1` for each. No-op if `:cover` is not available.
+  `merge/1` for each. No-op if `:cover` is not available or has no
+  instrumented modules.
 
   Call this from `test/test_helper.exs` after all tests complete:
 
       ExUnit.after_suite(fn _ -> DoubleDown.DynamicFacade.Cover.merge_all() end)
   """
   def merge_all do
-    if cover_loaded?() do
+    if cover_loaded?() and apply(:cover, :modules, []) != [] do
       Enum.each(DoubleDown.DynamicFacade.registered_modules(), &merge/1)
     end
 
