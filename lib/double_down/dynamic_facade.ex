@@ -161,14 +161,16 @@ defmodule DoubleDown.DynamicFacade do
     internal = [__info__: 1, module_info: 0, module_info: 1]
     functions = Enum.reject(functions, &(&1 in internal))
 
+    alias DoubleDown.DynamicFacade.Shim
+
     # 3. If the module defines a struct, capture struct info for metadata
-    struct_info = get_struct_info(backup)
+    struct_info = Shim.get_struct_info(backup)
 
     # 4. Capture @behaviour declarations from the original module
-    behaviours = get_behaviours(backup)
+    behaviours = Shim.get_behaviours(backup)
 
     # 5. Detect macros and exclude their MACRO- functions from dispatch wrappers
-    macros = get_macros(backup)
+    macros = Shim.get_macros(backup)
 
     macro_fns =
       for {name, arity} <- macros do
@@ -178,139 +180,7 @@ defmodule DoubleDown.DynamicFacade do
     functions = Enum.reject(functions, &(&1 in macro_fns))
 
     # 6. Create the dispatch shim at the original module name
-    #    Note: __struct__/0 and __struct__/1 are kept as dispatch wrappers
-    #    so they route through Double handlers. The defstruct declaration
-    #    only provides __info__(:struct) metadata and compile-time support.
-    create_shim(module, functions, struct_info, behaviours, macros, backup)
-  end
-
-  defp create_shim(module, functions, struct_info, behaviours, macros, backup) do
-    dispatch_fns =
-      for {name, arity} <- functions do
-        args = Macro.generate_arguments(arity, __MODULE__)
-
-        quote do
-          def unquote(name)(unquote_splicing(args)) do
-            DoubleDown.DynamicFacade.dispatch(
-              unquote(module),
-              unquote(name),
-              unquote(args)
-            )
-          end
-        end
-      end
-
-    behaviour_decls = generate_behaviours(behaviours)
-    struct_decl = generate_struct(struct_info, backup)
-    macro_decls = generate_macros(macros, backup)
-    # behaviour_decls first, then struct_decl, then dispatch_fns, then macros.
-    # dispatch_fns after struct_decl so dispatch __struct__/0,/1
-    # wrappers override the defstruct-generated ones.
-    contents = behaviour_decls ++ struct_decl ++ dispatch_fns ++ macro_decls
-
-    prev = Code.compiler_options(ignore_module_conflict: true)
-
-    try do
-      Module.create(module, contents, Macro.Env.location(__ENV__))
-    after
-      Code.compiler_options(ignore_module_conflict: prev[:ignore_module_conflict])
-    end
-  end
-
-  # -- Macro support --
-  #
-  # If the original module exports macros, we generate defmacro wrappers
-  # that delegate to the backup module's macro implementation. Macros
-  # expand at compile time so they cannot be dispatched through the
-  # runtime Double handler — they always use the original implementation.
-  # Adapted from Mimic.Module.generate_mimic_macros/1.
-
-  defp get_macros(backup) do
-    if function_exported?(backup, :__info__, 1) do
-      backup.__info__(:macros)
-    else
-      []
-    end
-  end
-
-  defp generate_macros(macros, backup) do
-    for {macro_name, arity} <- macros do
-      args = Macro.generate_arguments(arity, __MODULE__)
-      macro_fn = String.to_existing_atom("MACRO-#{macro_name}")
-
-      quote do
-        defmacro unquote(macro_name)(unquote_splicing(args)) do
-          apply(unquote(backup), unquote(macro_fn), [__CALLER__, unquote_splicing(args)])
-        end
-      end
-    end
-  end
-
-  # -- Behaviour support --
-  #
-  # Copy @behaviour declarations from the original module to the shim
-  # so that behaviour-based dispatch and checks work correctly.
-  # Adapted from Mimic.Module.generate_mimic_behaviours/1.
-
-  defp get_behaviours(backup) do
-    backup.module_info(:attributes)
-    |> Keyword.get_values(:behaviour)
-    |> List.flatten()
-  end
-
-  defp generate_behaviours(behaviours) do
-    for behaviour <- behaviours do
-      quote do
-        @behaviour unquote(behaviour)
-      end
-    end
-  end
-
-  # -- Struct support --
-  #
-  # If the original module defines a struct, we re-declare `defstruct`
-  # in the shim so that `__info__(:struct)` returns correct metadata
-  # and `%Module{}` literal syntax works at compile time.
-  # Adapted from Mimic.Module.generate_mimic_struct/1.
-
-  defp get_struct_info(backup) do
-    if function_exported?(backup, :__info__, 1) && backup.__info__(:struct) != nil do
-      backup.__info__(:struct)
-    end
-  end
-
-  defp generate_struct(nil, _backup), do: []
-
-  defp generate_struct(struct_info, backup) do
-    struct_template = Map.from_struct(backup.__struct__())
-
-    required_fields =
-      for %{field: field, required: true} <- struct_info, do: field
-
-    struct_params =
-      for %{field: field} <- struct_info do
-        {field, Macro.escape(struct_template[field])}
-      end
-
-    enforce =
-      if required_fields != [] do
-        quote do
-          @enforce_keys unquote(required_fields)
-        end
-      end
-
-    defstruct_decl =
-      quote do
-        defstruct unquote(struct_params)
-
-        # Mark __struct__/0 and __struct__/1 as overridable so the
-        # dispatch wrappers (generated after this block) take precedence.
-        # This preserves __info__(:struct) metadata from defstruct while
-        # routing actual calls through DynamicFacade.dispatch/3.
-        defoverridable __struct__: 0, __struct__: 1
-      end
-
-    Enum.reject([enforce, defstruct_decl], &is_nil/1)
+    Shim.create_shim(module, functions, struct_info, behaviours, macros, backup)
   end
 
   # -- Registry --
