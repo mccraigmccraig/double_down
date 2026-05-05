@@ -44,6 +44,14 @@ defmodule DoubleDown.DynamicFacade.Validator do
               "Use DoubleDown.Double for all test doubles instead."
     end
 
+    unless loaded_mimic_has_expected_api?() do
+      raise ArgumentError,
+            "DoubleDown's Mimic conflict detection relies on " <>
+              "Mimic.Module.copied?/1 and Mimic.Server.marked_to_copy?/1 " <>
+              "which are not available in the installed Mimic version. " <>
+              "DoubleDown may need an update to support this Mimic release."
+    end
+
     case :code.get_object_code(module) do
       :error ->
         raise ArgumentError,
@@ -63,5 +71,14 @@ defmodule DoubleDown.DynamicFacade.Validator do
       Code.ensure_loaded?(mimic_srv) and
       (apply(mimic_mod, :copied?, [module]) or
          apply(mimic_srv, :marked_to_copy?, [module]))
+  end
+
+  defp loaded_mimic_has_expected_api? do
+    mimic_mod = Module.concat([Mimic, Module])
+    mimic_srv = Module.concat([Mimic, Server])
+
+    not Code.ensure_loaded?(mimic_srv) or
+      (function_exported?(mimic_mod, :copied?, 1) and
+         function_exported?(mimic_srv, :marked_to_copy?, 1))
   end
 end
