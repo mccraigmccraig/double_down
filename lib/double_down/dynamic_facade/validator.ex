@@ -74,11 +74,15 @@ defmodule DoubleDown.DynamicFacade.Validator do
   end
 
   defp loaded_mimic_has_expected_api? do
-    mimic_mod = Module.concat([Mimic, Module])
-    mimic_srv = Module.concat([Mimic, Server])
+    mimic_mod = Module.concat(Mimic, Module)
+    mimic_srv = Module.concat(Mimic, Server)
 
-    not Code.ensure_loaded?(mimic_srv) or
-      (function_exported?(mimic_mod, :copied?, 1) and
-         function_exported?(mimic_srv, :marked_to_copy?, 1))
+    if Code.ensure_loaded?(mimic_srv) or
+         Code.ensure_loaded?(mimic_mod) do
+      function_exported?(mimic_mod, :copied?, 1) and
+        function_exported?(mimic_srv, :marked_to_copy?, 1)
+    else
+      true
+    end
   end
 end
