@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.60.2]
+
+### Fixed
+
+- **`loaded_mimic_has_expected_api?` short-circuit fix.** The `or`
+  operator short-circuited evaluation of `Code.ensure_loaded?` for
+  `Mimic.Module`, preventing it from loading when `Mimic.Server`
+  was already loaded. Both modules are now loaded unconditionally
+  before the API checks run.
+
 ## [0.60.1]
 
 ### Fixed
