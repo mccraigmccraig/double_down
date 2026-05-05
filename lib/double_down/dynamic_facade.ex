@@ -239,7 +239,7 @@ defmodule DoubleDown.DynamicFacade do
     create_shim(module, functions, struct_info, behaviours, macros, backup)
   end
 
-  defp rename_module(module, new_name, _cover_enabled?) do
+  defp rename_module(module, new_name, cover_enabled?) do
     beam_code =
       case :code.get_object_code(module) do
         {^module, binary, _path} -> binary
@@ -264,6 +264,10 @@ defmodule DoubleDown.DynamicFacade do
       end
 
     {:module, ^new_name} = :code.load_binary(new_name, ~c"", binary)
+
+    if cover_enabled? do
+      apply(:cover, :compile_beams, [[{new_name, binary}]])
+    end
   end
 
   defp rename_module_attribute([{:attribute, line, :module, {_, vars}} | t], new_name) do
