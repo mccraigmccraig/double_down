@@ -36,20 +36,20 @@ defmodule DoubleDown.DynamicFacade.Validator do
               "Erlang/OTP modules cannot be shimmed"
     end
 
-    if mimic_managing?(module) do
-      raise ArgumentError,
-            "cannot set up dynamic facade for #{inspect(module)} — " <>
-              "Mimic is already managing this module. " <>
-              "Do not use Mimic and DynamicFacade on the same module. " <>
-              "Use DoubleDown.Double for all test doubles instead."
-    end
-
     unless loaded_mimic_has_expected_api?() do
       raise ArgumentError,
             "DoubleDown's Mimic conflict detection relies on " <>
               "Mimic.Module.copied?/1 and Mimic.Server.marked_to_copy?/1 " <>
               "which are not available in the installed Mimic version. " <>
               "DoubleDown may need an update to support this Mimic release."
+    end
+
+    if mimic_managing?(module) do
+      raise ArgumentError,
+            "cannot set up dynamic facade for #{inspect(module)} — " <>
+              "Mimic is already managing this module. " <>
+              "Do not use Mimic and DynamicFacade on the same module. " <>
+              "Use DoubleDown.Double for all test doubles instead."
     end
 
     case :code.get_object_code(module) do
