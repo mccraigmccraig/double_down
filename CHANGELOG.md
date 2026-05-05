@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **`:cover` support in `DynamicFacade`.** When ExCoverall/`:cover`
+  instrumentation is active, `DynamicFacade.setup/1` now preserves
+  coverage data on the renamed backup module by re-instrumenting it
+  with `:cover.compile_beams/1`. Includes `DynamicFacade.Cover`
+  module with `merge/1` to rewrite backup coverdata back to the
+  original module name.
+
 ## [0.59.0]
 
 ### Added
