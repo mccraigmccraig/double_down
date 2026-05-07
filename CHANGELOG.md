@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- **GenServer crash during test teardown from `get_and_update` nil handler.**
+  When a child process (e.g. LiveView) has a queued `GenServer.call` to the
+  NimbleOwnership server after its test owner has exited and been cleaned up,
+  `get_and_update` passes `nil` to the callback. Both `invoke_handler/5` and
+  `restore_state/3` now handle nil gracefully — `invoke_handler` defers a
+  clear error to the (dying) calling process, and `restore_state` returns
+  `:ok` silently. This prevents `FunctionClauseError` from crashing the
+  singleton ownership GenServer and cascading across the entire test suite.
+
 ## [0.60.3]
 
 ### Fixed

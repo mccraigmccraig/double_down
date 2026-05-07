@@ -135,19 +135,23 @@ defmodule DoubleDown.Contract.Dispatch do
       Keys.ownership_server(),
       owner_pid,
       contract,
-      fn %HandlerMeta.Stateful{state: state} = meta ->
-        new_state =
-          case state do
-            %CanonicalHandlerState{} ->
-              # Double-managed: restore only the fallback_state
-              CanonicalHandlerState.put_fallback_state(state, snapshot)
+      fn
+        nil ->
+          {:ok, nil}
 
-            _ ->
-              # Raw stateful handler: replace entire state
-              snapshot
-          end
+        %HandlerMeta.Stateful{state: state} = meta ->
+          new_state =
+            case state do
+              %CanonicalHandlerState{} ->
+                # Double-managed: restore only the fallback_state
+                CanonicalHandlerState.put_fallback_state(state, snapshot)
 
-        {:ok, HandlerMeta.Stateful.put_state(meta, new_state)}
+              _ ->
+                # Raw stateful handler: replace entire state
+                snapshot
+            end
+
+          {:ok, HandlerMeta.Stateful.put_state(meta, new_state)}
       end
     )
 
@@ -312,40 +316,50 @@ defmodule DoubleDown.Contract.Dispatch do
         Keys.ownership_server(),
         owner_pid,
         contract,
-        fn %HandlerMeta.Stateful{state: state} = meta ->
-          Process.put(@inside_handler_key, true)
+        fn
+          nil ->
+            message =
+              "owner pid #{inspect(owner_pid)} exited before dispatch could complete " <>
+                "for #{inspect(contract)}.#{operation}/#{length(args)}."
 
-          try do
-            handler_result =
-              if all_states do
-                fun.(contract, operation, args, state, all_states)
-              else
-                fun.(contract, operation, args, state)
+            exception = RuntimeError.exception(message)
+
+            {Defer.new(fn -> reraise exception, [] end), nil}
+
+          %HandlerMeta.Stateful{state: state} = meta ->
+            Process.put(@inside_handler_key, true)
+
+            try do
+              handler_result =
+                if all_states do
+                  fun.(contract, operation, args, state, all_states)
+                else
+                  fun.(contract, operation, args, state)
+                end
+
+              case handler_result do
+                {%DoubleDown.Contract.Dispatch.Defer{} = defer, new_state} ->
+                  validate_not_global_state!(new_state)
+                  {defer, HandlerMeta.Stateful.put_state(meta, new_state)}
+
+                {result, new_state} ->
+                  validate_not_global_state!(new_state)
+                  {result, HandlerMeta.Stateful.put_state(meta, new_state)}
               end
+            rescue
+              exception ->
+                stacktrace = __STACKTRACE__
 
-            case handler_result do
-              {%DoubleDown.Contract.Dispatch.Defer{} = defer, new_state} ->
-                validate_not_global_state!(new_state)
-                {defer, HandlerMeta.Stateful.put_state(meta, new_state)}
+                {Defer.new(fn -> reraise exception, stacktrace end), meta}
+            catch
+              :throw, value ->
+                {Defer.new(fn -> throw(value) end), meta}
 
-              {result, new_state} ->
-                validate_not_global_state!(new_state)
-                {result, HandlerMeta.Stateful.put_state(meta, new_state)}
+              :exit, reason ->
+                {Defer.new(fn -> exit(reason) end), meta}
+            after
+              Process.delete(@inside_handler_key)
             end
-          rescue
-            exception ->
-              stacktrace = __STACKTRACE__
-
-              {Defer.new(fn -> reraise exception, stacktrace end), meta}
-          catch
-            :throw, value ->
-              {Defer.new(fn -> throw(value) end), meta}
-
-            :exit, reason ->
-              {Defer.new(fn -> exit(reason) end), meta}
-          after
-            Process.delete(@inside_handler_key)
-          end
         end
       )
 
