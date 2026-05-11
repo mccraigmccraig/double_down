@@ -99,6 +99,31 @@ defmodule DoubleDown.DynamicFacadeTest do
 
       Double.verify!()
     end
+
+    test "calling a dynamic facade from a handler without Defer raises immediately" do
+      Double.fallback(
+        DynamicTarget,
+        fn
+          _contract, :greet, [_name], state ->
+            DynamicTarget.zero_arity()
+            {"unreachable", state}
+
+          _contract, :zero_arity, [], state ->
+            {:fake, state}
+        end,
+        %{}
+      )
+
+      error =
+        assert_raise RuntimeError, fn ->
+          DynamicTarget.greet("boom")
+        end
+
+      assert error.message =~ "Re-entrant dispatch detected"
+      assert error.message =~ "DoubleDown.Test.DynamicTarget"
+      assert error.message =~ "zero_arity"
+      assert error.message =~ "Double.defer"
+    end
   end
 
   describe "Double.dynamic/1" do

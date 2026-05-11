@@ -50,9 +50,7 @@ defmodule DoubleDown.Contract.Dispatch do
   """
   @spec call(atom() | nil, module(), atom(), [term()]) :: term()
   def call(otp_app, contract, operation, args) do
-    if Process.get(@inside_handler_key) do
-      raise_reentrant_dispatch(contract, operation, args)
-    end
+    ensure_not_reentrant!(contract, operation, args)
 
     case resolve_test_handler(contract) do
       {:ok, owner_pid, handler} ->
@@ -174,6 +172,13 @@ defmodule DoubleDown.Contract.Dispatch do
           %{^contract => other} -> raise_invalid_handler_meta(contract, other)
           _ -> :none
         end
+    end
+  end
+
+  @doc false
+  def ensure_not_reentrant!(contract, operation, args) do
+    if Process.get(@inside_handler_key) do
+      raise_reentrant_dispatch(contract, operation, args)
     end
   end
 

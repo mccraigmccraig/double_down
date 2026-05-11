@@ -122,6 +122,8 @@ defmodule DoubleDown.DynamicFacade do
   """
   @spec dispatch(module(), atom(), [term()]) :: term()
   def dispatch(module, operation, args) do
+    DoubleDown.Contract.Dispatch.ensure_not_reentrant!(module, operation, args)
+
     case DoubleDown.Contract.Dispatch.resolve_test_handler(module) do
       {:ok, owner_pid, handler} ->
         result =
