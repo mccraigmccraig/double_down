@@ -91,7 +91,11 @@ defmodule DoubleDown.Repo.InMemoryTest do
       store = InMemory.new()
       cs = %Ecto.Changeset{valid?: false, errors: [name: {"required", []}]}
 
-      {{:error, ^cs}, ^store} = InMemory.dispatch(DoubleDown.Repo, :insert, [cs], store)
+      {{:error, rejected}, ^store} = InMemory.dispatch(DoubleDown.Repo, :insert, [cs], store)
+
+      refute rejected.valid?
+      assert rejected.action == :insert
+      assert rejected.errors == cs.errors
     end
   end
 
@@ -109,6 +113,41 @@ defmodule DoubleDown.Repo.InMemoryTest do
       {found, _} = InMemory.dispatch(DoubleDown.Repo, :get, [User, 1], store)
       assert found.name == "Alicia"
     end
+
+    test "rejects invalid changeset with update action" do
+      store = InMemory.new([%User{id: 1, name: "Alice"}])
+
+      cs =
+        %User{id: 1, name: "Alice"}
+        |> User.changeset(%{name: "Alicia"})
+        |> Ecto.Changeset.add_error(:name, "required")
+
+      cs = %{cs | valid?: false}
+
+      {{:error, rejected}, ^store} = InMemory.dispatch(DoubleDown.Repo, :update, [cs], store)
+
+      refute rejected.valid?
+      assert rejected.action == :update
+    end
+
+    test "raises stale entry for missing primary key row" do
+      store = InMemory.new()
+      cs = User.changeset(%User{id: 42, name: "Missing"}, %{name: "Updated"})
+
+      {%DoubleDown.Contract.Dispatch.Defer{fun: raise_fn}, ^store} =
+        InMemory.dispatch(DoubleDown.Repo, :update, [cs], store)
+
+      error = assert_raise Ecto.StaleEntryError, fn -> raise_fn.() end
+      assert error.changeset.action == :update
+    end
+
+    test "@primary_key false schema updates without stale check" do
+      store = InMemory.new()
+      cs = NoPkEvent.changeset(%NoPkEvent{name: "before"}, %{name: "after"})
+
+      {{:ok, %NoPkEvent{name: "after"}}, _store} =
+        InMemory.dispatch(DoubleDown.Repo, :update, [cs], store)
+    end
   end
 
   describe "delete" do
@@ -119,6 +158,38 @@ defmodule DoubleDown.Repo.InMemoryTest do
 
       {found, _} = InMemory.dispatch(DoubleDown.Repo, :get, [User, 1], store)
       assert found == nil
+    end
+
+    test "rejects invalid changeset with delete action" do
+      store = InMemory.new([%User{id: 1, name: "Alice"}])
+
+      cs =
+        User.changeset(%User{id: 1, name: "Alice"}, %{})
+        |> Ecto.Changeset.add_error(:name, "required")
+
+      cs = %{cs | valid?: false}
+
+      {{:error, rejected}, ^store} = InMemory.dispatch(DoubleDown.Repo, :delete, [cs], store)
+
+      refute rejected.valid?
+      assert rejected.action == :delete
+    end
+
+    test "raises stale entry for missing primary key row" do
+      store = InMemory.new()
+
+      {%DoubleDown.Contract.Dispatch.Defer{fun: raise_fn}, ^store} =
+        InMemory.dispatch(DoubleDown.Repo, :delete, [%User{id: 42, name: "Missing"}], store)
+
+      error = assert_raise Ecto.StaleEntryError, fn -> raise_fn.() end
+      assert error.changeset.action == :delete
+    end
+
+    test "@primary_key false schema deletes without stale check" do
+      store = InMemory.new()
+      event = %NoPkEvent{name: "thing_happened"}
+
+      {{:ok, ^event}, ^store} = InMemory.dispatch(DoubleDown.Repo, :delete, [event], store)
     end
   end
 
@@ -307,7 +378,9 @@ defmodule DoubleDown.Repo.InMemoryTest do
       {%DoubleDown.Contract.Dispatch.Defer{fun: raise_fn}, _} =
         InMemory.dispatch(DoubleDown.Repo, :insert!, [cs], store)
 
-      assert_raise Ecto.InvalidChangesetError, fn -> raise_fn.() end
+      error = assert_raise Ecto.InvalidChangesetError, fn -> raise_fn.() end
+      assert error.action == :insert
+      assert error.changeset.action == :insert
     end
   end
 
@@ -327,7 +400,9 @@ defmodule DoubleDown.Repo.InMemoryTest do
       {%DoubleDown.Contract.Dispatch.Defer{fun: raise_fn}, _} =
         InMemory.dispatch(DoubleDown.Repo, :update!, [cs], store)
 
-      assert_raise Ecto.InvalidChangesetError, fn -> raise_fn.() end
+      error = assert_raise Ecto.InvalidChangesetError, fn -> raise_fn.() end
+      assert error.action == :update
+      assert error.changeset.action == :update
     end
   end
 
@@ -350,7 +425,9 @@ defmodule DoubleDown.Repo.InMemoryTest do
       {%DoubleDown.Contract.Dispatch.Defer{fun: raise_fn}, _} =
         InMemory.dispatch(DoubleDown.Repo, :delete!, [cs], store)
 
-      assert_raise Ecto.InvalidChangesetError, fn -> raise_fn.() end
+      error = assert_raise Ecto.InvalidChangesetError, fn -> raise_fn.() end
+      assert error.action == :delete
+      assert error.changeset.action == :delete
     end
   end
 

@@ -126,7 +126,7 @@ if Code.ensure_loaded?(Ecto) do
     # -----------------------------------------------------------------
 
     defp dispatch(_contract, :insert, [%Ecto.Changeset{valid?: false} = changeset], _fallback_fn) do
-      {:error, changeset}
+      {:error, put_changeset_action(changeset, :insert)}
     end
 
     defp dispatch(_contract, :insert, [%Ecto.Changeset{} = changeset], _fallback_fn) do
@@ -138,7 +138,7 @@ if Code.ensure_loaded?(Ecto) do
     end
 
     defp dispatch(_contract, :update, [%Ecto.Changeset{valid?: false} = changeset], _fallback_fn) do
-      {:error, changeset}
+      {:error, put_changeset_action(changeset, :update)}
     end
 
     defp dispatch(_contract, :update, [changeset], _fallback_fn) do
@@ -146,7 +146,7 @@ if Code.ensure_loaded?(Ecto) do
     end
 
     defp dispatch(_contract, :delete, [%Ecto.Changeset{valid?: false} = changeset], _fallback_fn) do
-      {:error, changeset}
+      {:error, put_changeset_action(changeset, :delete)}
     end
 
     defp dispatch(_contract, :delete, [%Ecto.Changeset{} = changeset], _fallback_fn) do
@@ -420,6 +420,10 @@ if Code.ensure_loaded?(Ecto) do
     # -----------------------------------------------------------------
     # Helpers (after all dispatch clauses to avoid grouping warning)
     # -----------------------------------------------------------------
+
+    defp put_changeset_action(%Ecto.Changeset{} = changeset, action) do
+      %{changeset | action: action}
+    end
 
     defp do_load(schema, data, loader) when is_atom(schema) do
       Ecto.Schema.Loader.unsafe_load(schema, data, loader)

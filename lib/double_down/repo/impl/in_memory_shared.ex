@@ -98,7 +98,7 @@ if Code.ensure_loaded?(Ecto) do
 
     @doc false
     def dispatch_insert([%Ecto.Changeset{valid?: false} = changeset], store) do
-      {{:error, changeset}, store}
+      {{:error, put_changeset_action(changeset, :insert)}, store}
     end
 
     def dispatch_insert([%Ecto.Changeset{} = changeset], store) do
@@ -143,20 +143,31 @@ if Code.ensure_loaded?(Ecto) do
 
     @doc false
     def dispatch_update([%Ecto.Changeset{valid?: false} = changeset], store) do
-      {{:error, changeset}, store}
+      {{:error, put_changeset_action(changeset, :update)}, store}
     end
 
-    def dispatch_update([changeset], store) do
+    def dispatch_update([%Ecto.Changeset{} = changeset], store) do
       record = DoubleDown.Repo.Impl.Autogenerate.apply_changes(changeset, :update)
-      record = Ecto.put_meta(record, state: :loaded)
       schema = record.__struct__
       id = DoubleDown.Repo.Impl.Autogenerate.get_primary_key(record)
-      {{:ok, record}, put_record(store, schema, id, record)}
+
+      cond do
+        no_primary_key?(schema) ->
+          record = Ecto.put_meta(record, state: :loaded)
+          {{:ok, record}, put_record(store, schema, id, record)}
+
+        get_record(store, schema, id) == nil ->
+          stale_entry(:update, changeset, store)
+
+        true ->
+          record = Ecto.put_meta(record, state: :loaded)
+          {{:ok, record}, put_record(store, schema, id, record)}
+      end
     end
 
     @doc false
     def dispatch_delete([%Ecto.Changeset{valid?: false} = changeset], store) do
-      {{:error, changeset}, store}
+      {{:error, put_changeset_action(changeset, :delete)}, store}
     end
 
     def dispatch_delete([%Ecto.Changeset{} = changeset], store) do
@@ -168,7 +179,11 @@ if Code.ensure_loaded?(Ecto) do
           do: record,
           else: DoubleDown.Repo.Impl.Autogenerate.get_primary_key(record)
 
-      {{:ok, record}, delete_record(store, schema, key)}
+      if no_primary_key?(schema) or get_record(store, schema, key) != nil do
+        {{:ok, record}, delete_record(store, schema, key)}
+      else
+        stale_entry(:delete, changeset, store)
+      end
     end
 
     def dispatch_delete([record], store) do
@@ -179,7 +194,11 @@ if Code.ensure_loaded?(Ecto) do
           do: record,
           else: DoubleDown.Repo.Impl.Autogenerate.get_primary_key(record)
 
-      {{:ok, record}, delete_record(store, schema, key)}
+      if no_primary_key?(schema) or get_record(store, schema, key) != nil do
+        {{:ok, record}, delete_record(store, schema, key)}
+      else
+        stale_entry(:delete, Ecto.Changeset.change(record), store)
+      end
     end
 
     # -------------------------------------------------------------------
@@ -190,7 +209,7 @@ if Code.ensure_loaded?(Ecto) do
     def dispatch_insert!(args, store) do
       case dispatch_insert(args, store) do
         {{:ok, record}, new_store} -> {record, new_store}
-        {{:error, changeset}, store} -> bang_raise(:insert!, changeset, store)
+        {{:error, changeset}, store} -> bang_raise(:insert, changeset, store)
       end
     end
 
@@ -198,7 +217,8 @@ if Code.ensure_loaded?(Ecto) do
     def dispatch_update!(args, store) do
       case dispatch_update(args, store) do
         {{:ok, record}, new_store} -> {record, new_store}
-        {{:error, changeset}, store} -> bang_raise(:update!, changeset, store)
+        {{:error, changeset}, store} -> bang_raise(:update, changeset, store)
+        {%Defer{} = defer, store} -> {defer, store}
       end
     end
 
@@ -206,7 +226,8 @@ if Code.ensure_loaded?(Ecto) do
     def dispatch_delete!(args, store) do
       case dispatch_delete(args, store) do
         {{:ok, record}, new_store} -> {record, new_store}
-        {{:error, changeset}, store} -> bang_raise(:delete!, changeset, store)
+        {{:error, changeset}, store} -> bang_raise(:delete, changeset, store)
+        {%Defer{} = defer, store} -> {defer, store}
       end
     end
 
@@ -227,7 +248,8 @@ if Code.ensure_loaded?(Ecto) do
     def dispatch_insert_or_update!(args, store) do
       case dispatch_insert_or_update(args, store) do
         {{:ok, record}, new_store} -> {record, new_store}
-        {{:error, changeset}, store} -> bang_raise(:insert_or_update!, changeset, store)
+        {{:error, changeset}, store} -> bang_raise(changeset.action, changeset, store)
+        {%Defer{} = defer, store} -> {defer, store}
       end
     end
 
@@ -329,8 +351,22 @@ if Code.ensure_loaded?(Ecto) do
     end
 
     defp bang_raise(action, %Ecto.Changeset{} = changeset, store) do
+      changeset = put_changeset_action(changeset, action)
+
       {Defer.new(fn ->
          raise Ecto.InvalidChangesetError, action: action, changeset: changeset
+       end), store}
+    end
+
+    defp put_changeset_action(%Ecto.Changeset{} = changeset, action) do
+      %{changeset | action: action}
+    end
+
+    defp stale_entry(action, %Ecto.Changeset{} = changeset, store) do
+      changeset = put_changeset_action(changeset, action)
+
+      {Defer.new(fn ->
+         raise Ecto.StaleEntryError, changeset: changeset, action: action
        end), store}
     end
 

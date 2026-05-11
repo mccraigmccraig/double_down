@@ -138,7 +138,7 @@ defmodule DoubleDown.Repo.StubTest do
         |> Ecto.Changeset.cast(%{name: "Alice"}, [:name])
         |> Ecto.Changeset.add_error(:name, "is invalid")
 
-      assert {:error, %Ecto.Changeset{valid?: false}} = TestRepo.insert(cs)
+      assert {:error, %Ecto.Changeset{valid?: false, action: :insert}} = TestRepo.insert(cs)
     end
 
     test "update returns {:error, changeset} for invalid changeset" do
@@ -147,7 +147,16 @@ defmodule DoubleDown.Repo.StubTest do
         |> Ecto.Changeset.cast(%{name: "new"}, [:name])
         |> Ecto.Changeset.add_error(:name, "is invalid")
 
-      assert {:error, %Ecto.Changeset{valid?: false}} = TestRepo.update(cs)
+      assert {:error, %Ecto.Changeset{valid?: false, action: :update}} = TestRepo.update(cs)
+    end
+
+    test "delete returns {:error, changeset} for invalid changeset" do
+      cs =
+        %User{id: 1, name: "old"}
+        |> Ecto.Changeset.cast(%{}, [:name])
+        |> Ecto.Changeset.add_error(:name, "is invalid")
+
+      assert {:error, %Ecto.Changeset{valid?: false, action: :delete}} = TestRepo.delete(cs)
     end
 
     test "insert populates inserted_at and updated_at for schemas with timestamps" do
@@ -798,7 +807,7 @@ defmodule DoubleDown.Repo.StubTest do
       DoubleDown.Double.fallback(Repo, Repo.Stub.new())
       cs = User.changeset(%{}) |> Ecto.Changeset.add_error(:name, "required")
       cs = %{cs | valid?: false}
-      assert {:error, %Ecto.Changeset{}} = TestRepo.insert_or_update(cs)
+      assert {:error, %Ecto.Changeset{action: :insert}} = TestRepo.insert_or_update(cs)
     end
 
     test "opts-stripping variant works" do
