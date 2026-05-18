@@ -188,7 +188,7 @@ work in tests.
 
 `DynamicFacade.dispatch/3` checks NimbleOwnership for a test handler, falling
 back to the original (backed-up) module.  This is always the path for
-DynamicFacade — there's no config-based resolution because there's no contract
+a DynamicFacade (which is only ever set up under test) — there's no config-based resolution because there's no contract
 module to configure.
 
 ## Layer 4: Implementation
