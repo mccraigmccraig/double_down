@@ -130,8 +130,8 @@ defmodule DoubleDown.Double do
   code that might raise `FunctionClauseError`.
   """
 
-  alias DoubleDown.Contract.Dispatch.HandlerMeta
-  alias DoubleDown.Contract.Dispatch.Keys
+  alias DoubleDown.Dispatch.HandlerMeta
+  alias DoubleDown.Dispatch.Keys
   alias DoubleDown.Double.CanonicalHandlerState
 
   # -- Public API: defer --
@@ -169,8 +169,8 @@ defmodule DoubleDown.Double do
   calls through a facade — the handler runs inside a NimbleOwnership
   lock, and a nested dispatch would deadlock without it.
   """
-  @spec defer((-> term())) :: DoubleDown.Contract.Dispatch.Defer.t()
-  def defer(fun) when is_function(fun, 0), do: DoubleDown.Contract.Dispatch.Defer.new(fun)
+  @spec defer((-> term())) :: DoubleDown.Dispatch.Defer.t()
+  def defer(fun) when is_function(fun, 0), do: DoubleDown.Dispatch.Defer.new(fun)
 
   # -- Public API: passthrough sentinel --
 
@@ -194,8 +194,8 @@ defmodule DoubleDown.Double do
         end
       end)
   """
-  @spec passthrough() :: DoubleDown.Contract.Dispatch.Passthrough.t()
-  def passthrough, do: DoubleDown.Contract.Dispatch.Passthrough.new()
+  @spec passthrough() :: DoubleDown.Dispatch.Passthrough.t()
+  def passthrough, do: DoubleDown.Dispatch.Passthrough.new()
 
   # -- Public API: expect --
 
@@ -418,7 +418,7 @@ defmodule DoubleDown.Double do
 
   ## StatefulHandler module (recommended for stateful fallbacks)
 
-  A module implementing `DoubleDown.Contract.Dispatch.StatefulHandler`.
+  A module implementing `DoubleDown.Dispatch.StatefulHandler`.
   The module's `new/2` builds initial state, and its `dispatch/4` or
   `dispatch/5` handles operations:
 
@@ -435,7 +435,7 @@ defmodule DoubleDown.Double do
 
   ## StatelessHandler module
 
-  A module implementing `DoubleDown.Contract.Dispatch.StatelessHandler`.
+  A module implementing `DoubleDown.Dispatch.StatelessHandler`.
   The module's `new/2` builds a stateless dispatch function:
 
       # Writes only — reads will raise
@@ -566,8 +566,8 @@ defmodule DoubleDown.Double do
         #{inspect(module)} is not a StatefulHandler or StatelessHandler module.
 
         To use with Double.fallback/4, it must implement one of:
-          @behaviour DoubleDown.Contract.Dispatch.StatefulHandler
-          @behaviour DoubleDown.Contract.Dispatch.StatelessHandler
+          @behaviour DoubleDown.Dispatch.StatefulHandler
+          @behaviour DoubleDown.Dispatch.StatelessHandler
         """
     end
   end
@@ -599,12 +599,12 @@ defmodule DoubleDown.Double do
 
   defp stateful_handler?(module) do
     Code.ensure_loaded?(module) and
-      implements_behaviour?(module, DoubleDown.Contract.Dispatch.StatefulHandler)
+      implements_behaviour?(module, DoubleDown.Dispatch.StatefulHandler)
   end
 
   defp stateless_handler?(module) do
     Code.ensure_loaded?(module) and
-      implements_behaviour?(module, DoubleDown.Contract.Dispatch.StatelessHandler)
+      implements_behaviour?(module, DoubleDown.Dispatch.StatelessHandler)
   end
 
   # Prefer dispatch/5 (cross-contract) over dispatch/4

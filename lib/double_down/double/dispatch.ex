@@ -16,7 +16,7 @@ defmodule DoubleDown.Double.Dispatch do
   rejects > expects > per-op fakes > per-op stubs > fallback > raise
   """
 
-  alias DoubleDown.Contract.Dispatch.Defer
+  alias DoubleDown.Dispatch.Defer
   alias DoubleDown.Double.CanonicalHandlerState
 
   # -- Canonical handler --
@@ -78,7 +78,7 @@ defmodule DoubleDown.Double.Dispatch do
   defp invoke_expect(fun, args, state, all_states, operation)
        when is_function(fun, 1) do
     case fun.(args) do
-      %DoubleDown.Contract.Dispatch.Passthrough{} ->
+      %DoubleDown.Dispatch.Passthrough{} ->
         invoke_fallback_or_raise(state, operation, args, all_states)
 
       result ->
@@ -95,7 +95,7 @@ defmodule DoubleDown.Double.Dispatch do
        )
        when is_function(fun, 2) do
     case fun.(args, fallback_state) do
-      %DoubleDown.Contract.Dispatch.Passthrough{} ->
+      %DoubleDown.Dispatch.Passthrough{} ->
         invoke_fallback_or_raise(state, operation, args, all_states)
 
       {result, new_fallback_state} ->
@@ -115,7 +115,7 @@ defmodule DoubleDown.Double.Dispatch do
        )
        when is_function(fun, 3) do
     case fun.(args, fallback_state, all_states) do
-      %DoubleDown.Contract.Dispatch.Passthrough{} ->
+      %DoubleDown.Dispatch.Passthrough{} ->
         invoke_fallback_or_raise(state, operation, args, all_states)
 
       {result, new_fallback_state} ->
@@ -140,7 +140,7 @@ defmodule DoubleDown.Double.Dispatch do
        )
        when is_function(fun, 2) do
     case fun.(args, fallback_state) do
-      %DoubleDown.Contract.Dispatch.Passthrough{} ->
+      %DoubleDown.Dispatch.Passthrough{} ->
         invoke_fallback_or_raise(state, operation, args, all_states)
 
       {result, new_fallback_state} ->
@@ -160,7 +160,7 @@ defmodule DoubleDown.Double.Dispatch do
        )
        when is_function(fun, 3) do
     case fun.(args, fallback_state, all_states) do
-      %DoubleDown.Contract.Dispatch.Passthrough{} ->
+      %DoubleDown.Dispatch.Passthrough{} ->
         invoke_fallback_or_raise(state, operation, args, all_states)
 
       {result, new_fallback_state} ->
@@ -177,7 +177,7 @@ defmodule DoubleDown.Double.Dispatch do
   defp invoke_stub(fun, args, state, all_states, operation)
        when is_function(fun, 1) do
     case fun.(args) do
-      %DoubleDown.Contract.Dispatch.Passthrough{} ->
+      %DoubleDown.Dispatch.Passthrough{} ->
         invoke_fallback_or_raise(state, operation, args, all_states)
 
       result ->

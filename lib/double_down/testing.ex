@@ -17,8 +17,8 @@ defmodule DoubleDown.Testing do
   tests are isolated. Use `allow/3` to share handlers with child processes.
   """
 
-  alias DoubleDown.Contract.Dispatch.HandlerMeta
-  alias DoubleDown.Contract.Dispatch.Keys
+  alias DoubleDown.Dispatch.HandlerMeta
+  alias DoubleDown.Dispatch.Keys
 
   @doc """
   Start the DoubleDown ownership server.
@@ -66,7 +66,7 @@ defmodule DoubleDown.Testing do
 
   State is stored in NimbleOwnership and updated atomically on each dispatch.
   """
-  @spec set_stateful_handler(module(), DoubleDown.Contract.Dispatch.Types.stateful_fun(), term()) ::
+  @spec set_stateful_handler(module(), DoubleDown.Dispatch.Types.stateful_fun(), term()) ::
           :ok
   def set_stateful_handler(contract, fun, initial_state)
       when is_function(fun, 4) or is_function(fun, 5) do

@@ -238,7 +238,7 @@ isolation:
 - `Repo.Stub` calls the function directly without any locking or
   state (rollback returns `{:error, value}` but has no state to
   restore).
-- `Repo.InMemory` and `Repo.OpenInMemory` use `%DoubleDown.Contract.Dispatch.Defer{}` to run the transaction
+- `Repo.InMemory` and `Repo.OpenInMemory` use `%DoubleDown.Dispatch.Defer{}` to run the transaction
   function outside the NimbleOwnership lock — each sub-operation
   acquires the lock individually.
 

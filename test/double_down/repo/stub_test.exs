@@ -1125,7 +1125,7 @@ defmodule DoubleDown.Repo.StubTest do
 
     test "0-arity fn without opts" do
       result =
-        DoubleDown.Contract.Dispatch.call(
+        DoubleDown.Dispatch.call(
           :double_down,
           Repo,
           :transaction,
@@ -1137,7 +1137,7 @@ defmodule DoubleDown.Repo.StubTest do
 
     test "1-arity fn without opts" do
       result =
-        DoubleDown.Contract.Dispatch.call(
+        DoubleDown.Dispatch.call(
           :double_down,
           Repo,
           :transaction,
@@ -1149,7 +1149,7 @@ defmodule DoubleDown.Repo.StubTest do
 
     test "0-arity fn with opts" do
       result =
-        DoubleDown.Contract.Dispatch.call(
+        DoubleDown.Dispatch.call(
           :double_down,
           Repo,
           :transaction,
@@ -1161,7 +1161,7 @@ defmodule DoubleDown.Repo.StubTest do
 
     test "transact also normalises" do
       result =
-        DoubleDown.Contract.Dispatch.call(
+        DoubleDown.Dispatch.call(
           :double_down,
           Repo,
           :transact,
@@ -1173,7 +1173,7 @@ defmodule DoubleDown.Repo.StubTest do
 
     test "bare return value wrapped in {:ok, result}" do
       result =
-        DoubleDown.Contract.Dispatch.call(
+        DoubleDown.Dispatch.call(
           :double_down,
           Repo,
           :transaction,
@@ -1185,7 +1185,7 @@ defmodule DoubleDown.Repo.StubTest do
 
     test "{:ok, value} returned as-is (not double-wrapped)" do
       result =
-        DoubleDown.Contract.Dispatch.call(
+        DoubleDown.Dispatch.call(
           :double_down,
           Repo,
           :transaction,

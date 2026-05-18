@@ -339,7 +339,7 @@ time** based on the `:test_dispatch?` option:
 
 ### Non-production (default)
 
-`DoubleDown.Contract.Dispatch.call/4` resolves the implementation in order:
+`DoubleDown.Dispatch.call/4` resolves the implementation in order:
 
 1. **Test double** — NimbleOwnership process-scoped lookup
 2. **Application config** — `Application.get_env(otp_app, contract)[:impl]`
@@ -351,7 +351,7 @@ Test doubles always take priority over config.
 
 Two levels of optimisation are available:
 
-**Config dispatch** — `DoubleDown.Contract.Dispatch.call_config/4` skips
+**Config dispatch** — `DoubleDown.Dispatch.call_config/4` skips
 NimbleOwnership entirely but still reads `Application.get_env` at
 runtime:
 

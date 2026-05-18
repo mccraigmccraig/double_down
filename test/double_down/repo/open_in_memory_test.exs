@@ -553,7 +553,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
 
       # OpenInMemory is open-world so all/1 requires a fallback;
       # verify via the store directly.
-      store = DoubleDown.Contract.Dispatch.get_state(Repo)
+      store = DoubleDown.Dispatch.get_state(Repo)
       events = DoubleDown.Repo.Impl.InMemoryShared.records_for_schema(store, NoPkEvent)
       assert length(events) == 3
       names = Enum.map(events, & &1.name) |> Enum.sort()

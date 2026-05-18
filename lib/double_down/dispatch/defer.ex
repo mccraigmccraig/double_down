@@ -1,8 +1,8 @@
-defmodule DoubleDown.Contract.Dispatch.Defer do
+defmodule DoubleDown.Dispatch.Defer do
   @moduledoc """
   A deferred execution marker.
 
-  When a handler or test double returns `%DoubleDown.Contract.Dispatch.Defer{fun: fun}`,
+  When a handler or test double returns `%DoubleDown.Dispatch.Defer{fun: fun}`,
   the dispatch system releases the NimbleOwnership lock before calling
   `fun.()`. This avoids deadlocks when the deferred function makes
   further dispatched calls (e.g. `transact` calling `insert` inside

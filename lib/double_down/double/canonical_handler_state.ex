@@ -36,8 +36,8 @@ defmodule DoubleDown.Double.CanonicalHandlerState do
 
   @type fallback ::
           nil
-          | {:stateless, DoubleDown.Contract.Dispatch.Types.stateless_fun()}
-          | {:stateful, DoubleDown.Contract.Dispatch.Types.stateful_fun()}
+          | {:stateless, DoubleDown.Dispatch.Types.stateless_fun()}
+          | {:stateful, DoubleDown.Dispatch.Types.stateful_fun()}
           | {:module, module()}
 
   @type t :: %__MODULE__{
@@ -90,13 +90,13 @@ defmodule DoubleDown.Double.CanonicalHandlerState do
   end
 
   @doc "Set a stateless function fallback."
-  @spec set_stateless_fallback(t(), DoubleDown.Contract.Dispatch.Types.stateless_fun()) :: t()
+  @spec set_stateless_fallback(t(), DoubleDown.Dispatch.Types.stateless_fun()) :: t()
   def set_stateless_fallback(%__MODULE__{} = state, fun) when is_function(fun, 3) do
     %{state | fallback: {:stateless, fun}}
   end
 
   @doc "Set a stateful function fallback with initial state."
-  @spec set_stateful_fallback(t(), DoubleDown.Contract.Dispatch.Types.stateful_fun(), term()) ::
+  @spec set_stateful_fallback(t(), DoubleDown.Dispatch.Types.stateful_fun(), term()) ::
           t()
   def set_stateful_fallback(%__MODULE__{} = state, fun, init_state)
       when is_function(fun, 4) or is_function(fun, 5) do

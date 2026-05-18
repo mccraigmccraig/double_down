@@ -1,4 +1,4 @@
-defmodule DoubleDown.Contract.Dispatch.StatelessHandler do
+defmodule DoubleDown.Dispatch.StatelessHandler do
   @moduledoc """
   Behaviour for stateless stub handler modules.
 
@@ -23,7 +23,7 @@ defmodule DoubleDown.Contract.Dispatch.StatelessHandler do
   ## Example
 
       defmodule MyApp.TestStore do
-        @behaviour DoubleDown.Contract.Dispatch.StatelessHandler
+        @behaviour DoubleDown.Dispatch.StatelessHandler
 
         @impl true
         def new(fallback_fn, _opts) do
@@ -49,7 +49,7 @@ defmodule DoubleDown.Contract.Dispatch.StatelessHandler do
   for use as a `Double.fallback` function fallback.
   """
   @callback new(
-              fallback_fn :: DoubleDown.Contract.Dispatch.Types.stateless_fun() | nil,
+              fallback_fn :: DoubleDown.Dispatch.Types.stateless_fun() | nil,
               opts :: keyword()
-            ) :: DoubleDown.Contract.Dispatch.Types.stateless_fun()
+            ) :: DoubleDown.Dispatch.Types.stateless_fun()
 end

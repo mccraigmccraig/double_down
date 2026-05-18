@@ -46,7 +46,7 @@ Read operations and association operations (`preload`, `reload`,
 `reload!`, `all_by`) delegate to an optional fallback function, or
 raise with an actionable error message.
 
-`Repo.Stub` implements `DoubleDown.Contract.Dispatch.StatelessHandler` and can be
+`Repo.Stub` implements `DoubleDown.Dispatch.StatelessHandler` and can be
 used by module name with `Double.fallback`:
 
 ```elixir

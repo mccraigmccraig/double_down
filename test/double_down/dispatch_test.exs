@@ -1,4 +1,4 @@
-defmodule DoubleDown.Contract.DispatchTest do
+defmodule DoubleDown.DispatchTest do
   use ExUnit.Case, async: true
 
   alias DoubleDown.Test.Greeter
@@ -160,18 +160,18 @@ defmodule DoubleDown.Contract.DispatchTest do
   describe "key/3" do
     test "builds a canonical key" do
       assert {Greeter, :greet, ["Alice"]} =
-               DoubleDown.Contract.Dispatch.key(Greeter, :greet, ["Alice"])
+               DoubleDown.Dispatch.key(Greeter, :greet, ["Alice"])
     end
 
     test "normalizes map argument order" do
-      key1 = DoubleDown.Contract.Dispatch.key(Greeter, :greet, [%{b: 2, a: 1}])
-      key2 = DoubleDown.Contract.Dispatch.key(Greeter, :greet, [%{a: 1, b: 2}])
+      key1 = DoubleDown.Dispatch.key(Greeter, :greet, [%{b: 2, a: 1}])
+      key2 = DoubleDown.Dispatch.key(Greeter, :greet, [%{a: 1, b: 2}])
       assert key1 == key2
     end
 
     test "normalizes keyword list order" do
-      key1 = DoubleDown.Contract.Dispatch.key(Greeter, :greet, [[b: 2, a: 1]])
-      key2 = DoubleDown.Contract.Dispatch.key(Greeter, :greet, [[a: 1, b: 2]])
+      key1 = DoubleDown.Dispatch.key(Greeter, :greet, [[b: 2, a: 1]])
+      key2 = DoubleDown.Dispatch.key(Greeter, :greet, [[a: 1, b: 2]])
       assert key1 == key2
     end
   end
@@ -222,7 +222,7 @@ defmodule DoubleDown.Contract.DispatchTest do
 
   describe "handler_active?/1" do
     test "returns false when no handler is installed" do
-      refute DoubleDown.Contract.Dispatch.handler_active?(Greeter)
+      refute DoubleDown.Dispatch.handler_active?(Greeter)
     end
 
     test "returns true after a fn handler is installed" do
@@ -230,13 +230,13 @@ defmodule DoubleDown.Contract.DispatchTest do
         _contract, :greet, [name] -> "Hi, #{name}!"
       end)
 
-      assert DoubleDown.Contract.Dispatch.handler_active?(Greeter)
+      assert DoubleDown.Dispatch.handler_active?(Greeter)
     end
 
     test "returns true after Double.fallback/2 is called" do
       DoubleDown.Double.fallback(Greeter, Greeter.Impl)
 
-      assert DoubleDown.Contract.Dispatch.handler_active?(Greeter)
+      assert DoubleDown.Dispatch.handler_active?(Greeter)
     end
 
     test "respects $callers chain — handler visible in spawned child" do
@@ -248,7 +248,7 @@ defmodule DoubleDown.Contract.DispatchTest do
       # the parent's handler via resolve_test_handler's callers walk.
       result =
         Task.async(fn ->
-          DoubleDown.Contract.Dispatch.handler_active?(Greeter)
+          DoubleDown.Dispatch.handler_active?(Greeter)
         end)
         |> Task.await()
 
@@ -261,8 +261,8 @@ defmodule DoubleDown.Contract.DispatchTest do
       end)
 
       # Greeter has a handler, but Counter does not
-      assert DoubleDown.Contract.Dispatch.handler_active?(Greeter)
-      refute DoubleDown.Contract.Dispatch.handler_active?(Counter)
+      assert DoubleDown.Dispatch.handler_active?(Greeter)
+      refute DoubleDown.Dispatch.handler_active?(Counter)
     end
   end
 
@@ -270,23 +270,23 @@ defmodule DoubleDown.Contract.DispatchTest do
 
   describe "get_state" do
     test "returns nil when no handler installed" do
-      assert DoubleDown.Contract.Dispatch.get_state(Greeter) == nil
+      assert DoubleDown.Dispatch.get_state(Greeter) == nil
     end
 
     test "returns state from current process" do
       DoubleDown.Double.fallback(DoubleDown.Repo, DoubleDown.Repo.InMemory)
-      state = DoubleDown.Contract.Dispatch.get_state(DoubleDown.Repo)
+      state = DoubleDown.Dispatch.get_state(DoubleDown.Repo)
       assert is_map(state)
     end
 
     test "returns state from child process via $callers chain" do
       DoubleDown.Double.fallback(DoubleDown.Repo, DoubleDown.Repo.InMemory)
 
-      parent_state = DoubleDown.Contract.Dispatch.get_state(DoubleDown.Repo)
+      parent_state = DoubleDown.Dispatch.get_state(DoubleDown.Repo)
 
       child_state =
         Task.async(fn ->
-          DoubleDown.Contract.Dispatch.get_state(DoubleDown.Repo)
+          DoubleDown.Dispatch.get_state(DoubleDown.Repo)
         end)
         |> Task.await()
 

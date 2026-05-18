@@ -91,7 +91,7 @@ defmodule DoubleDown.Facade.Codegen do
         end
       else
         doc_string =
-          "Port operation: `#{name}/#{length(param_names)}`\n\nDispatches to the configured implementation via `DoubleDown.Contract.Dispatch`.\n"
+          "Port operation: `#{name}/#{length(param_names)}`\n\nDispatches to the configured implementation via `DoubleDown.Dispatch`.\n"
 
         quote do
           @doc unquote(doc_string)
@@ -119,13 +119,13 @@ defmodule DoubleDown.Facade.Codegen do
 
     # Three dispatch paths, selected at compile time:
     #
-    # 1. test_dispatch? true -> DoubleDown.Contract.Dispatch.call/4
+    # 1. test_dispatch? true -> DoubleDown.Dispatch.call/4
     #    (NimbleOwnership test handlers + config fallback)
     #
     # 2. static_impl set -> apply(impl, operation, args)
     #    (direct call, zero overhead — impl resolved at compile time)
     #
-    # 3. otherwise -> DoubleDown.Contract.Dispatch.call_config/4
+    # 3. otherwise -> DoubleDown.Dispatch.call_config/4
     #    (runtime Application.get_env lookup)
     cond do
       test_dispatch? ->
@@ -133,7 +133,7 @@ defmodule DoubleDown.Facade.Codegen do
           unquote(doc_ast)
           @spec unquote(spec_ast)
           def unquote(name)(unquote_splicing(param_vars)) do
-            DoubleDown.Contract.Dispatch.call(
+            DoubleDown.Dispatch.call(
               unquote(otp_app),
               unquote(contract),
               unquote(name),
@@ -170,7 +170,7 @@ defmodule DoubleDown.Facade.Codegen do
           unquote(doc_ast)
           @spec unquote(spec_ast)
           def unquote(name)(unquote_splicing(param_vars)) do
-            DoubleDown.Contract.Dispatch.call_config(
+            DoubleDown.Dispatch.call_config(
               unquote(otp_app),
               unquote(contract),
               unquote(name),
@@ -195,7 +195,7 @@ defmodule DoubleDown.Facade.Codegen do
     quote do
       @doc unquote(doc_string)
       def __key__(unquote(name), unquote_splicing(param_vars)) do
-        DoubleDown.Contract.Dispatch.key(unquote(contract), unquote(name), unquote(param_vars))
+        DoubleDown.Dispatch.key(unquote(contract), unquote(name), unquote(param_vars))
       end
     end
   end
@@ -235,7 +235,7 @@ defmodule DoubleDown.Facade.Codegen do
       Dispatch facade for `#{inspect(contract)}`.
 
       Dispatches calls to the configured implementation via
-      `DoubleDown.Contract.Dispatch`. In production, resolves from application
+      `DoubleDown.Dispatch`. In production, resolves from application
       config (`#{inspect(otp_app)}`). In tests, resolves
       from `DoubleDown.Testing` handlers.\
       """

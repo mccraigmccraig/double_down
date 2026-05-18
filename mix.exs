@@ -71,7 +71,7 @@ defmodule DoubleDown.MixProject do
             DoubleDown.Repo.OpenInMemory
           ],
           Internals: [
-            DoubleDown.Contract.Dispatch,
+            DoubleDown.Dispatch,
             DoubleDown.Repo.Impl.MultiStepper,
             DoubleDown.Repo.Impl.Autogenerate,
             DoubleDown.Repo.Impl.EctoParity,

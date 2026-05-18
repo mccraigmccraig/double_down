@@ -415,7 +415,7 @@ defmodule DoubleDown.DynamicFacadeTest do
 
     test "refuses DoubleDown internal modules" do
       assert_raise ArgumentError, ~r/DoubleDown internal/, fn ->
-        DoubleDown.DynamicFacade.setup(DoubleDown.Contract.Dispatch)
+        DoubleDown.DynamicFacade.setup(DoubleDown.Dispatch)
       end
     end
 

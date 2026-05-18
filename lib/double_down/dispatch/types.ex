@@ -1,4 +1,4 @@
-defmodule DoubleDown.Contract.Dispatch.Types do
+defmodule DoubleDown.Dispatch.Types do
   @moduledoc """
   Shared type definitions for DoubleDown dispatch.
 

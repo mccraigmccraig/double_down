@@ -1,4 +1,4 @@
-defmodule DoubleDown.Contract.Dispatch do
+defmodule DoubleDown.Dispatch do
   @moduledoc """
   Dispatch resolution for DoubleDown contracts.
 
@@ -29,9 +29,9 @@ defmodule DoubleDown.Contract.Dispatch do
   `call_config/4` if the config is not available at compile time.
   """
 
-  alias DoubleDown.Contract.Dispatch.Defer
-  alias DoubleDown.Contract.Dispatch.HandlerMeta
-  alias DoubleDown.Contract.Dispatch.Keys
+  alias DoubleDown.Dispatch.Defer
+  alias DoubleDown.Dispatch.HandlerMeta
+  alias DoubleDown.Dispatch.Keys
   alias DoubleDown.Double.CanonicalHandlerState
 
   # Process dictionary key set inside the NimbleOwnership GenServer while
@@ -194,7 +194,7 @@ defmodule DoubleDown.Contract.Dispatch do
         end)
 
         # Using the lower-level API:
-        DoubleDown.Contract.Dispatch.Defer.new(fn ->
+        DoubleDown.Dispatch.Defer.new(fn ->
           #{inspect(contract)}.#{operation}(...)
         end)
 
@@ -261,14 +261,14 @@ defmodule DoubleDown.Contract.Dispatch do
   @doc false
   def invoke_handler(%HandlerMeta.Module{impl: impl}, _owner_pid, _contract, operation, args) do
     case apply(impl, operation, args) do
-      %DoubleDown.Contract.Dispatch.Defer{fun: deferred_fn} -> deferred_fn.()
+      %DoubleDown.Dispatch.Defer{fun: deferred_fn} -> deferred_fn.()
       result -> result
     end
   end
 
   def invoke_handler(%HandlerMeta.Stateless{fun: fun}, _owner_pid, contract, operation, args) do
     case fun.(contract, operation, args) do
-      %DoubleDown.Contract.Dispatch.Defer{fun: deferred_fn} -> deferred_fn.()
+      %DoubleDown.Dispatch.Defer{fun: deferred_fn} -> deferred_fn.()
       result -> result
     end
   end
@@ -287,7 +287,7 @@ defmodule DoubleDown.Contract.Dispatch do
     # under the contract key. get_and_update on that key gives us
     # atomic read-modify-write of the entire meta (including state).
     #
-    # If the handler returns {%DoubleDown.Contract.Dispatch.Defer{fun: deferred_fn}, new_state},
+    # If the handler returns {%DoubleDown.Dispatch.Defer{fun: deferred_fn}, new_state},
     # the state is updated normally inside the lock, but deferred_fn is called
     # outside the lock in the calling process. This supports operations like
     # `transact` whose body re-enters the dispatch system (which would
@@ -338,7 +338,7 @@ defmodule DoubleDown.Contract.Dispatch do
                 end
 
               case handler_result do
-                {%DoubleDown.Contract.Dispatch.Defer{} = defer, new_state} ->
+                {%DoubleDown.Dispatch.Defer{} = defer, new_state} ->
                   validate_not_global_state!(new_state)
                   {defer, HandlerMeta.Stateful.put_state(meta, new_state)}
 
@@ -364,7 +364,7 @@ defmodule DoubleDown.Contract.Dispatch do
       )
 
     case result do
-      %DoubleDown.Contract.Dispatch.Defer{fun: deferred_fn} -> deferred_fn.()
+      %DoubleDown.Dispatch.Defer{fun: deferred_fn} -> deferred_fn.()
       result -> result
     end
   end

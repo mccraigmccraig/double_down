@@ -1,4 +1,4 @@
-defmodule DoubleDown.Contract.Dispatch.Keys do
+defmodule DoubleDown.Dispatch.Keys do
   @moduledoc """
   Centralised NimbleOwnership key helpers for DoubleDown dispatch.
 
@@ -21,7 +21,7 @@ defmodule DoubleDown.Contract.Dispatch.Keys do
   The registered name of the NimbleOwnership GenServer.
   """
   @spec ownership_server() :: atom()
-  def ownership_server, do: DoubleDown.Contract.Dispatch.Ownership
+  def ownership_server, do: DoubleDown.Dispatch.Ownership
 
   @doc """
   NimbleOwnership key for a contract's dispatch call log.

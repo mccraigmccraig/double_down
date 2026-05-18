@@ -5,8 +5,8 @@ defmodule DoubleDownTest do
     assert Code.ensure_loaded?(DoubleDown.Contract)
   end
 
-  test "DoubleDown.Contract.Dispatch module exists" do
-    assert Code.ensure_loaded?(DoubleDown.Contract.Dispatch)
+  test "DoubleDown.Dispatch module exists" do
+    assert Code.ensure_loaded?(DoubleDown.Dispatch)
   end
 
   test "DoubleDown.Testing module exists" do

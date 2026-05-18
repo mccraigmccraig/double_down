@@ -2,7 +2,7 @@ if Code.ensure_loaded?(Ecto) do
   defmodule DoubleDown.Repo.Impl.InMemoryShared do
     @moduledoc false
 
-    alias DoubleDown.Contract.Dispatch.Defer
+    alias DoubleDown.Dispatch.Defer
 
     # Shared helpers for stateful in-memory Repo fakes.
     #
@@ -450,9 +450,9 @@ if Code.ensure_loaded?(Ecto) do
 
     defp do_restore_state(contract, snapshot) do
       {:ok, owner_pid, _handler} =
-        DoubleDown.Contract.Dispatch.resolve_test_handler(contract)
+        DoubleDown.Dispatch.resolve_test_handler(contract)
 
-      DoubleDown.Contract.Dispatch.restore_state(contract, owner_pid, snapshot)
+      DoubleDown.Dispatch.restore_state(contract, owner_pid, snapshot)
     end
 
     # -------------------------------------------------------------------
@@ -460,7 +460,7 @@ if Code.ensure_loaded?(Ecto) do
     #
     # Because dispatch/4 runs inside NimbleOwnership.get_and_update
     # (a GenServer call), we must not raise here — that would crash
-    # the ownership server. Instead, we use %DoubleDown.Contract.Dispatch.Defer{}
+    # the ownership server. Instead, we use %DoubleDown.Dispatch.Defer{}
     # to move the raise outside the lock.
     # -------------------------------------------------------------------
 

@@ -3,7 +3,7 @@
 #
 if Code.ensure_loaded?(Ecto) do
   defmodule DoubleDown.Repo.OpenInMemory do
-    @behaviour DoubleDown.Contract.Dispatch.StatefulHandler
+    @behaviour DoubleDown.Dispatch.StatefulHandler
 
     @moduledoc """
     Stateful in-memory Repo fake (open-world).
@@ -18,7 +18,7 @@ if Code.ensure_loaded?(Ecto) do
     partial — e.g. you've inserted some records but expect the
     fallback to provide others.
 
-    Implements `DoubleDown.Contract.Dispatch.StatefulHandler`, so it can
+    Implements `DoubleDown.Dispatch.StatefulHandler`, so it can
     be used by module name with `Double.fallback`:
 
     ## Usage with Double.fallback
@@ -130,7 +130,7 @@ if Code.ensure_loaded?(Ecto) do
 
         DoubleDown.Repo.OpenInMemory.new(seed: [%User{id: 1}], fallback_fn: fn ...)
     """
-    @impl DoubleDown.Contract.Dispatch.StatefulHandler
+    @impl DoubleDown.Dispatch.StatefulHandler
     @spec new(term(), keyword()) :: store()
     defdelegate new(seed \\ %{}, opts \\ []), to: InMemoryShared
 
@@ -161,7 +161,7 @@ if Code.ensure_loaded?(Ecto) do
     reads go directly to the fallback function. If no fallback is registered
     or the fallback doesn't handle the operation, an error is raised.
     """
-    @impl DoubleDown.Contract.Dispatch.StatefulHandler
+    @impl DoubleDown.Dispatch.StatefulHandler
     @spec dispatch(module(), atom(), list(), store()) :: {term(), store()}
 
     # -----------------------------------------------------------------

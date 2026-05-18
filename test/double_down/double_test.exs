@@ -420,7 +420,7 @@ defmodule DoubleDown.DoubleTest do
 
       caller_pid = Greeter.Port.greet("Alice")
       assert caller_pid == test_pid
-      refute caller_pid == GenServer.whereis(DoubleDown.Contract.Dispatch.Ownership)
+      refute caller_pid == GenServer.whereis(DoubleDown.Dispatch.Ownership)
     end
 
     test "validates module at fallback time — not loaded" do
@@ -1461,7 +1461,7 @@ defmodule DoubleDown.DoubleTest do
   # ── Re-entrant cross-contract dispatch via Defer ─────────
 
   describe "re-entrant cross-contract dispatch via Defer" do
-    alias DoubleDown.Contract.Dispatch.Defer
+    alias DoubleDown.Dispatch.Defer
 
     test "fake returning Defer can call another contract without deadlock" do
       # Set up Greeter with a simple fallback

@@ -122,12 +122,12 @@ defmodule DoubleDown.DynamicFacade do
   """
   @spec dispatch(module(), atom(), [term()]) :: term()
   def dispatch(module, operation, args) do
-    case DoubleDown.Contract.Dispatch.resolve_test_handler(module) do
+    case DoubleDown.Dispatch.resolve_test_handler(module) do
       {:ok, owner_pid, handler} ->
         result =
-          DoubleDown.Contract.Dispatch.invoke_handler(handler, owner_pid, module, operation, args)
+          DoubleDown.Dispatch.invoke_handler(handler, owner_pid, module, operation, args)
 
-        DoubleDown.Contract.Dispatch.maybe_log(owner_pid, module, operation, args, result)
+        DoubleDown.Dispatch.maybe_log(owner_pid, module, operation, args, result)
         result
 
       :none ->

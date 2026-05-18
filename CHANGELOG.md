@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- **`DoubleDown.Contract.Dispatch` renamed to `DoubleDown.Dispatch`.**
+  Dispatch has been promoted from `DoubleDown.Contract.Dispatch` to
+  `DoubleDown.Dispatch`, reflecting its role as a first-class concept used
+  by all contract and facade types. All sub-modules (`Defer`, `HandlerMeta`,
+  `Keys`, `Passthrough`, `StatelessHandler`, `StatefulHandler`, `Types`) move
+  with it.
+
 ## [0.60.4]
 
 ### Fixed
@@ -154,7 +165,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - **`Testing.set_stateful_handler` typespec** now uses
-  `DoubleDown.Contract.Dispatch.Types.stateful_fun()` instead of
+  `DoubleDown.Dispatch.Types.stateful_fun()` instead of
   the opaque `(... -> {term(), term()})`.
 
 ## [0.53.0]
@@ -162,7 +173,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - **`DoubleDown.Double.defer/1`** — public API shortcut for
-  `DoubleDown.Contract.Dispatch.Defer.new/1`. When an expect, stub,
+  `DoubleDown.Dispatch.Defer.new/1`. When an expect, stub,
   or fake body needs to call another facade (including Repo), wrap
   the call in `Double.defer(fn -> ... end)` to avoid deadlocking
   the NimbleOwnership GenServer. The deferred function runs outside
@@ -172,7 +183,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Improved
 
 - **Docs updated to use `Double.defer/1`** instead of the internal
-  `DoubleDown.Contract.Dispatch.Defer.new/1` in `docs/testing.md`
+  `DoubleDown.Dispatch.Defer.new/1` in `docs/testing.md`
   and `docs/phoenix.md` code examples.
 
 - **`Defer` moduledoc** now directs Double API users to prefer
@@ -281,7 +292,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   modules, module implementations, stateful functions, and stateless
   functions. Fallback types are mutually exclusive.
 
-- **`DoubleDown.Contract.Dispatch.Types` module.** Shared type
+- **`DoubleDown.Dispatch.Types` module.** Shared type
   definitions (`stateless_fun`, `stateful_fun`) used by `HandlerMeta`
   and `CanonicalHandlerState`. Stateful handler function type now
   spelled out as a union of 4-arity and 5-arity signatures instead
@@ -439,13 +450,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   standard `Ecto.Repo.transaction` name. Dispatched through all three
   Repo doubles (InMemory, OpenInMemory, Stub).
 
-- **`DoubleDown.Contract.Dispatch.Keys` module.** Centralised
+- **`DoubleDown.Dispatch.Keys` module.** Centralised
   NimbleOwnership key helpers (`ownership_server/0`, `log_key/1`,
   `contracts_key/0`). Eliminates duplicated `@ownership_server` module
   attributes and scattered `Module.concat` calls across Dispatch,
   Double, and Testing.
 
-- **`DoubleDown.Contract.Dispatch.HandlerMeta` structs.**
+- **`DoubleDown.Dispatch.HandlerMeta` structs.**
   `HandlerMeta.Module`, `HandlerMeta.Fn`, `HandlerMeta.Stateful` —
   typed structs replacing the loose maps that described handler types.
   Pattern matching on struct name replaces the `:type` discriminator key.
@@ -670,7 +681,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- `DoubleDown.Contract.Dispatch.handler_active?/1` — public boolean API
+- `DoubleDown.Dispatch.handler_active?/1` — public boolean API
   to check whether the calling process has a test handler installed for
   a given contract module. Returns `true` when a handler is active (via
   `Double.fake/2`, `expect/3`, etc.), `false` otherwise. Respects the
@@ -818,11 +829,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Only the Repo contract's state is restored; other contracts are
   unaffected.
 
-- `DoubleDown.Contract.Dispatch.get_state/1` — read the current
+- `DoubleDown.Dispatch.get_state/1` — read the current
   domain state for a contract. Returns `fallback_state` for
   Double-managed handlers, raw state for `set_stateful_handler`.
 
-- `DoubleDown.Contract.Dispatch.restore_state/2` — replace a single
+- `DoubleDown.Dispatch.restore_state/2` — replace a single
   contract's state in NimbleOwnership, leaving the handler function
   and all other contracts' state untouched. Scoped to a single
   contract by design.
@@ -868,7 +879,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Breaking:** `DoubleDown.Dynamic` renamed to `DoubleDown.DynamicFacade`.
 
 - **Breaking:** `DoubleDown.Dispatch` renamed to
-  `DoubleDown.Contract.Dispatch`. The dispatch machinery is keyed by
+  `DoubleDown.Dispatch`. The dispatch machinery is keyed by
   contract module and belongs under Contract, not at the top level.
   Child modules (`Defer`, `FakeHandler`, `StubHandler`, `Passthrough`)
   moved accordingly. Moved to "Internals" doc group.
