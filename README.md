@@ -91,6 +91,8 @@ directly).
 
 ## Installation
 
+[![Hex.pm](https://img.shields.io/hexpm/v/double_down.svg)](https://hex.pm/packages/double_down)
+
 Add `double_down` to your dependencies in `mix.exs`:
 
 ```elixir
