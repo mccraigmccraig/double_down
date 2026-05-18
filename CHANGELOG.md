@@ -4,6 +4,7 @@
 [< Repo](docs/repo.md) | [Index](README.md)
 <!-- nav:header:end -->
 
+<!-- last-updated-against: 07f4d53868fa11d3272e80445959e24b589c21b7 -->
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
@@ -19,6 +20,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   by all contract and facade types. All sub-modules (`Defer`, `HandlerMeta`,
   `Keys`, `Passthrough`, `StatelessHandler`, `StatefulHandler`, `Types`) move
   with it.
+
+- **`DoubleDown.Repo.Stub` renamed to `DoubleDown.Repo.Stateless`.**
+  The name `Stub` was a category error — in the Double API, `stub` refers to
+  a per-operation stateless handler, but `Repo.Stub` is a contract-wide
+  fallback module implementing `StatelessHandler`.
+
+### Added
+
+- **New documentation.** Five focused docs replace the previous sprawling
+  set: `docs/boundaries.md` (four-layer architecture with ASCII diagram),
+  `docs/dispatch.md` (uniform dispatch paths and handler types),
+  `docs/stateful-doubles.md` (state mechanics, arities, behaviours),
+  `docs/double-api.md` (fallback, expect, stub, fake, verify), and
+  `docs/repo.md` (the built-in Repo contract and its three test doubles).
+
+- **`mix docs.nav` task.** Custom Mix task that injects prev/up/index/next
+  navigation headers and footers into all extra doc files, reading ordering
+  and grouping from the `:docs` config in `mix.exs`.
+
+- **Hexdocs sidebar.** Docs pages are now grouped under `Guides:` in the
+  sidebar. The old sprawling doc set (getting-started, testing, dynamic,
+  logging, process-sharing, repo, repo-doubles, repo-testing, migration,
+  phoenix) has been archived to `docs/archive/`.
+
+### Improved
+
+- **README rewritten.** Focused intro, DB vs DB-free testing philosophy,
+  four-layer ASCII diagram, facade comparison table, doc links, and hex.pm
+  version badge in the Installation section.
 
 ## [0.60.4]
 
