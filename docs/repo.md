@@ -60,7 +60,7 @@ DoubleDown.Double.fallback(MyApp.EctoRepo, DoubleDown.Repo.InMemory)
 
 | Double | Type | Reads | Best for |
 |--------|------|-------|----------|
-| `Repo.Stub` | Stateless stub | Fallback only | Fire-and-forget writes |
+| `Repo.Stateless` | Stateless stub | Fallback only | Fire-and-forget writes |
 | `Repo.InMemory` | Closed-world fake | All bare-schema reads | ExMachina, most tests |
 | `Repo.OpenInMemory` | Open-world fake | PK reads only | Fine-grained fallback control |
 
@@ -68,13 +68,13 @@ All three validate changesets (returning `{:error, changeset}` on invalid),
 autogenerate primary keys and timestamps via Ecto schema metadata, accept
 both changesets and bare structs, and support `Ecto.Multi` transactions.
 
-### Repo.Stub
+### Repo.Stateless
 
 Writes succeed but store nothing. Reads raise unless you supply a fallback
 function. Best for simple command-style functions:
 
 ```elixir
-DoubleDown.Double.fallback(DoubleDown.Repo, DoubleDown.Repo.Stub)
+DoubleDown.Double.fallback(DoubleDown.Repo, DoubleDown.Repo.Stateless)
 DoubleDown.Double.expect(DoubleDown.Repo, :insert, fn [changeset] ->
   {:error, Ecto.Changeset.add_error(changeset, :email, "taken")}
 end)

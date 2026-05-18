@@ -6,13 +6,13 @@ defmodule DoubleDown.Dispatch.StatelessHandler do
   name in `DoubleDown.Double.fallback/2..4`:
 
       # Instead of:
-      Double.fallback(Repo, Repo.Stub.new())
+      Double.fallback(Repo, Repo.Stateless.new())
 
       # Write:
-      Double.fallback(Repo, Repo.Stub)
+      Double.fallback(Repo, Repo.Stateless)
 
       # With a fallback function:
-      Double.fallback(Repo, Repo.Stub, fn _contract, :all, [User] -> [] end)
+      Double.fallback(Repo, Repo.Stateless, fn _contract, :all, [User] -> [] end)
 
   ## Callbacks
 

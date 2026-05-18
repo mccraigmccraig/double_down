@@ -439,10 +439,10 @@ defmodule DoubleDown.Double do
   The module's `new/2` builds a stateless dispatch function:
 
       # Writes only — reads will raise
-      DoubleDown.Double.fallback(MyContract, DoubleDown.Repo.Stub)
+      DoubleDown.Double.fallback(MyContract, DoubleDown.Repo.Stateless)
 
       # With a fallback function for reads
-      DoubleDown.Double.fallback(MyContract, DoubleDown.Repo.Stub,
+      DoubleDown.Double.fallback(MyContract, DoubleDown.Repo.Stateless,
         fn _contract, :all, [User] -> [] end)
 
   ## Module implementation

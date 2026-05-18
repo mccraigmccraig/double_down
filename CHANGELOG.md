@@ -195,7 +195,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Transaction bare return values now wrapped in `{:ok, result}`.**
   `Ecto.Repo.transaction(fn -> x end)` returns `{:ok, x}` for
-  non-tagged returns. `InMemoryShared` and `Repo.Stub`
+  non-tagged returns. `InMemoryShared` and `Repo.Stateless`
   `run_in_transaction` now wrap bare values instead of relying on
   facade-level wrapping (which `DynamicFacade` doesn't provide).
 
@@ -207,7 +207,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   When dispatched through `DynamicFacade` (not `ContractFacade`),
   transaction args bypass `pre_dispatch` — 1-arity fns aren't wrapped
   into 0-arity thunks and opts may be missing. Added
-  `normalise_transact_args` to `InMemoryShared` and `Repo.Stub` that
+  `normalise_transact_args` to `InMemoryShared` and `Repo.Stateless` that
   handles all variants: `[fun/0]`, `[fun/1]`, `[fun/0, opts]`,
   `[fun/1, opts]`, `[multi]`, `[multi, opts]`. 9 regression tests
   (5 InMemory, 4 Stub).
@@ -278,7 +278,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
   Migration:
   - `Double.stub(contract, fn ...)` → `Double.fallback(contract, fn ...)`
-  - `Double.stub(contract, Repo.Stub)` → `Double.fallback(contract, Repo.Stub)`
+  - `Double.stub(contract, Repo.Stateless)` → `Double.fallback(contract, Repo.Stateless)`
   - `Double.fake(contract, Module)` → `Double.fallback(contract, Module)`
   - `Double.fake(contract, &fun/4, state)` → `Double.fallback(contract, &fun/4, state)`
   - `Double.fake(contract, Module, seed)` → `Double.fallback(contract, Module, seed)`
@@ -490,7 +490,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `StubHandler.new` callbacks now use `fn contract, operation, args -> result end`
   instead of `fn operation, args -> result end`. This makes fn handlers
   symmetrical with stateful handlers, which already receive contract as
-  the first argument. `Repo.Stub` updated to return 3-arity fns and
+  the first argument. `Repo.Stateless` updated to return 3-arity fns and
   accept 3-arity fallback functions.
 
 - **Breaking: stateful per-operation stubs removed.** `Double.stub/3`
@@ -561,7 +561,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   API for lazily enumerating query results. Cannot be evaluated in
   memory — all adapters delegate to fallback.
 
-- **8 missing dispatch clauses added to `Repo.Stub`.** `insert_or_update`,
+- **8 missing dispatch clauses added to `Repo.Stateless`.** `insert_or_update`,
   `insert_or_update!`, `load`, `in_transaction?`, `preload`, `reload`,
   `reload!`, `all_by` — all with opts-stripping variants. `in_transaction?`
   uses a Defer-wrapped process dict check. `load` is handled statelessly.
@@ -884,7 +884,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Child modules (`Defer`, `FakeHandler`, `StubHandler`, `Passthrough`)
   moved accordingly. Moved to "Internals" doc group.
 
-- **Breaking:** `DoubleDown.Repo.Test` renamed to `DoubleDown.Repo.Stub`.
+- **Breaking:** `DoubleDown.Repo.Test` renamed to `DoubleDown.Repo.Stateless`.
   The name now communicates what the module is — a stateless stub —
   matching the test-double taxonomy (stub/mock/fake).
 

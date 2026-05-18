@@ -66,7 +66,7 @@ defmodule DoubleDown.MixProject do
           ],
           Repo: [
             DoubleDown.Repo,
-            DoubleDown.Repo.Stub,
+            DoubleDown.Repo.Stateless,
             DoubleDown.Repo.InMemory,
             DoubleDown.Repo.OpenInMemory
           ],

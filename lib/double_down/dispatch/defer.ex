@@ -11,7 +11,7 @@ defmodule DoubleDown.Dispatch.Defer do
   **For users of the Double API**, prefer `DoubleDown.Double.defer/1`
   over constructing this struct directly.
 
-  Used internally by `Repo.Stub`, `Repo.OpenInMemory`, and
+  Used internally by `Repo.Stateless`, `Repo.OpenInMemory`, and
   `DoubleDown.Double`'s canonical handler.
   """
 

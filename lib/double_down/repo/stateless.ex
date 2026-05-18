@@ -4,7 +4,7 @@
 # Read operations go through a user-supplied fallback function, or raise.
 #
 if Code.ensure_loaded?(Ecto) do
-  defmodule DoubleDown.Repo.Stub do
+  defmodule DoubleDown.Repo.Stateless do
     alias DoubleDown.Dispatch.Defer
 
     @behaviour DoubleDown.Dispatch.StatelessHandler
@@ -23,10 +23,10 @@ if Code.ensure_loaded?(Ecto) do
     ## Usage with Double.fallback
 
         # Writes only — reads will raise with a helpful message:
-        DoubleDown.Double.fallback(DoubleDown.Repo, DoubleDown.Repo.Stub)
+        DoubleDown.Double.fallback(DoubleDown.Repo, DoubleDown.Repo.Stateless)
 
         # With fallback for specific reads:
-        DoubleDown.Double.fallback(DoubleDown.Repo, DoubleDown.Repo.Stub,
+        DoubleDown.Double.fallback(DoubleDown.Repo, DoubleDown.Repo.Stateless,
           fn _contract, operation, args ->
             case {operation, args} do
               {:get, [User, 1]} -> %User{id: 1, name: "Alice"}
@@ -38,14 +38,14 @@ if Code.ensure_loaded?(Ecto) do
 
         # Layer expects on top for failure simulation:
         DoubleDown.Repo
-        |> DoubleDown.Double.fallback(DoubleDown.Repo.Stub)
+        |> DoubleDown.Double.fallback(DoubleDown.Repo.Stateless)
         |> DoubleDown.Double.expect(:insert, fn [changeset] ->
           {:error, Ecto.Changeset.add_error(changeset, :email, "taken")}
         end)
 
-    ## When to use Repo.Stub
+    ## When to use Repo.Stateless
 
-    Use `Repo.Stub` when your test only needs fire-and-forget writes
+    Use `Repo.Stateless` when your test only needs fire-and-forget writes
     and a few canned read responses. It's the lightest-weight option —
     no state to reason about.
 
@@ -54,7 +54,7 @@ if Code.ensure_loaded?(Ecto) do
 
     | Fake | State | Reads |
     |------|-------|-------|
-    | `Repo.Stub` | None | Fallback function or raise |
+    | `Repo.Stateless` | None | Fallback function or raise |
     | `Repo.InMemory` | Complete store | Authoritative for bare schemas |
     | `Repo.OpenInMemory` | Partial store | PK lookup in state, fallback for rest |
     """
@@ -76,10 +76,10 @@ if Code.ensure_loaded?(Ecto) do
     ## Examples
 
         # Writes only — via module name (StatelessHandler)
-        DoubleDown.Double.fallback(DoubleDown.Repo, DoubleDown.Repo.Stub)
+        DoubleDown.Double.fallback(DoubleDown.Repo, DoubleDown.Repo.Stateless)
 
         # With fallback for specific reads
-        DoubleDown.Double.fallback(DoubleDown.Repo, DoubleDown.Repo.Stub,
+        DoubleDown.Double.fallback(DoubleDown.Repo, DoubleDown.Repo.Stateless,
           fn _contract, operation, args ->
             case {operation, args} do
               {:get, [User, 1]} -> %User{id: 1, name: "Alice"}
@@ -91,7 +91,7 @@ if Code.ensure_loaded?(Ecto) do
 
     ## Legacy keyword-only form (still supported)
 
-        DoubleDown.Repo.Stub.new(fallback_fn: fn _contract, :get, [User, 1] -> %User{} end)
+        DoubleDown.Repo.Stateless.new(fallback_fn: fn _contract, :get, [User, 1] -> %User{} end)
     """
     @impl DoubleDown.Dispatch.StatelessHandler
     @spec new((module(), atom(), [term()] -> term()) | nil, keyword()) :: (module(),
@@ -436,7 +436,7 @@ if Code.ensure_loaded?(Ecto) do
       schema = record.__struct__
 
       case Autogenerate.maybe_autogenerate_id(record, schema, fn _schema ->
-             # Repo.Stub is stateless — use a monotonic counter for unique integer IDs
+             # Repo.Stateless is stateless — use a monotonic counter for unique integer IDs
              [System.unique_integer([:positive, :monotonic])]
            end) do
         {:error, {:no_autogenerate, message}} ->
@@ -463,14 +463,14 @@ if Code.ensure_loaded?(Ecto) do
 
     defp raise_no_fallback(operation, args) do
       raise ArgumentError, """
-      DoubleDown.Repo.Stub cannot service :#{operation} with args #{inspect(args)}.
+      DoubleDown.Repo.Stateless cannot service :#{operation} with args #{inspect(args)}.
 
-      Repo.Stub can only answer authoritatively for:
+      Repo.Stateless can only answer authoritatively for:
         - Write operations (insert, update, delete)
 
       For all other operations, register a fallback function:
 
-          DoubleDown.Repo.Stub.new(
+          DoubleDown.Repo.Stateless.new(
             fallback_fn: fn
               :#{operation}, #{inspect(args)} -> # your result here
             end

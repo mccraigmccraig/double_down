@@ -74,7 +74,7 @@ if Code.ensure_loaded?(Ecto) do
 
     | Fake | State | Best for |
     |------|-------|----------|
-    | `Repo.Stub` | None | Fire-and-forget writes, canned reads |
+    | `Repo.Stateless` | None | Fire-and-forget writes, canned reads |
     | `Repo.InMemory` | Complete store | All bare-schema reads; ExMachina factories |
     | **`Repo.OpenInMemory`** | **Partial store** | **PK reads in state, fallback for rest** |
 
@@ -82,7 +82,7 @@ if Code.ensure_loaded?(Ecto) do
 
     - `DoubleDown.Repo.InMemory` — closed-world variant (recommended).
       Authoritative for all bare-schema reads without a fallback.
-    - `DoubleDown.Repo.Stub` — stateless stub for fire-and-forget writes.
+    - `DoubleDown.Repo.Stateless` — stateless stub for fire-and-forget writes.
     """
 
     alias DoubleDown.Repo.Impl.InMemoryShared

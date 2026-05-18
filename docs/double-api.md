@@ -47,10 +47,10 @@ DoubleDown.Double.fallback(MyContract, fn _contract, operation, args ->
 end)
 ```
 
-Module-based stateless handlers (like `Repo.Stub`) are used by name:
+Module-based stateless handlers (like `Repo.Stateless`) are used by name:
 
 ```elixir
-DoubleDown.Double.fallback(DoubleDown.Repo, DoubleDown.Repo.Stub)
+DoubleDown.Double.fallback(DoubleDown.Repo, DoubleDown.Repo.Stateless)
 ```
 
 ### Stateful fallback

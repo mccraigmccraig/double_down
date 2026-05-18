@@ -256,14 +256,14 @@ defmodule DoubleDown.DoubleTest do
     alias DoubleDown.Test.SimpleUser
 
     test "fallback/2 with StatelessHandler module — writes only" do
-      Double.fallback(Repo, Repo.Stub)
+      Double.fallback(Repo, Repo.Stateless)
 
       {:ok, user} = TestRepo.insert(SimpleUser.changeset(%{name: "Alice"}))
       assert %SimpleUser{name: "Alice"} = user
     end
 
     test "fallback/2 with StatelessHandler — reads raise without fallback" do
-      Double.fallback(Repo, Repo.Stub)
+      Double.fallback(Repo, Repo.Stateless)
 
       assert_raise ArgumentError, ~r/cannot service :all/, fn ->
         TestRepo.all(SimpleUser)
@@ -271,7 +271,7 @@ defmodule DoubleDown.DoubleTest do
     end
 
     test "fallback/3 with StatelessHandler module and fallback_fn" do
-      Double.fallback(Repo, Repo.Stub, fn _contract, :all, [SimpleUser] ->
+      Double.fallback(Repo, Repo.Stateless, fn _contract, :all, [SimpleUser] ->
         [%SimpleUser{id: 1, name: "Alice"}]
       end)
 
@@ -280,7 +280,7 @@ defmodule DoubleDown.DoubleTest do
 
     test "fallback/3 with StatelessHandler supports expects" do
       Repo
-      |> Double.fallback(Repo.Stub)
+      |> Double.fallback(Repo.Stateless)
       |> Double.expect(:insert, fn [_changeset] -> {:error, :conflict} end)
 
       assert {:error, :conflict} = TestRepo.insert(SimpleUser.changeset(%{name: "Bob"}))
@@ -297,7 +297,7 @@ defmodule DoubleDown.DoubleTest do
     end
 
     test "returns contract module for piping" do
-      result = Double.fallback(Repo, Repo.Stub)
+      result = Double.fallback(Repo, Repo.Stateless)
       assert result == Repo
     end
 
