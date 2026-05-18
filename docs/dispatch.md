@@ -1,5 +1,9 @@
 # Dispatch
 
+<!-- nav:header:start -->
+[< Boundaries](boundaries.md) | [Up: Guides](../README.md) | [Index](../README.md) | [Stateful Doubles >](stateful-doubles.md)
+<!-- nav:header:end -->
+
 Dispatch is the uniform call-resolution mechanism that sits between every
 facade and its implementation. All three facade types (`ContractFacade`,
 `BehaviourFacade`, `DynamicFacade`) use the same dispatch infrastructure —
@@ -129,3 +133,10 @@ end), new_state}
 | `get_state/1` | Read current stateful handler state for a contract |
 | `restore_state/3` | Replace a contract's stateful handler state |
 | `handler_active?/1` | Check if a test handler is installed for a contract |
+
+<!-- nav:footer:start -->
+
+---
+
+[< Boundaries](boundaries.md) | [Up: Guides](../README.md) | [Index](../README.md) | [Stateful Doubles >](stateful-doubles.md)
+<!-- nav:footer:end -->

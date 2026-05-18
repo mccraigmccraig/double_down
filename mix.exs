@@ -20,33 +20,21 @@ defmodule DoubleDown.MixProject do
         main: "readme",
         extras: [
           "README.md",
-          "docs/getting-started.md",
-          "docs/testing.md",
-          "docs/phoenix.md",
-          "docs/dynamic.md",
-          "docs/logging.md",
-          "docs/process-sharing.md",
+          "docs/boundaries.md",
+          "docs/dispatch.md",
+          "docs/stateful-doubles.md",
+          "docs/double-api.md",
           "docs/repo.md",
-          "docs/repo-doubles.md",
-          "docs/repo-testing.md",
-          "docs/migration.md",
           "CHANGELOG.md"
         ],
         groups_for_extras: [
-          Introduction: [
-            "README.md",
-            "docs/getting-started.md"
-          ],
           Guides: [
-            "docs/testing.md",
-            "docs/phoenix.md",
-            "docs/dynamic.md",
-            "docs/logging.md",
-            "docs/process-sharing.md",
-            "docs/repo.md",
-            "docs/repo-doubles.md",
-            "docs/repo-testing.md",
-            "docs/migration.md"
+            "README.md",
+            "docs/boundaries.md",
+            "docs/dispatch.md",
+            "docs/stateful-doubles.md",
+            "docs/double-api.md",
+            "docs/repo.md"
           ],
           About: [
             "CHANGELOG.md"

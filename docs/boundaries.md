@@ -1,5 +1,9 @@
 # Boundaries
 
+<!-- nav:header:start -->
+[< DoubleDown](../README.md) | [Up: Guides](../README.md) | [Index](../README.md) | [Dispatch >](dispatch.md)
+<!-- nav:header:end -->
+
 DoubleDown separates _what you call_ from _what handles the call_. A function
 call passes through four layers:
 
@@ -217,3 +221,10 @@ Installed via `DoubleDown.Double` (recommended) or `DoubleDown.Testing`:
 
 See `DoubleDown.Double` for the recommended API and
 `DoubleDown.Dispatch.StatefulHandler` for the behaviour.
+
+<!-- nav:footer:start -->
+
+---
+
+[< DoubleDown](../README.md) | [Up: Guides](../README.md) | [Index](../README.md) | [Dispatch >](dispatch.md)
+<!-- nav:footer:end -->

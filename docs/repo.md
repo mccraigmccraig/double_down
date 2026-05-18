@@ -1,5 +1,9 @@
 # Repo
 
+<!-- nav:header:start -->
+[< Double API](double-api.md) | [Up: Guides](../README.md) | [Index](../README.md) | [Changelog >](../CHANGELOG.md)
+<!-- nav:header:end -->
+
 DoubleDown ships a complete `Ecto.Repo` contract and three test doubles,
 letting you replace the database with an in-memory store in tests while
 keeping your existing ExMachina factories and `Ecto.Multi` transactions.
@@ -220,3 +224,10 @@ against a real database:
 
 The goal isn't to eliminate DB tests — it's to move the ~3/4 of tests that
 use the database merely as a slow data-fixture mechanism to run DB-free.
+
+<!-- nav:footer:start -->
+
+---
+
+[< Double API](double-api.md) | [Up: Guides](../README.md) | [Index](../README.md) | [Changelog >](../CHANGELOG.md)
+<!-- nav:footer:end -->

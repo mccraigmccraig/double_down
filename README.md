@@ -1,5 +1,9 @@
 # DoubleDown
 
+<!-- nav:header:start -->
+[Boundaries >](docs/boundaries.md)
+<!-- nav:header:end -->
+
 [![Test](https://github.com/mccraigmccraig/double_down/actions/workflows/test.yml/badge.svg)](https://github.com/mccraigmccraig/double_down/actions/workflows/test.yml)
 [![Hex.pm](https://img.shields.io/hexpm/v/double_down.svg)](https://hex.pm/packages/double_down)
 [![Documentation](https://img.shields.io/badge/documentation-gray)](https://hexdocs.pm/double_down/)
@@ -122,3 +126,10 @@ outdated module names.
 ## License
 
 MIT License — see [LICENSE](LICENSE) for details.
+
+<!-- nav:footer:start -->
+
+---
+
+[Boundaries >](docs/boundaries.md)
+<!-- nav:footer:end -->

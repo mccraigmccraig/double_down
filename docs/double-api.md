@@ -1,5 +1,9 @@
 # Double API
 
+<!-- nav:header:start -->
+[< Stateful Doubles](stateful-doubles.md) | [Up: Guides](../README.md) | [Index](../README.md) | [Repo >](repo.md)
+<!-- nav:header:end -->
+
 `DoubleDown.Double` is the primary API for setting up test doubles. Every
 function takes a **contract module** as its first argument — this is the
 same module used in config and facade setup, regardless of facade type:
@@ -253,3 +257,10 @@ test "logs the create call" do
   |> DoubleDown.Log.verify!(MyContract)
 end
 ```
+
+<!-- nav:footer:start -->
+
+---
+
+[< Stateful Doubles](stateful-doubles.md) | [Up: Guides](../README.md) | [Index](../README.md) | [Repo >](repo.md)
+<!-- nav:footer:end -->

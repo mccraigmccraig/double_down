@@ -1,5 +1,9 @@
 # Stateful Doubles
 
+<!-- nav:header:start -->
+[< Dispatch](dispatch.md) | [Up: Guides](../README.md) | [Index](../README.md) | [Double API >](double-api.md)
+<!-- nav:header:end -->
+
 Stateless doubles (stubs, module mocks) return canned responses — they
 have no memory. Stateful doubles maintain in-memory state with atomic
 updates, enabling read-after-write consistency and realistic behaviour
@@ -160,3 +164,10 @@ DoubleDown.Double.fallback(MyContract, MyApp.TestStore,
   fn _contract, :all, [User] -> [] end
 )
 ```
+
+<!-- nav:footer:start -->
+
+---
+
+[< Dispatch](dispatch.md) | [Up: Guides](../README.md) | [Index](../README.md) | [Double API >](double-api.md)
+<!-- nav:footer:end -->
