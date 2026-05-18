@@ -4,13 +4,15 @@
 [< Repo](docs/repo.md) | [Index](README.md)
 <!-- nav:header:end -->
 
-<!-- last-updated-against: 07f4d53868fa11d3272e80445959e24b589c21b7 -->
+<!-- last-updated-against: c5195a604ad2b79f79b1c9cc198b85e099c772a9 -->
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [0.61.0]
 
 ### Changed
 
