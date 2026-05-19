@@ -13,16 +13,16 @@ keeping your existing ExMachina factories and `Ecto.Multi` transactions.
 `DoubleDown.Repo` defines the full `Ecto.Repo` surface — writes, reads,
 aggregates, associations, streaming, and transactions:
 
-| Category | Operations |
-|----------|-----------|
-| Writes | `insert`, `update`, `delete`, `insert_or_update` + bang variants |
-| Bulk | `insert_all`, `update_all`, `delete_all` |
-| PK reads | `get`, `get!` |
+| Category     | Operations                                                                  |
+|--------------|-----------------------------------------------------------------------------|
+| Writes       | `insert`, `update`, `delete`, `insert_or_update` + bang variants            |
+| Bulk         | `insert_all`, `update_all`, `delete_all`                                    |
+| PK reads     | `get`, `get!`                                                               |
 | Non-PK reads | `get_by`, `get_by!`, `one`, `one!`, `all`, `all_by`, `exists?`, `aggregate` |
-| Associations | `preload`, `load`, `reload`, `reload!` |
-| Streaming | `stream` |
-| Transactions | `transact`, `rollback`, `in_transaction?` |
-| Raw SQL | `query`, `query!` |
+| Associations | `preload`, `load`, `reload`, `reload!`                                      |
+| Streaming    | `stream`                                                                    |
+| Transactions | `transact`, `rollback`, `in_transaction?`                                   |
+| Raw SQL      | `query`, `query!`                                                           |
 
 ## Creating a Repo facade
 
@@ -62,27 +62,15 @@ DoubleDown.Double.fallback(MyApp.EctoRepo, DoubleDown.Repo.InMemory)
 
 ## Test doubles
 
-| Double | Type | Reads | Best for |
-|--------|------|-------|----------|
-| `Repo.Stateless` | Stateless stub | Fallback only | Fire-and-forget writes |
-| `Repo.InMemory` | Closed-world fake | All bare-schema reads | ExMachina, most tests |
-| `Repo.OpenInMemory` | Open-world fake | PK reads only | Fine-grained fallback control |
+| Double              | Type              | Reads                 | Best for                      |
+|---------------------|-------------------|-----------------------|-------------------------------|
+| `Repo.InMemory`     | Closed-world fake | All bare-schema reads | ExMachina, most tests         |
+| `Repo.OpenInMemory` | Open-world fake   | PK reads only         | Fine-grained fallback control |
+| `Repo.Stateless`    | Stateless stub    | Fallback only         | Fire-and-forget writes        |
 
 All three validate changesets (returning `{:error, changeset}` on invalid),
 autogenerate primary keys and timestamps via Ecto schema metadata, accept
 both changesets and bare structs, and support `Ecto.Multi` transactions.
-
-### Repo.Stateless
-
-Writes succeed but store nothing. Reads raise unless you supply a fallback
-function. Best for simple command-style functions:
-
-```elixir
-DoubleDown.Double.fallback(DoubleDown.Repo, DoubleDown.Repo.Stateless)
-DoubleDown.Double.expect(DoubleDown.Repo, :insert, fn [changeset] ->
-  {:error, Ecto.Changeset.add_error(changeset, :email, "taken")}
-end)
-```
 
 ### Repo.InMemory (recommended)
 
@@ -135,6 +123,18 @@ DoubleDown.Double.fallback(DoubleDown.Repo, DoubleDown.Repo.OpenInMemory, [],
     _contract, :all, [User], state -> state |> Map.get(User, %{}) |> Map.values()
   end
 )
+```
+
+### Repo.Stateless
+
+Writes succeed but store nothing. Reads raise unless you supply a fallback
+function. Best for simple command-style functions:
+
+```elixir
+DoubleDown.Double.fallback(DoubleDown.Repo, DoubleDown.Repo.Stateless)
+DoubleDown.Double.expect(DoubleDown.Repo, :insert, fn [changeset] ->
+  {:error, Ecto.Changeset.add_error(changeset, :email, "taken")}
+end)
 ```
 
 ## ExMachina integration
