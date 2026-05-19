@@ -8,14 +8,14 @@
 [![Hex.pm](https://img.shields.io/hexpm/v/double_down.svg)](https://hex.pm/packages/double_down)
 [![Documentation](https://img.shields.io/badge/documentation-gray)](https://hexdocs.pm/double_down/)
 
-DoubleDown is a test-double library for Elixir: mocks and fakes. It has
-multiple routes to adding test boundaries to your system, and it goes beyond
-mocks with stateful test doubles aka fakes. It includes an `Ecto.Repo` fake
+DoubleDown is a test-double (mocks and fakes) library for Elixir. It has
+multiple routes to adding test boundaries to your system, and goes beyond
+mocks with stateful test-doubles aka fakes. It includes an `Ecto.Repo` fake
 powerful enough to run ExMachina factories without a database.
 
 Tests that exercise database features — constraints, complex queries,
 migrations — should continue to run against a real database. But unit tests
-that use the database merely as an easy but slow way of getting data into
+that use the database merely as an easy (but slow) way of getting data into
 the right place can run without one. DoubleDown's `InMemory` Repo lets you
 keep the factory and drop the DB.
 
