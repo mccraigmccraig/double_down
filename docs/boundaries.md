@@ -4,6 +4,13 @@
 [< DoubleDown](../README.md) | [Up: Guides](../README.md) | [Index](../README.md) | [Dispatch >](dispatch.md)
 <!-- nav:header:end -->
 
+Testing components with dependencies usually requires boundaries — a seam
+where the real implementation can be swapped for a test double, isolating
+the component under test. DoubleDown provides several ways to add such
+boundaries: explicit Mox-style contracts (`defcallback`, `@behaviour`) and
+implicit Mimic-style interception (`DynamicFacade`). All three produce the
+same dispatch mechanism and support the same test double API.
+
 DoubleDown separates _what you call_ from _what handles the call_. A function
 call passes through four layers (note: these are conceptual layers, and are optimised away in production paths):
 
