@@ -5,7 +5,7 @@
 <!-- nav:header:end -->
 
 DoubleDown separates _what you call_ from _what handles the call_. A function
-call passes through four layers:
+call passes through four layers (note: these are conceptual layers, and are optimised away in production paths):
 
 ```
      ┌──────────────────────────────────────────────────────┐
@@ -93,8 +93,8 @@ their type signatures, but not _how_ they're implemented.
 
 Use `defcallback` from `DoubleDown.Contract` when you control the interface.
 It generates `@behaviour` + `@callback` + introspection metadata
-(`__callbacks__/0`) from a single macro call.  `defcallback` requires named
-parameters (`id :: String.t()`) — these appear in generated `@spec` and `@doc`
+(`__callbacks__/0`) from a single macro call.  `defcallback` takes the same parameters as @callback, but unlike _requires_ named
+parameters (`id :: String.t()`) — and these appear in generated `@spec` and `@doc`
 on the facade, giving LSP-friendly hover docs at every call site.
 
 ```elixir
@@ -108,7 +108,7 @@ defmodule MyApp.Todos do
 end
 ```
 
-### @behaviour (existing module)
+### @behaviour (explicit contract - existing @behaviour module)
 
 Any existing Elixir `@behaviour` module works as a contract — see
 `DoubleDown.BehaviourFacade`.  Use this for behaviours you don't control:
@@ -117,9 +117,10 @@ third-party libraries, existing codebase behaviours, or any module with
 
 ### Implicit (DynamicFacade)
 
-With `DoubleDown.DynamicFacade`, no contract module exists at all — the target
-module's public API becomes the contract implicitly.  The module is shimmed at
-test time via bytecode replacement, so any call can be intercepted.
+With `DoubleDown.DynamicFacade`, no separate contract module exists at
+all — the target module's public API implicitly becomes the contract.
+The module is shimmed at test time via bytecode replacement, so any call
+can be intercepted.
 
 ## Layer 2: Facade
 
@@ -128,8 +129,9 @@ each contract operation that delegate to the dispatch layer.
 
 ### ContractFacade
 
-For `defcallback` contracts.  Supports combined contract + facade (one module)
-or separate modules.  Options control dispatch behaviour at compile time.
+For `defcallback` contracts.  Supports combined contract + facade
+(one module - the default) or separate modules.  Options control 
+dispatch behaviour at compile time.
 
 ```elixir
 # Combined contract + facade
@@ -155,7 +157,7 @@ end
 
 Mimic-style bytecode interception.  Call `setup/1` in `test_helper.exs` before
 `ExUnit.start()`.  The module is backed up and replaced with a dispatch shim.
-Tests that don't install a handler get the original module's behaviour.
+Tests that _don't_ install a handler get the original module's behaviour.
 
 ```elixir
 # test/test_helper.exs
@@ -166,14 +168,15 @@ ExUnit.start()
 ## Layer 3: Dispatch
 
 Dispatch resolves which implementation handles a given call.  The resolution
-strategy is selected at compile time per-facade via options.
+strategy is selected at compile time and/or call time per-facade via
+options.
 
 ### Static dispatch
 
 When `static_dispatch?: true` and the implementation is available in config at
 compile time, the facade function calls the implementation module directly.
 No `Application.get_env`, no `NimbleOwnership` — the call inlines to identical
-bytecode as calling the impl directly.  Default in `:prod`.
+bytecode as calling the impl directly.  This is the default in `:prod`.
 
 ### Runtime config dispatch
 
@@ -208,6 +211,10 @@ A module implementing the contract's `@behaviour`, wired via config:
 # config/config.exs
 config :my_app, MyApp.Todos, impl: MyApp.Todos.Ecto
 ```
+If this config is available at compile-time, and `static_dispatch?: true`
+(the default) then `ContractFacade` and `BehaviourFacade` will use the
+compile-time target and inline calls - there will be zero
+runtime overhead for the contract boundary.
 
 ### Test doubles
 
