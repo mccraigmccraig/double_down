@@ -38,6 +38,13 @@ Ecto sandboxes and other process-scoped resources. As with Mimic, internal
 calls within the module that don't go through the facade are not
 intercepted by expects/stubs.
 
+For DynamicFacade modules, `DoubleDown.Double.dynamic/1` is a convenience
+that installs a module fallback pointing to the original (now renamed)
+module. After `DynamicFacade.setup(Module)`, the original bytecode lives at
+`Module.__dd_original__` and the shim dispatches through the facade
+machinery. `dynamic/1` wires the fallback to the backup module so the shim
+delegates to the original implementation when no expects or stubs match:
+
 ### Stateless fallback
 
 A 3-arity function `(contract, operation, args) -> result`:
@@ -88,7 +95,9 @@ DoubleDown.Double.fallback(DoubleDown.Repo, DoubleDown.Repo.InMemory,
 
 ### Dynamic fallback
 
-For DynamicFacade modules only — delegates to the original module:
+For DynamicFacade modules only — see [Module fallback](#module-fallback) above
+for how `dynamic/1` works under the hood. Shorthand for wiring the shim to
+the original module's behaviour:
 
 ```elixir
 SomeClient
