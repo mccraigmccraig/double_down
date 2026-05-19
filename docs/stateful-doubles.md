@@ -92,14 +92,22 @@ DoubleDown.Double.fallback(Contract, fn _c, :put, [k, v], state ->
   {Map.put(state, k, v), Map.put(state, k, v)}
 end, %{})
 
-# Stateful expect reads what the fallback wrote
+# 2-arity expect — reads state, returns it unchanged
 DoubleDown.Double.expect(Contract, :get, fn [k], state ->
   {Map.get(state, k), state}
 end)
+
+# 1-arity expect — stateless, doesn't touch state
+DoubleDown.Double.expect(Contract, :ping, fn [_] -> :pong end)
 ```
 
-After a 1-arity expect fires (stateless), the state is unchanged — the
-next expect sees whatever state the fallback left it in.
+When the 1-arity `:ping` expect fires, the state is unchanged — it sees
+whatever state the fallback left it in, passes through without modifying
+it, and the next expect sees the same state.
+
+Stateful expects (2-arity, 3-arity) *must* return `{result, new_state}`
+and can both read and update the state. Stateless expects (1-arity)
+return a bare result and leave state untouched.
 
 ## StatefulHandler behaviour
 
