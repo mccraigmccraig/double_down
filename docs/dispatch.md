@@ -15,26 +15,28 @@ The dispatch path for each facade is selected at **compile time** via the
 `:test_dispatch?` and `:static_dispatch?` options:
 
 ```
-                         ┌─────────────────┐
+                         ┌──────────────────┐
                          │  Function call   │
                          │  facade.op(args) │
-                         └────────┬────────┘
+                         └────────┬─────────┘
                                   │
                     ┌─────────────┴─────────────┐
                     │  test_dispatch? true?     │
                     │  (default: not prod)      │
                     └─────────────┬─────────────┘
                      yes          │          no
-                ┌────────────────┴────────────────┐
+                ┌─────────────────┴───────────────┐
                 ▼                                 ▼
      ┌──────────────────┐              ┌──────────────────┐
      │  call/4          │              │  static_dispatch │
      │                  │              │  ? true?         │
      │  1. NimbleOwner- │              │  (default: prod) │
-     │     ship lookup   │              └────────┬─────────┘
-     │  2. App.get_env   │           yes         │        no
-     │  3. Raise         │           ▼           │        ▼
-     └──────────────────┘   ┌────────────┐  ┌──────────────┐
+     │     ship lookup  │              └────────┬─────────┘
+     │  2. App.get_env  │                       │
+     │  3. Raise        │              yes      │ no
+     └──────────────────┘         ┌─────────────┴───┐
+                                  ▼                 ▼
+                            ┌────────────┐  ┌──────────────┐
                             │  Inlined   │  │ call_config  │
                             │  direct    │  │ /4           │
                             │  call to   │  │              │
@@ -48,8 +50,8 @@ The dispatch path for each facade is selected at **compile time** via the
 
 When `static_dispatch?: true` (default in `:prod`) and the implementation is
 available in config at compile time, the facade generates inlined direct
-function calls to the implementation module. No `NimbleOwnership`, no
-`Application.get_env` — the call compiles to identical bytecode as calling
+function calls to the implementation module. No `NimbleOwnership` and no
+`Application.get_env` — the call compiles to identical bytecode to calling
 the impl directly. Falls back to `call_config/4` if the config isn't
 available at compile time.
 
@@ -71,18 +73,19 @@ environments and is what makes `DoubleDown.Double` work.
 `DynamicFacade.dispatch/3` is a parallel dispatch path — it checks
 NimbleOwnership for a test handler, falling back to the original
 (backed-up) module. There is no config-based resolution because there is
-no contract module to configure.
+no contract module to configure. There is no impact outside of test,
+because `DynamicFacade` shims are only installed in test.
 
 ## Handler types
 
 When `call/4` resolves a test handler, it matches one of three handler
 types stored in NimbleOwnership:
 
-| Handler | Installed via | Dispatch logic |
-|---------|--------------|----------------|
-| **Module** | `Double.fallback(contract, module)` | `apply(impl, operation, args)` |
-| **Stateless** | `Double.fallback(contract, fn)` | `fun.(contract, operation, args)` |
-| **Stateful** | `Double.fallback(contract, fn, state)` | `fun.(contract, operation, args, state)` — runs inside `NimbleOwnership.get_and_update` for atomic state updates |
+| Handler       | Installed via                          | Dispatch logic                                    | Returns                              |
+|---------------|----------------------------------------|---------------------------------------------------|--------------------------------------|
+| **Module**    | `Double.fallback(contract, module)`    | `apply(impl, operation, args)`                    | whatever the module's function returns; `%Defer{}` unwraps to deferred result |
+| **Stateless** | `Double.fallback(contract, fn)`        | `fun.(contract, operation, args)`                 | whatever the function returns; `%Defer{}` unwraps to deferred result |
+| **Stateful**  | `Double.fallback(contract, fn, state)` | `fun.(contract, operation, args, state)` — inside `NimbleOwnership.get_and_update` for atomicity | `{result, new_state}`; can wrap result in `%Defer{}` for re-entrant calls |
 
 All three return `{contract, operation, normalize_args(args)}` from
 `key/3` and support `Defer` for re-entrant dispatch.
@@ -125,14 +128,14 @@ end), new_state}
 
 ## Public API
 
-| Function | Purpose |
-|----------|---------|
-| `call/4` | Test-aware dispatch (NimbleOwnership → config) |
-| `call_config/4` | Config-only dispatch |
-| `key/3` | Canonical key for test stub matching (normalized args) |
-| `get_state/1` | Read current stateful handler state for a contract |
-| `restore_state/3` | Replace a contract's stateful handler state |
-| `handler_active?/1` | Check if a test handler is installed for a contract |
+| Function            | Purpose                                                |
+|---------------------|--------------------------------------------------------|
+| `call/4`            | Test-aware dispatch (NimbleOwnership → config)         |
+| `call_config/4`     | Config-only dispatch                                   |
+| `key/3`             | Canonical key for test stub matching (normalized args) |
+| `get_state/1`       | Read current stateful handler state for a contract     |
+| `restore_state/3`   | Replace a contract's stateful handler state            |
+| `handler_active?/1` | Check if a test handler is installed for a contract    |
 
 <!-- nav:footer:start -->
 
