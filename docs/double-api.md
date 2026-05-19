@@ -59,15 +59,20 @@ DoubleDown.Double.fallback(DoubleDown.Repo, DoubleDown.Repo.Stateless)
 
 ### Stateful fallback
 
-A 4-arity function `(contract, operation, args, state) -> {result, new_state}`
-with initial state. Enables read-after-write consistency and atomic state
-updates:
+A 4-arity or 5-arity function with initial state. Enables read-after-write
+consistency and atomic state updates:
 
 ```elixir
-DoubleDown.Double.fallback(DoubleDown.Repo,
-  &DoubleDown.Repo.InMemory.dispatch/4,
-  DoubleDown.Repo.InMemory.new()
-)
+# 4-arity — own state only
+DoubleDown.Double.fallback(Contract, fn _c, :get, [id], state ->
+  {Map.get(state, id), state}
+end, %{})
+
+# 5-arity — cross-contract state access
+DoubleDown.Double.fallback(Contract, fn _c, :get, [id], state, all_states ->
+  repo = Map.get(all_states, DoubleDown.Repo, %{})
+  {Map.get(repo, id), state}
+end, %{})
 ```
 
 Module-based stateful handlers are used by name, optionally with seed data
