@@ -139,7 +139,8 @@ end)
 
 ## ExMachina integration
 
-Point ExMachina at your Repo facade (not your Ecto Repo):
+Point ExMachina at your Repo facade (not your Ecto Repo - unless you used a
+DynamicFacade, in which case your Repo facade is your Ecto Repo):
 
 ```elixir
 defmodule MyApp.Factory do
