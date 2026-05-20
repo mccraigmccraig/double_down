@@ -4,13 +4,22 @@
 [< Repo](docs/repo.md) | [Index](README.md)
 <!-- nav:header:end -->
 
-<!-- last-updated-against: c5195a604ad2b79f79b1c9cc198b85e099c772a9 -->
+<!-- last-updated-against: c430757c6b4750ad8e59cc66974d682a71c8a8a2 -->
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+### Changed
+
+- **Lazy shimming for `DynamicFacade`.** `DynamicFacade.setup/1` now only
+  registers modules as candidates for shimming; the actual bytecode
+  manipulation (rename original beam + create dispatch shim) fires lazily
+  when a handler is first installed via `Double.fallback/2`, `expect/3`,
+  or `stub/2`. This means test runs that never exercise a module pay zero
+  shimming cost.
 
 ## [0.61.0]
 
