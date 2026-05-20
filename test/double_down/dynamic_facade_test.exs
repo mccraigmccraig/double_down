@@ -406,6 +406,35 @@ defmodule DoubleDown.DynamicFacadeTest do
     end
   end
 
+  describe "lazy shimming" do
+    test "setup/1 registers module as lazy, does not shim eagerly" do
+      # DynamicTarget was set up in test_helper.exs before ExUnit started.
+      # With lazy shimming, setup/1 only registers lazily. A lazily-registered
+      # module works without a handler — call goes directly to original.
+      assert "Original: Alice" = DynamicTarget.greet("Alice")
+    end
+
+    test "first handler install triggers lazy→shimmed transition" do
+      # After a handler is installed, the module should be in the shimmed set.
+      Double.fallback(DynamicTarget, fn _contract, :greet, [name] -> "Lazy: #{name}" end)
+
+      assert DynamicTarget in DoubleDown.DynamicFacade.registered_modules()
+      assert "Lazy: Alice" = DynamicTarget.greet("Alice")
+    end
+
+    test "second handler install on already-shimmed module works" do
+      # First handler install triggers shim
+      Double.fallback(DynamicTarget, fn _contract, :greet, [name] -> "First: #{name}" end)
+
+      DoubleDown.Testing.reset()
+
+      # Second handler install on already-shimmed module — no issues
+      Double.fallback(DynamicTarget, fn _contract, :greet, [name] -> "Second: #{name}" end)
+
+      assert "Second: Alice" = DynamicTarget.greet("Alice")
+    end
+  end
+
   describe "validation" do
     test "refuses DoubleDown contract modules" do
       assert_raise ArgumentError, ~r/DoubleDown contract/, fn ->
