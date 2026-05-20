@@ -645,6 +645,7 @@ defmodule DoubleDown.Double do
       """
     end
 
+    DoubleDown.DynamicFacade.ensure_shimmed(module)
     fallback(module, DoubleDown.DynamicFacade.original_module(module))
   end
 

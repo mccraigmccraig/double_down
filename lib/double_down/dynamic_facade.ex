@@ -151,6 +151,8 @@ defmodule DoubleDown.DynamicFacade do
   """
   @spec dispatch(module(), atom(), [term()]) :: term()
   def dispatch(module, operation, args) do
+    ensure_shimmed(module)
+
     case DoubleDown.Dispatch.resolve_test_handler(module) do
       {:ok, owner_pid, handler} ->
         result =
