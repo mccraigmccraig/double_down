@@ -122,6 +122,28 @@ defmodule DoubleDown.DynamicFacade do
   end
 
   @doc """
+  Ensure a lazily-registered module is fully shimmed.
+
+  If the module is in the lazy set, performs the bytecode manipulation
+  (rename original + create dispatch shim) and moves it to the shimmed
+  set. If the module is already shimmed or not registered, this is a
+  no-op.
+
+  Called by `DoubleDown.Testing.set_meta/2` when a handler is first
+  installed, and as a safety net in `dispatch/3`.
+  """
+  @spec ensure_shimmed(module()) :: :ok
+  def ensure_shimmed(module) do
+    if module in registered_lazy_modules() do
+      do_setup(module)
+      register_module(module)
+      unregister_lazy_module(module)
+    end
+
+    :ok
+  end
+
+  @doc """
   Dispatch a call through the dynamic facade.
 
   Called by generated shims. Checks NimbleOwnership for a test
