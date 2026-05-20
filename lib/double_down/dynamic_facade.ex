@@ -16,6 +16,11 @@ defmodule DoubleDown.DynamicFacade do
 
       ExUnit.start()
 
+  Setup is **lazy**: modules are registered for potential shimming but
+  no bytecode manipulation happens until a test installs a handler via
+  `DoubleDown.Double.fallback/2`, `expect/3`, or `stub/2`. This means
+  a test run that never exercises a module pays zero shimming cost.
+
   ## Usage in tests
 
       setup do
@@ -72,19 +77,19 @@ defmodule DoubleDown.DynamicFacade do
   """
 
   @registry_key __MODULE__
+  @lazy_key Module.concat(__MODULE__, Lazy)
 
   # -- Public API --
 
   @doc """
-  Set up a dynamic dispatch facade for a module.
+  Register a module for lazy dynamic dispatch.
 
-  Copies the original module to a backup (`Module.__dd_original__`)
-  and replaces it with a shim that dispatches through
-  `DoubleDown.DynamicFacade.dispatch/3`.
+  The module is registered for potential shimming but no bytecode
+  manipulation happens yet. The actual shim (rename original + create
+  dispatch shim) fires lazily when a test first installs a handler via
+  `DoubleDown.Double.fallback/2`, `expect/3`, or `stub/2`.
 
   Call this in `test/test_helper.exs` **before** `ExUnit.start()`.
-  Bytecode replacement is VM-global — calling during async tests may
-  cause flaky behaviour.
 
   After setup, use the full `DoubleDown.Double` API:
 
@@ -92,7 +97,7 @@ defmodule DoubleDown.DynamicFacade do
       DoubleDown.Double.expect(MyModule, :op, fn [args] -> result end)
 
   Tests that don't install a handler get the original module's
-  behaviour automatically.
+  behaviour automatically — and never pay the shimming cost.
   """
   @spec setup(module()) :: :ok
   def setup(module) do
@@ -100,18 +105,20 @@ defmodule DoubleDown.DynamicFacade do
       :ok
     else
       DoubleDown.DynamicFacade.Validator.validate_module!(module)
-      do_setup(module)
-      register_module(module)
+      register_lazy_module(module)
       :ok
     end
   end
 
   @doc """
-  Check whether a module has been set up for dynamic dispatch.
+  Check whether a module has been registered for dynamic dispatch.
+
+  Returns `true` if the module is either lazily registered (not yet
+  shimmed) or fully shimmed.
   """
   @spec setup?(module()) :: boolean()
   def setup?(module) do
-    module in registered_modules()
+    module in registered_modules() or module in registered_lazy_modules()
   end
 
   @doc """
@@ -201,6 +208,26 @@ defmodule DoubleDown.DynamicFacade do
   @doc false
   def registered_modules do
     :persistent_term.get(@registry_key, [])
+  end
+
+  @doc false
+  def register_lazy_module(module) do
+    modules = registered_lazy_modules()
+
+    unless module in modules do
+      :persistent_term.put(@lazy_key, [module | modules])
+    end
+  end
+
+  @doc false
+  def registered_lazy_modules do
+    :persistent_term.get(@lazy_key, [])
+  end
+
+  @doc false
+  def unregister_lazy_module(module) do
+    modules = registered_lazy_modules()
+    :persistent_term.put(@lazy_key, List.delete(modules, module))
   end
 
   @doc false
