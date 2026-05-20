@@ -256,6 +256,8 @@ defmodule DoubleDown.Testing do
   # -- Internal --
 
   defp set_meta(contract, meta) do
+    DoubleDown.DynamicFacade.ensure_shimmed(contract)
+
     case NimbleOwnership.get_and_update(Keys.ownership_server(), self(), contract, fn
            nil ->
              {:ok, meta}
