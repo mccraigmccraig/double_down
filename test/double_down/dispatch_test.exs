@@ -56,46 +56,8 @@ defmodule DoubleDown.DispatchTest do
   end
 
   # -- Config dispatch --
-
-  describe "config dispatch" do
-    test "dispatches to impl from Application config" do
-      Application.put_env(:double_down, Greeter, impl: Greeter.Impl)
-      on_exit(fn -> Application.delete_env(:double_down, Greeter) end)
-
-      # No test handler set — should fall through to config
-      assert "Hello, Charlie!" = Greeter.Port.greet("Charlie")
-    end
-  end
-
-  # -- No handler raises --
-
-  describe "no handler" do
-    test "raises when no test handler and no config" do
-      # Ensure no config
-      Application.delete_env(:double_down, Greeter)
-
-      assert_raise RuntimeError, ~r/No test handler set/, fn ->
-        Greeter.Port.greet("Nobody")
-      end
-    end
-
-    test "raises with test-oriented message mentioning set_stateless_handler" do
-      Application.delete_env(:double_down, Greeter)
-
-      assert_raise RuntimeError, ~r/set_stateless_handler/, fn ->
-        Greeter.Port.greet("Nobody")
-      end
-    end
-
-    test "raises when config exists but missing :impl key" do
-      Application.put_env(:double_down, Greeter, [])
-      on_exit(fn -> Application.delete_env(:double_down, Greeter) end)
-
-      assert_raise RuntimeError, ~r/No test handler set/, fn ->
-        Greeter.Port.greet("Nobody")
-      end
-    end
-  end
+  # (moved to DoubleDown.DispatchConfigTest — dedicated contract, async: false)
+  # --
 
   # -- Dispatch logging --
 
@@ -462,6 +424,77 @@ defmodule DoubleDown.DispatchTest do
 
       users = Greeter.Port.greet("ignored")
       assert [%SimpleUser{name: "Alice"}] = users
+    end
+  end
+end
+
+# Config dispatch tests use a dedicated contract with async: false
+# to prevent Application env mutations from leaking to other modules.
+defmodule DoubleDown.Test.ConfigGreeter do
+  use DoubleDown.Contract
+
+  defcallback greet(name :: String.t()) :: String.t()
+end
+
+defmodule DoubleDown.Test.ConfigGreeter.Impl do
+  @behaviour DoubleDown.Test.ConfigGreeter
+
+  @impl true
+  def greet(name), do: "Hello, #{name}!"
+end
+
+defmodule DoubleDown.Test.ConfigGreeter.Port do
+  use DoubleDown.ContractFacade,
+    contract: DoubleDown.Test.ConfigGreeter,
+    otp_app: :double_down
+end
+
+defmodule DoubleDown.DispatchConfigTest do
+  use ExUnit.Case, async: false
+
+  alias DoubleDown.Test.ConfigGreeter, as: Contract
+  alias DoubleDown.Test.ConfigGreeter.Impl, as: ContractImpl
+  alias DoubleDown.Test.ConfigGreeter.Port
+
+  # -- Config dispatch --
+
+  describe "config dispatch" do
+    test "dispatches to impl from Application config" do
+      Application.put_env(:double_down, Contract, impl: ContractImpl)
+
+      assert "Hello, Charlie!" = Port.greet("Charlie")
+
+      Application.delete_env(:double_down, Contract)
+    end
+  end
+
+  # -- No handler raises --
+
+  describe "no handler" do
+    test "raises when no test handler and no config" do
+      Application.delete_env(:double_down, Contract)
+
+      assert_raise RuntimeError, ~r/No test handler set/, fn ->
+        Port.greet("Nobody")
+      end
+    end
+
+    test "raises with test-oriented message mentioning set_stateless_handler" do
+      Application.delete_env(:double_down, Contract)
+
+      assert_raise RuntimeError, ~r/set_stateless_handler/, fn ->
+        Port.greet("Nobody")
+      end
+    end
+
+    test "raises when config exists but missing :impl key" do
+      Application.put_env(:double_down, Contract, [])
+
+      assert_raise RuntimeError, ~r/No test handler set/, fn ->
+        Port.greet("Nobody")
+      end
+
+      Application.delete_env(:double_down, Contract)
     end
   end
 end
