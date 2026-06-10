@@ -4,11 +4,21 @@
 [< Repo](docs/repo.md) | [Index](README.md)
 <!-- nav:header:end -->
 
-<!-- last-updated-against: ef765a87256d2f70d54d8ef30ff3af65b0e5cd8c -->
+<!-- last-updated-against: c9575ec44ad9f14a335cd7c9e79149e44bc5fcd2 -->
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [0.63.2]
+
+### Fixed
+
+- **Lazy shimming race under concurrent async tests.** `ensure_shimmed/1`
+  was an unsynchronised check-then-act — multiple test processes could
+  all pass the lazy-module check before any completed `Module.create`,
+  hitting "cannot define module because it is currently being defined".
+  Now serialised via a dedicated `NimbleOwnership` server in shared mode.
 
 ## [0.63.1]
 
