@@ -215,7 +215,7 @@ if Code.ensure_loaded?(Ecto) do
     def dispatch_insert!(args, store) do
       case dispatch_insert(args, store) do
         {{:ok, record}, new_store} -> {record, new_store}
-        {{:error, changeset}, store} -> bang_raise(:insert!, changeset, store)
+        {{:error, changeset}, store} -> bang_raise(:insert, changeset, store)
       end
     end
 
@@ -223,7 +223,7 @@ if Code.ensure_loaded?(Ecto) do
     def dispatch_update!(args, store) do
       case dispatch_update(args, store) do
         {{:ok, record}, new_store} -> {record, new_store}
-        {{:error, changeset}, store} -> bang_raise(:update!, changeset, store)
+        {{:error, changeset}, store} -> bang_raise(:update, changeset, store)
       end
     end
 
@@ -231,7 +231,7 @@ if Code.ensure_loaded?(Ecto) do
     def dispatch_delete!(args, store) do
       case dispatch_delete(args, store) do
         {{:ok, record}, new_store} -> {record, new_store}
-        {{:error, changeset}, store} -> bang_raise(:delete!, changeset, store)
+        {{:error, changeset}, store} -> bang_raise(:delete, changeset, store)
       end
     end
 
@@ -252,7 +252,7 @@ if Code.ensure_loaded?(Ecto) do
     def dispatch_insert_or_update!(args, store) do
       case dispatch_insert_or_update(args, store) do
         {{:ok, record}, new_store} -> {record, new_store}
-        {{:error, changeset}, store} -> bang_raise(:insert_or_update!, changeset, store)
+        {{:error, changeset}, store} -> bang_raise(changeset.action, changeset, store)
       end
     end
 

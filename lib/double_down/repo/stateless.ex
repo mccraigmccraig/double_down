@@ -209,7 +209,7 @@ if Code.ensure_loaded?(Ecto) do
           record
 
         {:error, changeset} ->
-          raise Ecto.InvalidChangesetError, action: :insert_or_update, changeset: changeset
+          raise Ecto.InvalidChangesetError, action: changeset.action, changeset: changeset
       end
     end
 
