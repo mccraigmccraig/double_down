@@ -1,4 +1,10 @@
 defmodule DoubleDown.DispatchConfigTest do
+  # All tests that mutate Application env are co-located in this single
+  # async:false module. Application env is process-independent global
+  # state — a put_env from one async test leaks to every concurrent
+  # test. async:false serialises within the module, and all env-touching
+  # tests use a dedicated ConfigGreeter contract (no other test reads
+  # config for this key), eliminating the collision entirely.
   use ExUnit.Case, async: false
 
   alias DoubleDown.Test.ConfigGreeter, as: Contract
