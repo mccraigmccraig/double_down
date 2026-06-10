@@ -4,13 +4,24 @@
 [< Repo](docs/repo.md) | [Index](README.md)
 <!-- nav:header:end -->
 
-<!-- last-updated-against: e7ef64b76da2c63463960352d06a8550a19e621b -->
+<!-- last-updated-against: bd9105434f14108842dbc32138fcc207c0557fbd -->
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+### Added
+
+- **README version check test.** A test now verifies that the installation
+  snippet in `README.md` references the version from the `VERSION` file,
+  preventing the README version from going stale.
+
+### Fixed
+
+- **Stale README version.** The installation snippet in `README.md` referenced
+  `~> 0.48` when the current version was `0.62.0`.
 
 ## [0.62.0]
 
