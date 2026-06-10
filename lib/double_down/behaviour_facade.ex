@@ -143,8 +143,10 @@ defmodule DoubleDown.BehaviourFacade do
     # the dependency module is fully available at this point.
     operations = BehaviourIntrospection.fetch_operations!(behaviour, __CALLER__)
 
+    config_value = Application.get_env(otp_app, behaviour)
+
     static_impl =
-      Codegen.resolve_static_impl(otp_app, behaviour, test_dispatch?, static_dispatch?)
+      Codegen.resolve_static_impl(config_value, test_dispatch?, static_dispatch?)
 
     facades =
       Enum.map(
@@ -157,6 +159,8 @@ defmodule DoubleDown.BehaviourFacade do
     moduledoc = Codegen.generate_moduledoc(behaviour, otp_app)
 
     quote do
+      @double_down_impl Application.compile_env(unquote(otp_app), unquote(behaviour), nil)
+
       unquote(moduledoc)
       unquote_splicing(facades)
       unquote_splicing(key_helpers)

@@ -39,10 +39,10 @@ defmodule DoubleDown.Facade.Codegen do
   # -------------------------------------------------------------------
 
   @doc false
-  @spec resolve_static_impl(atom(), atom(), boolean(), boolean()) :: module() | nil
-  def resolve_static_impl(otp_app, contract, test_dispatch?, static_dispatch?) do
+  @spec resolve_static_impl(any(), boolean(), boolean()) :: module() | nil
+  def resolve_static_impl(config_value, test_dispatch?, static_dispatch?) do
     if !test_dispatch? and static_dispatch? do
-      case Application.get_env(otp_app, contract) do
+      case config_value do
         nil ->
           nil
 

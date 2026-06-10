@@ -4,11 +4,22 @@
 [< Repo](docs/repo.md) | [Index](README.md)
 <!-- nav:header:end -->
 
-<!-- last-updated-against: c164b4fe0f6b2552fcf79365e216a19bb6a63a80 -->
+<!-- last-updated-against: 912d75ad1c51d72b3ba35c2eb3839346e8c9d0da -->
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
+
+### Fixed
+
+- **Static dispatch compile-time config dependency.** `ContractFacade` and
+  `BehaviourFacade` now register a compile-time config dependency via
+  `Application.compile_env/3`, so Mix recompiles facades when their configured
+  implementation module changes. Previously `Application.get_env/2` was used,
+  which does not register a dependency, causing stale code to ship after config
+  changes when using static dispatch.
 
 ## [0.62.1]
 

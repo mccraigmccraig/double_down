@@ -119,6 +119,7 @@ defmodule DoubleDown.ContractFacade do
 
         @double_down_contract unquote(contract)
         @double_down_otp_app unquote(otp_app)
+        @double_down_impl Application.compile_env(unquote(otp_app), unquote(contract), nil)
         @double_down_test_dispatch unquote(test_dispatch?)
         @double_down_static_dispatch unquote(static_dispatch?)
         @before_compile {DoubleDown.ContractFacade, :__before_compile__}
@@ -128,6 +129,7 @@ defmodule DoubleDown.ContractFacade do
         require unquote(contract)
         @double_down_contract unquote(contract)
         @double_down_otp_app unquote(otp_app)
+        @double_down_impl Application.compile_env(unquote(otp_app), unquote(contract), nil)
         @double_down_test_dispatch unquote(test_dispatch?)
         @double_down_static_dispatch unquote(static_dispatch?)
         @before_compile {DoubleDown.ContractFacade, :__before_compile__}
@@ -142,8 +144,10 @@ defmodule DoubleDown.ContractFacade do
     test_dispatch? = Module.get_attribute(env.module, :double_down_test_dispatch)
     static_dispatch? = Module.get_attribute(env.module, :double_down_static_dispatch)
 
+    config_value = Module.get_attribute(env.module, :double_down_impl)
+
     static_impl =
-      Codegen.resolve_static_impl(otp_app, contract, test_dispatch?, static_dispatch?)
+      Codegen.resolve_static_impl(config_value, test_dispatch?, static_dispatch?)
 
     operations = fetch_operations!(contract, env)
 
