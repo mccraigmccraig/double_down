@@ -118,117 +118,12 @@ defmodule DoubleDown.Testing do
     end
   end
 
-  @doc """
-  Select private or global mode based on the test context.
-
-  When `async: true` is set on the test module, private mode is used
-  (the default — each test process has its own handlers). Otherwise,
-  global mode is used (all processes share the calling process's
-  handlers).
-
-  Use as a setup callback — this is the recommended way to manage
-  mode selection, mirroring Mox's `set_mox_from_context`:
-
-      # In your test module:
-      use ExUnit.Case, async: false
-
-      setup :set_mode_from_context
-
-      setup do
-        DoubleDown.Testing.set_module_handler(MyApp.Repo, MyApp.Repo.InMemory)
-        :ok
-      end
-
-  Because `set_mode_from_context` runs at the start of every test,
-  it always resets the mode — even if a previous test crashed without
-  cleaning up. NimbleOwnership's automatic `:DOWN` handler removes
-  owned keys when the test process exits, so no explicit `on_exit`
-  cleanup is needed.
-
-  For `async: true` tests, `set_mode_from_context` is a no-op (private
-  mode is the default), so it's safe to include unconditionally.
-  """
-  @spec set_mode_from_context(%{async: boolean()} | map()) :: :ok
-  def set_mode_from_context(context \\ %{}) do
-    if context[:async] do
-      set_mode_to_private()
-    else
-      set_mode_to_global()
-    end
-  end
-
-  @doc """
-  Set the ownership server to global mode.
-
-  In global mode, all handlers registered by the calling process are
-  visible to every process in the VM — no `allow/3` calls needed.
-  This is useful for integration-style tests that involve supervision
-  trees, named GenServers, Broadway pipelines, or Oban workers where
-  individual process pids are not easily accessible.
-
-  The calling process becomes the "shared owner". Only the shared
-  owner process can install handlers — calls to `set_*_handler`
-  from other processes will raise `ArgumentError`.
-
-  ## Recommended pattern
-
-  Prefer `set_mode_from_context/1` over calling `set_mode_to_global/0`
-  directly — it handles mode selection automatically and is more
-  robust against stale state from previous tests:
-
-      setup :set_mode_from_context
-
-      setup do
-        DoubleDown.Testing.set_module_handler(MyApp.Repo, MyApp.Repo.InMemory)
-        :ok
-      end
-
-  ## Warning
-
-  Global mode is **incompatible with `async: true`**. When global
-  mode is active, all tests share the same handlers, so concurrent
-  tests will interfere with each other. Only use global mode in
-  tests with `async: false`.
-
-  ## Common mistakes
-
-  **Don't use `setup_all` for global mode.** `setup_all` runs in a
-  different process than `setup`/tests, so handlers installed in
-  `setup_all` won't be visible to test processes in global mode:
-
-      # BROKEN — setup_all and setup run in different processes
-      setup_all do
-        DoubleDown.Testing.set_mode_to_global()
-        :ok
-      end
-
-      setup do
-        # This RAISES — self() is not the shared owner
-        DoubleDown.Testing.set_module_handler(MyContract, MyImpl)
-      end
-  """
-  @spec set_mode_to_global() :: :ok
-  def set_mode_to_global do
-    NimbleOwnership.set_mode_to_shared(Keys.ownership_server(), self())
-  end
-
-  @doc """
-  Restore the ownership server to private (per-process) mode.
-
-  After calling this, handlers are once again scoped to the process
-  that registered them. Use this to clean up after `set_mode_to_global/0`.
-  """
-  @spec set_mode_to_private() :: :ok
-  def set_mode_to_private do
-    NimbleOwnership.set_mode_to_private(Keys.ownership_server())
-  end
 
   @doc """
   Reset all handlers and logs for a process.
 
-  Clears all NimbleOwnership entries owned by `pid` and reverts
-  the ownership server to private mode (in case global mode was
-  active). Defaults to `self()`.
+  Clears all NimbleOwnership entries owned by `pid`. Defaults to
+  `self()`.
 
   **`on_exit` caveat:** `reset()` (without arguments) uses `self()`,
   which inside an `on_exit` callback is the callback process — not
@@ -247,10 +142,6 @@ defmodule DoubleDown.Testing do
   @spec reset(pid()) :: :ok
   def reset(pid \\ self()) do
     NimbleOwnership.cleanup_owner(Keys.ownership_server(), pid)
-    # Also revert to private mode — cleanup_owner removes keys but
-    # leaves the server in shared mode if it was set. This is a no-op
-    # if already in private mode.
-    NimbleOwnership.set_mode_to_private(Keys.ownership_server())
   end
 
   # -- Internal --
@@ -283,10 +174,8 @@ defmodule DoubleDown.Testing do
         Failed to install handler for #{inspect(contract)}: \
         #{Exception.message(error)}
 
-        In global mode, only the process that called \
-        set_mode_to_global() can install handlers. Ensure \
-        set_mode_to_global() and set_*_handler() are called \
-        from the same process (typically the test's setup block).
+        Ensure the handler is installed from the test process's \
+        setup block, not from a child process.
         """
     end
   end
