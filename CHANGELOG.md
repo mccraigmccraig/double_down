@@ -4,11 +4,20 @@
 [< Repo](docs/repo.md) | [Index](README.md)
 <!-- nav:header:end -->
 
-<!-- last-updated-against: 85cf32c21b776bb79089f10e093ccb81aca66111 -->
+<!-- last-updated-against: d5a5652d8be0c1664449b04e3adf7c7fdb8498f3 -->
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [0.63.3]
+
+### Fixed
+
+- **Shim server bootstrap race.** Multiple async processes could all see
+  `Process.whereis` → nil before any `start_link` completed, crashing
+  losers on `{:error, {:already_started, pid}}`. Now handles the
+  already-started case by taking the winner's pid.
 
 ## [0.63.2]
 
