@@ -4,13 +4,34 @@
 [< Repo](docs/repo.md) | [Index](README.md)
 <!-- nav:header:end -->
 
-<!-- last-updated-against: 912d75ad1c51d72b3ba35c2eb3839346e8c9d0da -->
+<!-- last-updated-against: 3260441a72a4fc3b7251170e3364974f5648d836 -->
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.63.0]
+
+### Added
+
+- **Missing Ecto.Repo default-arity callbacks.** `insert_all/2`,
+  `update_all/2`, `delete_all/1`, `transact/1`, and `transaction/1` are
+  now declared on the `DoubleDown.Repo` contract, matching the default-opts
+  arities that `Ecto.Repo` exports. `transact/1` and `transaction/1` include
+  `pre_dispatch` transforms for 1-arity functions and `Ecto.Multi` structs.
+  InMemory gets an `insert_all/2` → `insert_all/3` delegation clause;
+  OpenInMemory and Stateless already handled all arities via catch-all dispatch.
+
+### Changed
+
+- **`transaction/2` callback semantics now match Ecto.** The function is no
+  longer an alias for `transact/2`. All function callback return values are
+  wrapped in `{:ok, _}` and only `Repo.rollback/1` triggers rollback — matching
+  `Ecto.Repo.transaction/2` semantics. `transact/2` continues to enforce tagged
+  `{:ok, _} | {:error, _}` returns and rollback on `{:error, _}`. `Ecto.Multi`
+  behaviour is shared between both. Code using `Repo.transaction(fn -> {:error, x} end)`
+  previously got `{:error, x}` and a rollback; now gets `{:ok, {:error, x}}` and
+  commits.
 
 ### Fixed
 
@@ -36,6 +57,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   primary key is not in the store now raise `Ecto.StaleEntryError`,
   again matching real `Ecto.Repo`. Schemas with `@primary_key false`
   skip the stale-entry check as expected.
+
+- **Bang-action names in `InvalidChangesetError`.** InMemory bang variants
+  now pass the correct non-bang action name (`:insert`, `:update`, `:delete`)
+  to `Ecto.InvalidChangesetError`, matching `Ecto.Repo` behaviour. Previously
+  `:insert!`/`:update!`/`:delete!` were used, which don't match Ecto's
+  expectations. `insert_or_update!` now uses `changeset.action`.
 
 ## [0.62.1]
 
