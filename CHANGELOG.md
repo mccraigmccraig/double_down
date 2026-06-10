@@ -4,32 +4,34 @@
 [< Repo](docs/repo.md) | [Index](README.md)
 <!-- nav:header:end -->
 
-<!-- last-updated-against: d5a5652d8be0c1664449b04e3adf7c7fdb8498f3 -->
+<!-- last-updated-against: 967c56c8708e563741795a76f318b9c939ec9b3c -->
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.64.0]
+
+### Removed
+
+- **Global mode support.** `set_mode_to_global/0` and
+  `set_mode_from_context/1` have been removed from `DoubleDown.Testing`.
+  Global mode was fundamentally incompatible with `async: true` — a single
+  `async: false` test module switching the shared `NimbleOwnership` server
+  to shared mode leaked handlers to every concurrent async test. The
+  `$callers` mechanism and `allow/3` cover all real-world multi-process
+  use cases without the isolation problems.
+
+### Fixed
+
+- **Lazy shimming race and server lifecycle.** `ensure_shimmed/1` now
+  serialises via a dedicated `NimbleOwnership` server in shared mode,
+  preventing concurrent `Module.create` calls from racing on "module
+  currently being defined". The server is unlinked from test processes
+  to survive cleanup, and the bootstrap race between concurrent
+  `start_link` callers is handled via `{:error, {:already_started, pid}}`.
+
 ## [0.63.3]
-
-### Fixed
-
-- **Shim server bootstrap race.** Multiple async processes could all see
-  `Process.whereis` → nil before any `start_link` completed, crashing
-  losers on `{:error, {:already_started, pid}}`. Now handles the
-  already-started case by taking the winner's pid.
-
-## [0.63.2]
-
-### Fixed
-
-- **Lazy shimming race under concurrent async tests.** `ensure_shimmed/1`
-  was an unsynchronised check-then-act — multiple test processes could
-  all pass the lazy-module check before any completed `Module.create`,
-  hitting "cannot define module because it is currently being defined".
-  Now serialised via a dedicated `NimbleOwnership` server in shared mode.
-
-## [0.63.1]
 
 ### Fixed
 
