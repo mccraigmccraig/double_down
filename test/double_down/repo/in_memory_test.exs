@@ -941,6 +941,15 @@ defmodule DoubleDown.Repo.InMemoryTest do
       assert length(users) == 2
     end
 
+    test "insert_all/2 defaults opts to empty list" do
+      store = InMemory.new()
+
+      entries = [%{name: "Alice"}, %{name: "Bob"}]
+
+      {{2, nil}, _store} =
+        InMemory.dispatch(DoubleDown.Repo, :insert_all, [User, entries], store)
+    end
+
     test "returns records with :returning option" do
       store = InMemory.new()
 
@@ -1373,6 +1382,17 @@ defmodule DoubleDown.Repo.InMemoryTest do
         DoubleDown.Test.Repo.rollback(:oops)
       end
     end
+
+    test "transact/1 without opts works" do
+      result =
+        DoubleDown.Test.Repo.transact(fn ->
+          {:ok, _} = DoubleDown.Test.Repo.insert(User.changeset(%{name: "Alice"}))
+          {:ok, :done}
+        end)
+
+      assert {:ok, :done} = result
+      assert [%User{name: "Alice"}] = DoubleDown.Test.Repo.all(User)
+    end
   end
 
   # -------------------------------------------------------------------
@@ -1594,6 +1614,11 @@ defmodule DoubleDown.Repo.InMemoryTest do
         end,
         []
       )
+    end
+
+    test "transaction/1 without opts works" do
+      assert {:ok, :done} =
+               DoubleDown.Test.Repo.transaction(fn -> {:ok, :done} end)
     end
   end
 

@@ -397,6 +397,9 @@ if Code.ensure_loaded?(Ecto) do
     # Bulk writes (closed-world, bare schema)
     # -----------------------------------------------------------------
 
+    def dispatch(contract, :insert_all, [source, entries], store),
+      do: dispatch(contract, :insert_all, [source, entries, []], store)
+
     def dispatch(_contract, :insert_all, [source, entries, opts], store)
         when is_atom(source) and not is_nil(source) do
       {count, records, new_store} =

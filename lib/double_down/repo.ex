@@ -182,6 +182,12 @@ if Code.ensure_loaded?(Ecto) do
     @doc "Insert all entries into a schema or source at once."
     defcallback insert_all(
                   source :: Ecto.Queryable.t() | binary(),
+                  entries :: [map() | keyword()]
+                ) :: {non_neg_integer(), nil | list()}
+
+    @doc "Insert all entries into a schema or source at once with options."
+    defcallback insert_all(
+                  source :: Ecto.Queryable.t() | binary(),
                   entries :: [map() | keyword()],
                   opts :: keyword()
                 ) :: {non_neg_integer(), nil | list()}
@@ -189,11 +195,21 @@ if Code.ensure_loaded?(Ecto) do
     @doc "Update all records matching a queryable."
     defcallback update_all(
                   queryable :: Ecto.Queryable.t(),
+                  updates :: keyword()
+                ) :: {non_neg_integer(), nil | list()}
+
+    @doc "Update all records matching a queryable with options."
+    defcallback update_all(
+                  queryable :: Ecto.Queryable.t(),
                   updates :: keyword(),
                   opts :: keyword()
                 ) :: {non_neg_integer(), nil | list()}
 
     @doc "Delete all records matching a queryable."
+    defcallback delete_all(queryable :: Ecto.Queryable.t()) ::
+                  {non_neg_integer(), nil | list()}
+
+    @doc "Delete all records matching a queryable with options."
     defcallback delete_all(queryable :: Ecto.Queryable.t(), opts :: keyword()) ::
                   {non_neg_integer(), nil | list()}
 
@@ -421,22 +437,37 @@ if Code.ensure_loaded?(Ecto) do
     key so that test adapters can pass it to `DoubleDown.Repo.Impl.MultiStepper`
     for `:run` callbacks.
     """
+    defcallback transact(fun_or_multi :: term()) ::
+                  {:ok, term()} | {:error, term()} | {:error, term(), term(), term()},
+                pre_dispatch: fn args, facade_mod ->
+                  case args do
+                    [fun] when is_function(fun, 1) ->
+                      [fn -> fun.(facade_mod) end, []]
+
+                    [fun] when is_function(fun, 0) ->
+                      [fun, []]
+
+                    [%Ecto.Multi{} = multi] ->
+                      [multi, Keyword.put([], DoubleDown.Repo.Facade, facade_mod)]
+                  end
+                end
+
+    @doc """
+    Run a function or `Ecto.Multi` inside a database transaction with options.
+
+    See `transact/1` for full documentation.
+    """
     defcallback transact(fun_or_multi :: term(), opts :: keyword()) ::
                   {:ok, term()} | {:error, term()} | {:error, term(), term(), term()},
                 pre_dispatch: fn args, facade_mod ->
                   case args do
                     [fun, opts] when is_function(fun, 1) ->
-                      # Wrap 1-arity fn into 0-arity thunk closing over facade.
-                      # Calls inside the fn go through the facade dispatch chain.
                       [fn -> fun.(facade_mod) end, opts]
 
                     [%Ecto.Multi{} = _multi, opts] ->
-                      # Multi stays as-is. Inject facade into opts so test adapters
-                      # can extract it for MultiStepper.
                       [Enum.at(args, 0), Keyword.put(opts, DoubleDown.Repo.Facade, facade_mod)]
 
                     [fun, _opts] when is_function(fun, 0) ->
-                      # 0-arity fn: pass through unchanged
                       args
                   end
                 end
@@ -444,11 +475,40 @@ if Code.ensure_loaded?(Ecto) do
     @doc """
     Run a function or `Ecto.Multi` inside a database transaction.
 
-    Alias for `transact/2` — provided for compatibility with existing
-    `Ecto.Repo.transaction/2` call sites. `transact/2` is the preferred
-    name for new code; the two are functionally identical.
+    Mirrors `Ecto.Repo.transaction/2`. Accepts either a function or an
+    `Ecto.Multi` struct as the first argument.
 
-    See `transact/2` for full documentation.
+    ## Use with function
+
+    The function may be 0-arity or 1-arity:
+
+    - **0-arity:** `fn -> {:ok, result} | {:error, reason} end`
+    - **1-arity:** `fn repo -> {:ok, result} | {:error, reason} end` — where
+      `repo` is the facade module.
+
+    The function **must** return `{:ok, result}` or `{:error, reason}`.
+    On `{:ok, result}`, the transaction is committed and `{:ok, result}` is returned.
+    On `{:error, reason}`, the transaction is rolled back and `{:error, reason}` is returned.
+    """
+    defcallback transaction(fun_or_multi :: term()) ::
+                  {:ok, term()} | {:error, term()} | {:error, term(), term(), term()},
+                pre_dispatch: fn args, facade_mod ->
+                  case args do
+                    [fun] when is_function(fun, 1) ->
+                      [fn -> fun.(facade_mod) end, []]
+
+                    [fun] when is_function(fun, 0) ->
+                      [fun, []]
+
+                    [%Ecto.Multi{} = multi] ->
+                      [multi, Keyword.put([], DoubleDown.Repo.Facade, facade_mod)]
+                  end
+                end
+
+    @doc """
+    Run a function or `Ecto.Multi` inside a database transaction with options.
+
+    See `transaction/1` for full documentation.
     """
     defcallback transaction(fun_or_multi :: term(), opts :: keyword()) ::
                   {:ok, term()} | {:error, term()} | {:error, term(), term(), term()},
