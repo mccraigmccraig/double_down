@@ -7,7 +7,7 @@
 Dispatch is the uniform call-resolution mechanism that sits between every
 facade and its implementation. All three facade types (`ContractFacade`,
 `BehaviourFacade`, `DynamicFacade`) use the same dispatch infrastructure —
-there is one mechanism, one set of handler types, one logging system.
+there is one mechanism, with one set of handler types, and one logging system.
 
 ## Dispatch paths
 
@@ -50,10 +50,9 @@ The dispatch path for each facade is selected at **compile time** via the
 
 When `static_dispatch?: true` (default in `:prod`) and the implementation is
 available in config at compile time, the facade generates inlined direct
-function calls to the implementation module. No `NimbleOwnership` and no
-`Application.get_env` — the call compiles to identical bytecode to calling
-the impl directly. Falls back to `call_config/4` if the config isn't
-available at compile time.
+function calls to the implementation module. The call compiles to identical
+bytecode to calling the impl directly. Falls back to `call_config/4` if the
+config isn't available at compile time.
 
 ### Runtime config dispatch
 

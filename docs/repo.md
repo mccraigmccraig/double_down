@@ -221,7 +221,6 @@ against a real database:
 - **Constraint validation** — unique indexes, foreign keys, check
   constraints
 - **Transaction isolation** — concurrent writes, rollback interaction
-- **Migrations** — schema changes
 
 The goal isn't to eliminate DB tests — it's to move the ~3/4 of tests that
 use the database merely as a slow data-fixture mechanism to run DB-free.

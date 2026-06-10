@@ -14,8 +14,8 @@ DoubleDown.Double.fallback(MyContract, handler)
 DoubleDown.Double.expect(MyContract, :op, responder)
 ```
 
-Each call writes directly to NimbleOwnership — no builder, no `install!`
-step. All functions return the contract module for piping.
+Each call writes directly to NimbleOwnership, and all functions return
+the contract module for piping.
 
 ## Fallback
 

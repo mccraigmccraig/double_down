@@ -12,7 +12,8 @@ implicit Mimic-style interception (`DynamicFacade`). All three produce the
 same dispatch mechanism and support the same test double API.
 
 DoubleDown separates _what you call_ from _what handles the call_. A function
-call passes through four layers (note: these are conceptual layers, and are optimised away in production paths):
+call passes through four layers (note: these are conceptual layers,
+optimised away in production paths):
 
 ```
      ┌──────────────────────────────────────────────────────┐
@@ -93,16 +94,16 @@ call passes through four layers (note: these are conceptual layers, and are opti
 
 ## Layer 1: Contract
 
-The contract is the type-level interface — it defines _what_ operations exist and
-their type signatures, but not _how_ they're implemented.
+The contract is the type-level interface — it defines _what_ operations exist
+and their type signatures, but not _how_ they're implemented.
 
 ### defcallback (explicit contract)
 
 Use `defcallback` from `DoubleDown.Contract` when you control the interface.
 It generates `@behaviour` + `@callback` + introspection metadata
-(`__callbacks__/0`) from a single macro call.  `defcallback` takes the same parameters as @callback, but unlike _requires_ named
-parameters (`id :: String.t()`) — and these appear in generated `@spec` and `@doc`
-on the facade, giving LSP-friendly hover docs at every call site.
+(`__callbacks__/0`) from a single macro call.  `defcallback` takes the same parameters as `@callback`, but unlike `@callback` _requires_ named
+parameters (`id :: String.t()`) — and these appear in generated `@spec`
+and `@doc` on the facade, giving LSP-friendly hover docs at every call site.
 
 ```elixir
 defmodule MyApp.Todos do
@@ -137,7 +138,7 @@ each contract operation that delegate to the dispatch layer.
 ### ContractFacade
 
 For `defcallback` contracts.  Supports combined contract + facade
-(one module - the default) or separate modules.  Options control 
+(one module - the default) or separate modules.  Options control
 dispatch behaviour at compile time.
 
 ```elixir
@@ -212,7 +213,7 @@ operation.
 
 ### Production
 
-A module implementing the contract's `@behaviour`, wired via config:
+A module implementing the contract, wired via config:
 
 ```elixir
 # config/config.exs
@@ -221,7 +222,9 @@ config :my_app, MyApp.Todos, impl: MyApp.Todos.Ecto
 If this config is available at compile-time, and `static_dispatch?: true`
 (the default) then `ContractFacade` and `BehaviourFacade` will use the
 compile-time target and inline calls - there will be zero
-runtime overhead for the contract boundary.
+runtime overhead for the contract boundary. With `DynamicFacade` there is
+never any production overhead, because the bytecode shims are only
+generated under test.
 
 ### Test doubles
 

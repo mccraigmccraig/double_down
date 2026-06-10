@@ -9,9 +9,9 @@
 [![Documentation](https://img.shields.io/badge/documentation-gray)](https://hexdocs.pm/double_down/)
 
 DoubleDown is a test-double (mocks and fakes) library for Elixir. It has
-multiple routes to adding test boundaries to your system, and goes beyond
-mocks with stateful test-doubles aka fakes. It includes an `Ecto.Repo` fake
-powerful enough to run ExMachina factories without a database.
+multiple zero-cost routes to adding test boundaries to your system, and
+goes beyond mocks with stateful test-doubles aka fakes. It includes an
+`Ecto.Repo` fake powerful enough to run ExMachina factories without a database.
 
 Tests that exercise database features — constraints, complex queries,
 migrations — should continue to run against a real database. But unit tests
@@ -21,7 +21,7 @@ keep the factory and drop the DB.
 
 ## How it works
 
-A function call passes through four layers:
+A function call passes through four logical layers:
 
 ```
      ┌──────────────────────────────────────────────────────┐
@@ -73,7 +73,7 @@ A function call passes through four layers:
      │                                                      │
      │  ┌──────────────────────────┐  ┌──────────────────┐  │
      │  │   Production Module      │  │   Test Double    │  │
-     │  │   (@behaviour Contract)  │  │  (stub / fake /  │  │
+     │  │                          │  │  (stub / fake /  │  │
      │  │                          │  │   expect)        │  │
      │  └──────────────────────────┘  └──────────────────┘  │
      └──────────────────────────────────────────────────────┘
@@ -87,11 +87,14 @@ Three facade types let you add boundaries at different levels of control:
 | `BehaviourFacade` | existing `@behaviour`           | Third-party or legacy behaviours          |
 | `DynamicFacade`   | implicit (module's public API)  | Adding boundaries without touching source |
 
-Dispatch is uniform across all three — the same resolution mechanism, the same
-`DoubleDown.Double` API for tests, the same `DoubleDown.Log` for tracing calls.
-In production, dispatch can be eliminated entirely at compile time (static
-dispatch inlines direct calls — zero overhead versus calling the implementation
-directly).
+Dispatch is uniform across all three contract/facade types — providing the
+same resolution mechanism, `DoubleDown.Double` API for tests, and
+`DoubleDown.Log` for call tracing.
+
+In production, dispatch overhead can be completely eliminated at compile
+time: with `ContractFacade` and `BehaviourFacade`, static dispatch inlines
+calls — resulting in zero overhead versus calling the implementation directly,
+while with `DynamicFacade` no shims are even generated in production.
 
 ## Installation
 
