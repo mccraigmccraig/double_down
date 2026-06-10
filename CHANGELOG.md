@@ -4,11 +4,20 @@
 [< Repo](docs/repo.md) | [Index](README.md)
 <!-- nav:header:end -->
 
-<!-- last-updated-against: 967c56c8708e563741795a76f318b9c939ec9b3c -->
+<!-- last-updated-against: 1a072da751fdb22c8cba50eb7821f69e62fe12b6 -->
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [0.64.1]
+
+### Fixed
+
+- **Test flake from Application env leakage.** All tests that mutate
+  `Application` env now live in a single `async: false` module using a
+  dedicated `ConfigGreeter` contract, preventing config leakage to
+  concurrent async tests.
 
 ## [0.64.0]
 
