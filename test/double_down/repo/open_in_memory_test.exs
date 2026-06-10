@@ -1792,11 +1792,11 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
     end
 
     test "0-arity fun success" do
-      assert {:ok, :done} = TestRepo.transaction(fn -> {:ok, :done} end, [])
+      assert {:ok, {:ok, :done}} = TestRepo.transaction(fn -> {:ok, :done} end, [])
     end
 
     test "1-arity fun receives facade module" do
-      assert {:ok, TestRepo} = TestRepo.transaction(fn repo -> {:ok, repo} end, [])
+      assert {:ok, {:ok, TestRepo}} = TestRepo.transaction(fn repo -> {:ok, repo} end, [])
     end
 
     test "read-after-write inside transaction" do
@@ -1810,7 +1810,7 @@ defmodule DoubleDown.Repo.OpenInMemoryTest do
           []
         )
 
-      assert {:ok, {%User{name: "Alice"}, %User{name: "Alice"}}} = result
+      assert {:ok, {:ok, {%User{name: "Alice"}, %User{name: "Alice"}}}} = result
     end
 
     test "Multi via transaction" do

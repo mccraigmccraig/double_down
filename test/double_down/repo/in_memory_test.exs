@@ -1420,7 +1420,7 @@ defmodule DoubleDown.Repo.InMemoryTest do
           [fn -> {:ok, :zero_arity} end]
         )
 
-      assert {:ok, :zero_arity} = result
+      assert {:ok, {:ok, :zero_arity}} = result
     end
 
     test "1-arity fn without opts" do
@@ -1444,7 +1444,7 @@ defmodule DoubleDown.Repo.InMemoryTest do
           ]
         )
 
-      assert {:ok, :inserted} = result
+      assert {:ok, {:ok, :inserted}} = result
       assert [%User{name: "Alice"}] = TestRepo.all(User)
     end
 
@@ -1465,7 +1465,7 @@ defmodule DoubleDown.Repo.InMemoryTest do
           ]
         )
 
-      assert {:ok, :inserted_with_opts} = result
+      assert {:ok, {:ok, :inserted_with_opts}} = result
     end
 
     test "0-arity fn with opts (normal ContractFacade path)" do
@@ -1477,7 +1477,7 @@ defmodule DoubleDown.Repo.InMemoryTest do
           [fn -> {:ok, :with_opts} end, []]
         )
 
-      assert {:ok, :with_opts} = result
+      assert {:ok, {:ok, :with_opts}} = result
     end
 
     test "transact operation also normalises" do
@@ -1504,7 +1504,7 @@ defmodule DoubleDown.Repo.InMemoryTest do
       assert {:ok, :hello} = result
     end
 
-    test "{:ok, value} returned as-is (not double-wrapped)" do
+    test "{:ok, value} is double-wrapped by transaction" do
       result =
         DoubleDown.Dispatch.call(
           :double_down,
@@ -1513,10 +1513,10 @@ defmodule DoubleDown.Repo.InMemoryTest do
           [fn -> {:ok, :already_tagged} end]
         )
 
-      assert {:ok, :already_tagged} = result
+      assert {:ok, {:ok, :already_tagged}} = result
     end
 
-    test "{:error, value} returned as-is and state rolled back" do
+    test "{:error, value} is wrapped by transaction and does not roll back" do
       alias DoubleDown.Test.Repo, as: TestRepo
 
       {:ok, _} = TestRepo.insert(User.changeset(%{name: "Before"}))
@@ -1535,9 +1535,9 @@ defmodule DoubleDown.Repo.InMemoryTest do
           ]
         )
 
-      assert {:error, :aborted} = result
-      # Only the pre-transaction record should remain
-      assert [%User{name: "Before"}] = TestRepo.all(User)
+      assert {:ok, {:error, :aborted}} = result
+      assert [%User{name: "Before"}, %User{name: "Inside"}] =
+               TestRepo.all(User) |> Enum.sort_by(& &1.name)
     end
   end
 
@@ -1577,7 +1577,7 @@ defmodule DoubleDown.Repo.InMemoryTest do
     end
 
     test "0-arity fun success" do
-      assert {:ok, :done} =
+      assert {:ok, {:ok, :done}} =
                DoubleDown.Test.Repo.transaction(fn -> {:ok, :done} end, [])
     end
 
@@ -1617,7 +1617,7 @@ defmodule DoubleDown.Repo.InMemoryTest do
     end
 
     test "transaction/1 without opts works" do
-      assert {:ok, :done} =
+      assert {:ok, {:ok, :done}} =
                DoubleDown.Test.Repo.transaction(fn -> {:ok, :done} end)
     end
   end

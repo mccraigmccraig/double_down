@@ -341,10 +341,10 @@ if Code.ensure_loaded?(Ecto) do
     # -----------------------------------------------------------------
 
     defp dispatch(contract, :transact, args, fallback_fn),
-      do: do_dispatch_transact(contract, normalise_transact_args(args, contract), fallback_fn)
+      do: do_dispatch_tx(contract, normalise_transact_args(args, contract), fallback_fn, :transact)
 
     defp dispatch(contract, :transaction, args, fallback_fn),
-      do: do_dispatch_transact(contract, normalise_transact_args(args, contract), fallback_fn)
+      do: do_dispatch_tx(contract, normalise_transact_args(args, contract), fallback_fn, :transaction)
 
     @transaction_key DoubleDown.Repo.InTransaction
 
@@ -365,15 +365,15 @@ if Code.ensure_loaded?(Ecto) do
 
     # -- Transaction helpers (after all dispatch clauses) --
 
-    defp do_dispatch_transact(_contract, [fun, _opts], _fallback_fn) when is_function(fun, 0) do
-      Defer.new(fn -> run_in_transaction(fun) end)
+    defp do_dispatch_tx(_contract, [fun, _opts], _fallback_fn, mode) when is_function(fun, 0) do
+      Defer.new(fn -> run_in_transaction(fun, mode) end)
     end
 
-    defp do_dispatch_transact(_contract, [%Ecto.Multi{} = multi, opts], _fallback_fn) do
+    defp do_dispatch_tx(_contract, [%Ecto.Multi{} = multi, opts], _fallback_fn, _mode) do
       repo_facade = Keyword.get(opts, DoubleDown.Repo.Facade)
 
       Defer.new(fn ->
-        run_in_transaction(fn -> DoubleDown.Repo.Impl.MultiStepper.run(multi, repo_facade) end)
+        run_in_transaction(fn -> DoubleDown.Repo.Impl.MultiStepper.run(multi, repo_facade) end, :transact)
       end)
     end
 
@@ -397,18 +397,26 @@ if Code.ensure_loaded?(Ecto) do
     defp normalise_transact_args([%Ecto.Multi{} = multi, opts], _contract) when is_list(opts),
       do: [multi, opts]
 
-    defp run_in_transaction(fun) do
+    defp run_in_transaction(fun, mode) do
       prev = Process.get(@transaction_key, false)
       Process.put(@transaction_key, true)
 
       try do
         result = fun.()
 
-        case result do
-          {:ok, _} -> result
-          {:error, _} -> result
-          {:error, _, _, _} -> result
-          _other -> {:ok, result}
+        case mode do
+          :transaction ->
+            {:ok, result}
+
+          :transact ->
+            case result do
+              {:ok, _} -> result
+              {:error, _} -> result
+              {:error, _, _, _} -> result
+              _other ->
+                raise ArgumentError,
+                      "expected {:ok, _} or {:error, _} from transact callback, got: #{inspect(result)}"
+            end
         end
       catch
         {:rollback, value} -> {:error, value}

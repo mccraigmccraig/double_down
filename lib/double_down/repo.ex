@@ -478,17 +478,15 @@ if Code.ensure_loaded?(Ecto) do
     Mirrors `Ecto.Repo.transaction/2`. Accepts either a function or an
     `Ecto.Multi` struct as the first argument.
 
-    ## Use with function
+    Unlike `transact/2`, `transaction/2` wraps the function's return
+    value in `{:ok, _}` and does **not** auto-rollback on `{:error, _}`.
+    Rollback is only triggered by `Repo.rollback/1`. This matches
+    `Ecto.Repo.transaction/2` semantics.
 
-    The function may be 0-arity or 1-arity:
+    `transact/2` is the preferred name for new code; `transaction/2`
+    is provided for compatibility with existing `Ecto.Repo` call sites.
 
-    - **0-arity:** `fn -> {:ok, result} | {:error, reason} end`
-    - **1-arity:** `fn repo -> {:ok, result} | {:error, reason} end` — where
-      `repo` is the facade module.
-
-    The function **must** return `{:ok, result}` or `{:error, reason}`.
-    On `{:ok, result}`, the transaction is committed and `{:ok, result}` is returned.
-    On `{:error, reason}`, the transaction is rolled back and `{:error, reason}` is returned.
+    See `transact/1` for full documentation on function and Multi usage.
     """
     defcallback transaction(fun_or_multi :: term()) ::
                   {:ok, term()} | {:error, term()} | {:error, term(), term(), term()},

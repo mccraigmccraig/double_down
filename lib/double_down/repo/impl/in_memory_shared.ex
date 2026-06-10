@@ -365,16 +365,21 @@ if Code.ensure_loaded?(Ecto) do
 
     @doc false
     def dispatch_transact(args, store, contract) do
-      do_dispatch_transact(normalise_transact_args(args, contract), store, contract)
+      do_dispatch_tx(normalise_transact_args(args, contract), store, contract, :transact)
     end
 
-    defp do_dispatch_transact([fun, _opts], store, contract) when is_function(fun, 0) do
+    @doc false
+    def dispatch_transaction(args, store, contract) do
+      do_dispatch_tx(normalise_transact_args(args, contract), store, contract, :transaction)
+    end
+
+    defp do_dispatch_tx([fun, _opts], store, contract, mode) when is_function(fun, 0) do
       snapshot = store
 
-      {Defer.new(fn -> run_in_transaction(fun, contract, snapshot) end), store}
+      {Defer.new(fn -> run_in_transaction(fun, contract, snapshot, mode) end), store}
     end
 
-    defp do_dispatch_transact([%Ecto.Multi{} = multi, opts], store, contract) do
+    defp do_dispatch_tx([%Ecto.Multi{} = multi, opts], store, contract, _mode) do
       repo_facade = Keyword.get(opts, DoubleDown.Repo.Facade)
       snapshot = store
 
@@ -382,7 +387,8 @@ if Code.ensure_loaded?(Ecto) do
          run_in_transaction(
            fn -> DoubleDown.Repo.Impl.MultiStepper.run(multi, repo_facade) end,
            contract,
-           snapshot
+           snapshot,
+           :transact
          )
        end), store}
     end
@@ -435,30 +441,38 @@ if Code.ensure_loaded?(Ecto) do
        end), store}
     end
 
-    defp run_in_transaction(fun, contract, snapshot) do
+    # For transaction/2: wraps any callback result in {:ok, _}; only
+    # Repo.rollback/1 triggers a rollback. For transact/2: enforces
+    # {:ok, _} | {:error, _} tagged returns; {:error, _} rolls back;
+    # anything else raises. Multi results pass through unchanged for both.
+    defp run_in_transaction(fun, contract, snapshot, mode) do
       prev = Process.get(@transaction_key, false)
       Process.put(@transaction_key, true)
 
       try do
         result = fun.()
 
-        case result do
-          {:ok, _} ->
-            result
-
-          {:error, _} ->
-            do_restore_state(contract, snapshot)
-            result
-
-          {:error, _name, _value, _changes} ->
-            do_restore_state(contract, snapshot)
-            result
-
-          _other ->
-            # Non-standard return (e.g. bare value) — treat as success,
-            # matching Ecto.Repo.transaction/2 which returns {:ok, result}
-            # for non-tagged returns.
+        case mode do
+          :transaction ->
             {:ok, result}
+
+          :transact ->
+            case result do
+              {:ok, _} ->
+                result
+
+              {:error, _} ->
+                do_restore_state(contract, snapshot)
+                result
+
+              {:error, _name, _value, _changes} ->
+                do_restore_state(contract, snapshot)
+                result
+
+              _other ->
+                raise ArgumentError,
+                      "expected {:ok, _} or {:error, _} from transact callback, got: #{inspect(result)}"
+            end
         end
       rescue
         exception ->

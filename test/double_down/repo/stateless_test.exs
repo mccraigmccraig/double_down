@@ -868,11 +868,11 @@ defmodule DoubleDown.Repo.StatelessTest do
     end
 
     test "0-arity fun success" do
-      assert {:ok, :done} = TestRepo.transaction(fn -> {:ok, :done} end, [])
+      assert {:ok, {:ok, :done}} = TestRepo.transaction(fn -> {:ok, :done} end, [])
     end
 
     test "1-arity fun receives facade module" do
-      assert {:ok, TestRepo} = TestRepo.transaction(fn repo -> {:ok, repo} end, [])
+      assert {:ok, {:ok, TestRepo}} = TestRepo.transaction(fn repo -> {:ok, repo} end, [])
     end
 
     test "1-arity fun can call back into facade" do
@@ -885,7 +885,7 @@ defmodule DoubleDown.Repo.StatelessTest do
           []
         )
 
-      assert {:ok, %User{name: "Alice"}} = result
+      assert {:ok, {:ok, %User{name: "Alice"}}} = result
     end
 
     test "Multi via transaction" do
@@ -1134,7 +1134,7 @@ defmodule DoubleDown.Repo.StatelessTest do
           [fn -> {:ok, :zero_arity} end]
         )
 
-      assert {:ok, :zero_arity} = result
+      assert {:ok, {:ok, :zero_arity}} = result
     end
 
     test "1-arity fn without opts" do
@@ -1146,7 +1146,7 @@ defmodule DoubleDown.Repo.StatelessTest do
           [fn _repo -> {:ok, :one_arity} end]
         )
 
-      assert {:ok, :one_arity} = result
+      assert {:ok, {:ok, :one_arity}} = result
     end
 
     test "0-arity fn with opts" do
@@ -1158,7 +1158,7 @@ defmodule DoubleDown.Repo.StatelessTest do
           [fn -> {:ok, :with_opts} end, []]
         )
 
-      assert {:ok, :with_opts} = result
+      assert {:ok, {:ok, :with_opts}} = result
     end
 
     test "transact also normalises" do
@@ -1185,7 +1185,7 @@ defmodule DoubleDown.Repo.StatelessTest do
       assert {:ok, :hello} = result
     end
 
-    test "{:ok, value} returned as-is (not double-wrapped)" do
+    test "{:ok, value} is double-wrapped by transaction" do
       result =
         DoubleDown.Dispatch.call(
           :double_down,
@@ -1194,7 +1194,7 @@ defmodule DoubleDown.Repo.StatelessTest do
           [fn -> {:ok, :already_tagged} end]
         )
 
-      assert {:ok, :already_tagged} = result
+      assert {:ok, {:ok, :already_tagged}} = result
     end
   end
 end
