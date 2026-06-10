@@ -4,11 +4,18 @@
 [< Repo](docs/repo.md) | [Index](README.md)
 <!-- nav:header:end -->
 
-<!-- last-updated-against: 3260441a72a4fc3b7251170e3364974f5648d836 -->
+<!-- last-updated-against: ef765a87256d2f70d54d8ef30ff3af65b0e5cd8c -->
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [0.63.1]
+
+### Fixed
+
+- **Code formatting.** `mix format` on `stateless.ex`, `dynamic_facade_test.exs`,
+  and `in_memory_test.exs`.
 
 ## [0.63.0]
 
