@@ -6,31 +6,6 @@ defmodule DoubleDown.ContractFacade.DispatchOptionsTest do
   # ── test_dispatch?: false ─────────────────────────────────
 
   describe "test_dispatch?: false" do
-    test "facade uses call_config — bypasses NimbleOwnership test handlers" do
-      Code.compile_string("""
-      defmodule DoubleDown.Test.ConfigOnlyPort do
-        use DoubleDown.ContractFacade,
-          contract: DoubleDown.Test.Greeter,
-          otp_app: :double_down,
-          test_dispatch?: false
-      end
-      """)
-
-      mod = DoubleDown.Test.ConfigOnlyPort
-
-      # Set a test handler — it should be ignored because test_dispatch? is false
-      DoubleDown.Testing.set_stateless_handler(Greeter, fn _contract, :greet, [name] ->
-        "test-handler: #{name}"
-      end)
-
-      # Set application config so dispatch resolves
-      Application.put_env(:double_down, Greeter, impl: Greeter.Impl)
-      on_exit(fn -> Application.delete_env(:double_down, Greeter) end)
-
-      # Should use config impl (Greeter.Impl), not the test handler
-      assert "Hello, Alice!" = apply(mod, :greet, ["Alice"])
-    end
-
     test "facade raises with production message when no config set" do
       Code.compile_string("""
       defmodule DoubleDown.Test.ConfigOnlyNoConfig do
@@ -111,31 +86,6 @@ defmodule DoubleDown.ContractFacade.DispatchOptionsTest do
       end)
 
       assert "fn-true: Carol" = apply(mod, :greet, ["Carol"])
-    end
-
-    test "function returning false disables test dispatch" do
-      Code.compile_string("""
-      defmodule DoubleDown.Test.TestDispatchFnFalse do
-        use DoubleDown.ContractFacade,
-          contract: DoubleDown.Test.Greeter,
-          otp_app: :double_down,
-          test_dispatch?: fn -> false end
-      end
-      """)
-
-      mod = DoubleDown.Test.TestDispatchFnFalse
-
-      # Set test handler — should be ignored
-      DoubleDown.Testing.set_stateless_handler(Greeter, fn _contract, :greet, [name] ->
-        "fn-false-handler: #{name}"
-      end)
-
-      # Set config
-      Application.put_env(:double_down, Greeter, impl: Greeter.Impl)
-      on_exit(fn -> Application.delete_env(:double_down, Greeter) end)
-
-      # Should use config impl, not test handler
-      assert "Hello, Dave!" = apply(mod, :greet, ["Dave"])
     end
   end
 

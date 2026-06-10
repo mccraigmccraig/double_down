@@ -74,3 +74,18 @@ defmodule DoubleDown.Test.AliasedTypes do
 
   defcallback list_widgets(filter :: Widget.t()) :: [Widget.t()]
 end
+
+# -- Contract for config dispatch testing (isolated key to avoid env collision) --
+
+defmodule DoubleDown.Test.ConfigGreeter do
+  use DoubleDown.Contract
+
+  defcallback greet(name :: String.t()) :: String.t()
+end
+
+defmodule DoubleDown.Test.ConfigGreeter.Impl do
+  @behaviour DoubleDown.Test.ConfigGreeter
+
+  @impl true
+  def greet(name), do: "Hello, #{name}!"
+end

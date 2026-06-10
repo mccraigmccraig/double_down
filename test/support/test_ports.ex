@@ -42,3 +42,9 @@ defmodule DoubleDown.Test.Greeter.PortWithFalseDoc do
   @moduledoc false
   use DoubleDown.ContractFacade, contract: DoubleDown.Test.Greeter, otp_app: :double_down
 end
+
+defmodule DoubleDown.Test.ConfigGreeter.Port do
+  use DoubleDown.ContractFacade,
+    contract: DoubleDown.Test.ConfigGreeter,
+    otp_app: :double_down
+end
