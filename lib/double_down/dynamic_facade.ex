@@ -78,6 +78,7 @@ defmodule DoubleDown.DynamicFacade do
 
   @registry_key __MODULE__
   @lazy_key Module.concat(__MODULE__, Lazy)
+  @shim_server Module.concat(__MODULE__, ShimServer)
 
   # -- Public API --
 
@@ -135,12 +136,41 @@ defmodule DoubleDown.DynamicFacade do
   @spec ensure_shimmed(module()) :: :ok
   def ensure_shimmed(module) do
     if module in registered_lazy_modules() do
-      do_setup(module)
-      register_module(module)
-      unregister_lazy_module(module)
+      pid = shim_server()
+
+      NimbleOwnership.get_and_update(
+        @shim_server,
+        pid,
+        module,
+        fn current ->
+          if current == :shimmed do
+            {:ok, :shimmed}
+          else
+            if module in registered_lazy_modules() do
+              do_setup(module)
+              register_module(module)
+              unregister_lazy_module(module)
+            end
+
+            {:ok, :shimmed}
+          end
+        end
+      )
     end
 
     :ok
+  end
+
+  defp shim_server do
+    case Process.whereis(@shim_server) do
+      pid when is_pid(pid) ->
+        pid
+
+      nil ->
+        {:ok, pid} = NimbleOwnership.start_link(name: @shim_server)
+        NimbleOwnership.set_mode_to_shared(@shim_server, pid)
+        pid
+    end
   end
 
   @doc """
