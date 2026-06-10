@@ -470,14 +470,17 @@ defmodule DoubleDown.DynamicFacadeTest do
 
     test "handler body calling same dynamic facade without Defer raises immediately" do
       DynamicTarget
-      |> Double.fallback(fn
-        _contract, :greet, [_name], state ->
-          DynamicTarget.add(1, 2)
-          {"result", state}
+      |> Double.fallback(
+        fn
+          _contract, :greet, [_name], state ->
+            DynamicTarget.add(1, 2)
+            {"result", state}
 
-        _contract, :add, [_a, _b], state ->
-          {0, state}
-      end, 0)
+          _contract, :add, [_a, _b], state ->
+            {0, state}
+        end,
+        0
+      )
 
       assert_raise RuntimeError, ~r/Re-entrant dispatch detected/, fn ->
         DynamicTarget.greet("Alice")

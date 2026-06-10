@@ -1536,6 +1536,7 @@ defmodule DoubleDown.Repo.InMemoryTest do
         )
 
       assert {:ok, {:error, :aborted}} = result
+
       assert [%User{name: "Before"}, %User{name: "Inside"}] =
                TestRepo.all(User) |> Enum.sort_by(& &1.name)
     end

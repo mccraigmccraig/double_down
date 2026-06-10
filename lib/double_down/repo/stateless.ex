@@ -341,10 +341,17 @@ if Code.ensure_loaded?(Ecto) do
     # -----------------------------------------------------------------
 
     defp dispatch(contract, :transact, args, fallback_fn),
-      do: do_dispatch_tx(contract, normalise_transact_args(args, contract), fallback_fn, :transact)
+      do:
+        do_dispatch_tx(contract, normalise_transact_args(args, contract), fallback_fn, :transact)
 
     defp dispatch(contract, :transaction, args, fallback_fn),
-      do: do_dispatch_tx(contract, normalise_transact_args(args, contract), fallback_fn, :transaction)
+      do:
+        do_dispatch_tx(
+          contract,
+          normalise_transact_args(args, contract),
+          fallback_fn,
+          :transaction
+        )
 
     @transaction_key DoubleDown.Repo.InTransaction
 
@@ -373,7 +380,10 @@ if Code.ensure_loaded?(Ecto) do
       repo_facade = Keyword.get(opts, DoubleDown.Repo.Facade)
 
       Defer.new(fn ->
-        run_in_transaction(fn -> DoubleDown.Repo.Impl.MultiStepper.run(multi, repo_facade) end, :transact)
+        run_in_transaction(
+          fn -> DoubleDown.Repo.Impl.MultiStepper.run(multi, repo_facade) end,
+          :transact
+        )
       end)
     end
 
@@ -410,9 +420,15 @@ if Code.ensure_loaded?(Ecto) do
 
           :transact ->
             case result do
-              {:ok, _} -> result
-              {:error, _} -> result
-              {:error, _, _, _} -> result
+              {:ok, _} ->
+                result
+
+              {:error, _} ->
+                result
+
+              {:error, _, _, _} ->
+                result
+
               _other ->
                 raise ArgumentError,
                       "expected {:ok, _} or {:error, _} from transact callback, got: #{inspect(result)}"
