@@ -91,7 +91,9 @@ defmodule DoubleDown.Repo.InMemoryTest do
       store = InMemory.new()
       cs = %Ecto.Changeset{valid?: false, errors: [name: {"required", []}]}
 
-      {{:error, ^cs}, ^store} = InMemory.dispatch(DoubleDown.Repo, :insert, [cs], store)
+      {{:error, error_cs}, ^store} = InMemory.dispatch(DoubleDown.Repo, :insert, [cs], store)
+      assert error_cs.valid? == false
+      assert error_cs.action == :insert
     end
   end
 
@@ -109,6 +111,28 @@ defmodule DoubleDown.Repo.InMemoryTest do
       {found, _} = InMemory.dispatch(DoubleDown.Repo, :get, [User, 1], store)
       assert found.name == "Alicia"
     end
+
+    test "rejects invalid changeset with action set" do
+      store = InMemory.new()
+      cs = %Ecto.Changeset{valid?: false, errors: [name: {"required", []}]}
+
+      {{:error, error_cs}, ^store} = InMemory.dispatch(DoubleDown.Repo, :update, [cs], store)
+      assert error_cs.valid? == false
+      assert error_cs.action == :update
+    end
+
+    test "raises StaleEntryError when record does not exist" do
+      store = InMemory.new()
+
+      cs =
+        %User{id: 1, name: "Alice"}
+        |> User.changeset(%{name: "Alicia"})
+        |> Map.put(:valid?, true)
+
+      assert_raise Ecto.StaleEntryError, fn ->
+        InMemory.dispatch(DoubleDown.Repo, :update, [cs], store)
+      end
+    end
   end
 
   describe "delete" do
@@ -119,6 +143,36 @@ defmodule DoubleDown.Repo.InMemoryTest do
 
       {found, _} = InMemory.dispatch(DoubleDown.Repo, :get, [User, 1], store)
       assert found == nil
+    end
+
+    test "rejects invalid changeset with action set" do
+      store = InMemory.new()
+      cs = %Ecto.Changeset{valid?: false, errors: [name: {"required", []}]}
+
+      {{:error, error_cs}, ^store} = InMemory.dispatch(DoubleDown.Repo, :delete, [cs], store)
+      assert error_cs.valid? == false
+      assert error_cs.action == :delete
+    end
+
+    test "raises StaleEntryError when struct does not exist" do
+      store = InMemory.new()
+
+      assert_raise Ecto.StaleEntryError, fn ->
+        InMemory.dispatch(DoubleDown.Repo, :delete, [%User{id: 99}], store)
+      end
+    end
+
+    test "raises StaleEntryError when changeset record does not exist" do
+      store = InMemory.new()
+
+      cs =
+        %User{id: 99, name: "Nope"}
+        |> User.changeset(%{name: "Still nope"})
+        |> Map.put(:valid?, true)
+
+      assert_raise Ecto.StaleEntryError, fn ->
+        InMemory.dispatch(DoubleDown.Repo, :delete, [cs], store)
+      end
     end
   end
 
@@ -1684,6 +1738,20 @@ defmodule DoubleDown.Repo.InMemoryTest do
 
       assert [%User{name: "Alice"}] = DoubleDown.Test.Repo.all(User)
       assert length(DoubleDown.Test.Repo.all(NoPkEvent)) == 2
+    end
+
+    test "update on no-PK schema does not raise StaleEntryError" do
+      {:ok, _} = DoubleDown.Test.Repo.insert(NoPkEvent.changeset(%{name: "a"}))
+
+      # Update of a non-existent no-PK record should succeed (can't check PK)
+      cs = NoPkEvent.changeset(%{name: "new"})
+      assert {:ok, %NoPkEvent{name: "new"}} = DoubleDown.Test.Repo.update(cs)
+    end
+
+    test "delete on no-PK schema does not raise StaleEntryError" do
+      # Delete of a non-existent no-PK struct should succeed (can't check PK)
+      assert {:ok, %NoPkEvent{name: "ghost"}} =
+               DoubleDown.Test.Repo.delete(%NoPkEvent{name: "ghost"})
     end
   end
 

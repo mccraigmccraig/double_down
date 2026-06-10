@@ -98,7 +98,7 @@ if Code.ensure_loaded?(Ecto) do
 
     @doc false
     def dispatch_insert([%Ecto.Changeset{valid?: false} = changeset], store) do
-      {{:error, changeset}, store}
+      {{:error, %{changeset | action: :insert}}, store}
     end
 
     def dispatch_insert([%Ecto.Changeset{} = changeset], store) do
@@ -143,25 +143,42 @@ if Code.ensure_loaded?(Ecto) do
 
     @doc false
     def dispatch_update([%Ecto.Changeset{valid?: false} = changeset], store) do
-      {{:error, changeset}, store}
+      {{:error, %{changeset | action: :update}}, store}
     end
 
     def dispatch_update([changeset], store) do
       record = DoubleDown.Repo.Impl.Autogenerate.apply_changes(changeset, :update)
-      record = Ecto.put_meta(record, state: :loaded)
       schema = record.__struct__
+
+      unless no_primary_key?(schema) do
+        id = DoubleDown.Repo.Impl.Autogenerate.get_primary_key(record)
+
+        if is_nil(get_record(store, schema, id)) do
+          raise Ecto.StaleEntryError, action: :update, changeset: changeset
+        end
+      end
+
+      record = Ecto.put_meta(record, state: :loaded)
       id = DoubleDown.Repo.Impl.Autogenerate.get_primary_key(record)
       {{:ok, record}, put_record(store, schema, id, record)}
     end
 
     @doc false
     def dispatch_delete([%Ecto.Changeset{valid?: false} = changeset], store) do
-      {{:error, changeset}, store}
+      {{:error, %{changeset | action: :delete}}, store}
     end
 
     def dispatch_delete([%Ecto.Changeset{} = changeset], store) do
       record = Ecto.Changeset.apply_changes(changeset)
       schema = record.__struct__
+
+      unless no_primary_key?(schema) do
+        key = DoubleDown.Repo.Impl.Autogenerate.get_primary_key(record)
+
+        if is_nil(get_record(store, schema, key)) do
+          raise Ecto.StaleEntryError, action: :delete, changeset: changeset
+        end
+      end
 
       key =
         if no_primary_key?(schema),
@@ -173,6 +190,14 @@ if Code.ensure_loaded?(Ecto) do
 
     def dispatch_delete([record], store) do
       schema = record.__struct__
+
+      unless no_primary_key?(schema) do
+        key = DoubleDown.Repo.Impl.Autogenerate.get_primary_key(record)
+
+        if is_nil(get_record(store, schema, key)) do
+          raise Ecto.StaleEntryError, action: :delete, changeset: Ecto.Changeset.change(record)
+        end
+      end
 
       key =
         if no_primary_key?(schema),

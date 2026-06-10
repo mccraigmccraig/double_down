@@ -27,6 +27,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   matching the behaviour of `ContractFacade`. Previously this would deadlock
   inside `NimbleOwnership` with no obvious cause.
 
+- **Ecto.Repo error-path parity for InMemory and Stateless.** Invalid
+  changesets returned by `insert`, `update`, and `delete` now have
+  `changeset.action` set (`:insert`, `:update`, `:delete`), matching
+  real `Ecto.Repo` behaviour. Previously the action was left `nil`,
+  causing Phoenix form errors to be invisible in tests but visible
+  in production. Additionally, `update` and `delete` on records whose
+  primary key is not in the store now raise `Ecto.StaleEntryError`,
+  again matching real `Ecto.Repo`. Schemas with `@primary_key false`
+  skip the stale-entry check as expected.
+
 ## [0.62.1]
 
 ### Added

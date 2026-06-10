@@ -126,7 +126,7 @@ if Code.ensure_loaded?(Ecto) do
     # -----------------------------------------------------------------
 
     defp dispatch(_contract, :insert, [%Ecto.Changeset{valid?: false} = changeset], _fallback_fn) do
-      {:error, changeset}
+      {:error, %{changeset | action: :insert}}
     end
 
     defp dispatch(_contract, :insert, [%Ecto.Changeset{} = changeset], _fallback_fn) do
@@ -138,7 +138,7 @@ if Code.ensure_loaded?(Ecto) do
     end
 
     defp dispatch(_contract, :update, [%Ecto.Changeset{valid?: false} = changeset], _fallback_fn) do
-      {:error, changeset}
+      {:error, %{changeset | action: :update}}
     end
 
     defp dispatch(_contract, :update, [changeset], _fallback_fn) do
@@ -146,7 +146,7 @@ if Code.ensure_loaded?(Ecto) do
     end
 
     defp dispatch(_contract, :delete, [%Ecto.Changeset{valid?: false} = changeset], _fallback_fn) do
-      {:error, changeset}
+      {:error, %{changeset | action: :delete}}
     end
 
     defp dispatch(_contract, :delete, [%Ecto.Changeset{} = changeset], _fallback_fn) do
