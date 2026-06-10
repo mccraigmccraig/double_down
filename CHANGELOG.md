@@ -21,6 +21,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   which does not register a dependency, causing stale code to ship after config
   changes when using static dispatch.
 
+- **`DynamicFacade` re-entrant dispatch deadlock.** `DynamicFacade.dispatch/3`
+  now checks for re-entrant dispatch (a handler body calling another facade
+  without `Double.defer/1`) and raises immediately with a clear error message,
+  matching the behaviour of `ContractFacade`. Previously this would deadlock
+  inside `NimbleOwnership` with no obvious cause.
+
 ## [0.62.1]
 
 ### Added

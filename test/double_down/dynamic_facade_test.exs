@@ -464,4 +464,38 @@ defmodule DoubleDown.DynamicFacadeTest do
       assert :ok = DoubleDown.DynamicFacade.setup(DynamicTarget)
     end
   end
+
+  describe "re-entrant dispatch detection" do
+    alias DoubleDown.Test.Greeter.Port
+
+    test "handler body calling same dynamic facade without Defer raises immediately" do
+      DynamicTarget
+      |> Double.fallback(fn
+        _contract, :greet, [_name], state ->
+          DynamicTarget.add(1, 2)
+          {"result", state}
+
+        _contract, :add, [_a, _b], state ->
+          {0, state}
+      end, 0)
+
+      assert_raise RuntimeError, ~r/Re-entrant dispatch detected/, fn ->
+        DynamicTarget.greet("Alice")
+      end
+    end
+
+    test "handler body calling a contract facade without Defer raises immediately" do
+      DynamicTarget
+      |> Double.fallback(fn _contract, :greet, [_name] ->
+        Port.greet("boom")
+      end)
+
+      Port
+      |> Double.fallback(fn _contract, :greet, [name] -> "Hello, #{name}!" end)
+
+      assert_raise RuntimeError, ~r/Re-entrant dispatch detected/, fn ->
+        DynamicTarget.greet("Alice")
+      end
+    end
+  end
 end

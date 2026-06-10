@@ -177,7 +177,8 @@ defmodule DoubleDown.Dispatch do
     end
   end
 
-  defp raise_reentrant_dispatch(contract, operation, args) do
+  @doc false
+  def raise_reentrant_dispatch(contract, operation, args) do
     raise """
     Re-entrant dispatch detected: a handler body called \
     #{inspect(contract)}.#{operation}/#{length(args)}.

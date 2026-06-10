@@ -151,6 +151,10 @@ defmodule DoubleDown.DynamicFacade do
   """
   @spec dispatch(module(), atom(), [term()]) :: term()
   def dispatch(module, operation, args) do
+    if Process.get(:doubledown_inside_handler) do
+      DoubleDown.Dispatch.raise_reentrant_dispatch(module, operation, args)
+    end
+
     ensure_shimmed(module)
 
     case DoubleDown.Dispatch.resolve_test_handler(module) do
