@@ -167,10 +167,15 @@ defmodule DoubleDown.DynamicFacade do
         pid
 
       nil ->
-        {:ok, pid} = NimbleOwnership.start_link(name: @shim_server)
-        Process.unlink(pid)
-        NimbleOwnership.set_mode_to_shared(@shim_server, pid)
-        pid
+        case NimbleOwnership.start_link(name: @shim_server) do
+          {:ok, pid} ->
+            Process.unlink(pid)
+            NimbleOwnership.set_mode_to_shared(@shim_server, pid)
+            pid
+
+          {:error, {:already_started, pid}} ->
+            pid
+        end
     end
   end
 
