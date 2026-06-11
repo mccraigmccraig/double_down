@@ -118,7 +118,6 @@ defmodule DoubleDown.Testing do
     end
   end
 
-
   @doc """
   Reset all handlers and logs for a process.
 
