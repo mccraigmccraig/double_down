@@ -26,6 +26,14 @@ defmodule DoubleDown.DynamicFacade.Meck do
         shim VM-globally. Use DoubleDown.Double for this module instead.
         """
       end
+
+      if mimic_managing?(mod) do
+        raise ArgumentError, """
+        :meck (with_mock/with_mocks) cannot mock #{inspect(mod)} — it is managed by \
+        Mimic. meck's bytecode replacement would conflict with Mimic's copy of this \
+        module. Use DoubleDown.Double for this module instead.
+        """
+      end
     end)
   end
 
@@ -105,5 +113,15 @@ defmodule DoubleDown.DynamicFacade.Meck do
     end
 
     :ok
+  end
+
+  defp mimic_managing?(module) do
+    mimic_mod = Module.concat(Mimic, Module)
+    mimic_srv = Module.concat(Mimic, Server)
+
+    Code.ensure_loaded?(mimic_mod) and
+      Code.ensure_loaded?(mimic_srv) and
+      (apply(mimic_mod, :copied?, [module]) or
+         apply(mimic_srv, :marked_to_copy?, [module]))
   end
 end
