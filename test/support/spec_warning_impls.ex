@@ -86,3 +86,7 @@ defmodule DoubleDown.Test.DynamicStructTarget do
 
   def greet(name), do: "Original: #{name}"
 end
+
+defmodule DoubleDown.Test.MeckTarget do
+  def hello(name), do: "Hello, #{name}"
+end
