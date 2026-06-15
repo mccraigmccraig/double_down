@@ -87,7 +87,8 @@ defmodule DoubleDown.MixProject do
       {:ex_machina, "~> 2.7", only: :test, runtime: false},
       {:ex_doc, "~> 0.34", only: :dev, runtime: false},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
-      {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false}
+      {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
+      {:meck, "~> 0.9", only: :test}
     ]
   end
 
