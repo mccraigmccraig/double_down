@@ -4,11 +4,24 @@
 [< Repo](docs/repo.md) | [Index](README.md)
 <!-- nav:header:end -->
 
-<!-- last-updated-against: 1a072da751fdb22c8cba50eb7821f69e62fe12b6 -->
+<!-- last-updated-against: 69e49b4669a12ceb3e5a3d284b1fe2996b682708 -->
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
+
+### Added
+
+- **Meck guard shim** (`DoubleDown.DynamicFacade.Meck`) to protect
+  DynamicFacade modules from meck bytecode replacement at test time.
+  The shim replaces the `:meck` module with a thin wrapper that guards
+  `new/1` and `new/2` — refusing to mock any module registered with
+  `DynamicFacade.setup/1` — and passes all other meck exports through
+  to the real implementation. Installed automatically from
+  `DoubleDown.Testing.start/0`. Idempotent and safe when meck is not
+  present in the project.
 
 ## [0.64.1]
 
