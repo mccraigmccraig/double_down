@@ -27,7 +27,9 @@ defmodule DoubleDown.Testing do
   """
   @spec start() :: {:ok, pid()} | {:error, term()}
   def start do
-    NimbleOwnership.start_link(name: Keys.ownership_server())
+    result = NimbleOwnership.start_link(name: Keys.ownership_server())
+    DoubleDown.DynamicFacade.Meck.install()
+    result
   end
 
   @doc """
