@@ -1,7 +1,18 @@
 # Shared helpers for autogenerating fields in test adapters.
 #
-# Handles timestamps, parameterized-type PKs (Ecto.UUID, Uniq.UUID, etc.),
-# and :id/:binary_id PKs via Ecto schema metadata.
+# Handles, via Ecto schema metadata:
+#
+#   - timestamps (`:autogenerate` / `:autoupdate`)
+#   - parameterized/custom PKs that Ecto routes through `:autogenerate`
+#     (e.g. `Ecto.UUID`, whose base type is `:uuid`) — populated by their
+#     own `autogenerate/0,1`
+#   - `:id` / `:binary_id` PKs (`:autogenerate_id`)
+#
+# A parameterized/custom PK whose base type resolves to `:id`/`:binary_id`
+# (e.g. `Uniq.UUID` declared `type: :binary_id`) instead lands in
+# `:autogenerate_id`, where real Ecto fills it from the database adapter and
+# the type's own generator is bypassed. DoubleDown refuses to fabricate such
+# a value and surfaces a clear error instead (see `autogenerate_pk/4`).
 if Code.ensure_loaded?(Ecto) do
   defmodule DoubleDown.Repo.Impl.Autogenerate do
     @moduledoc false
@@ -83,10 +94,17 @@ if Code.ensure_loaded?(Ecto) do
       by `apply_changes/2`, returns the populated value
     - `autogenerate_id` with type `:id` — integer auto-increment
     - `autogenerate_id` with type `:binary_id` — generates a UUID
-    - No autogeneration configured — raises `ArgumentError`
+    - `autogenerate_id` with a parameterized/custom type (e.g. `Uniq.UUID`
+      declared `type: :binary_id`) — returns
+      `{:error, {:adapter_autogenerate, message}}`; in real Ecto such a PK is
+      filled by the adapter and the type's own generator is bypassed, so
+      DoubleDown surfaces a clear error rather than fabricate a value
+    - No autogeneration configured — returns
+      `{:error, {:no_autogenerate, message}}`
     """
     @spec maybe_autogenerate_id(struct(), module(), (module() -> [integer()])) ::
-            {term(), struct()} | {:error, {:no_autogenerate, String.t()}}
+            {term(), struct()}
+            | {:error, {:no_autogenerate | :adapter_autogenerate, String.t()}}
     def maybe_autogenerate_id(record, schema, existing_integer_ids_fn) do
       if function_exported?(schema, :__schema__, 1) do
         case schema.__schema__(:primary_key) do
@@ -160,22 +178,60 @@ if Code.ensure_loaded?(Ecto) do
           record = Map.put(record, pk_field, new_id)
           {new_id, record}
 
+        {^pk_field, _source, type} ->
+          # A parameterized or custom PK type whose base resolves to
+          # :id/:binary_id (e.g. `Uniq.UUID` declared `type: :binary_id`).
+          # Real Ecto fills such a PK from the database adapter using the
+          # BASE type — the type's own `autogenerate/0,1` is NOT called, so
+          # version-specific generation (e.g. a UUIDv7) is bypassed. Rather
+          # than silently fabricate an adapter-style value (which would hide
+          # that the type's generator is not being used), surface a clear
+          # error.
+          {:error, {:adapter_autogenerate, adapter_autogenerate_message(schema, pk_field, type)}}
+
         _ ->
-          # No autogenerate_id match — the PK should have been populated
-          # by apply_autogenerate (parameterized types like Ecto.UUID,
-          # Uniq.UUID). If we get here, autogeneration isn't configured.
-          {:error,
-           {:no_autogenerate,
-            """
-            Cannot autogenerate primary key #{inspect(pk_field)} for #{inspect(schema)}.
-
-            The schema has no autogeneration configured for its primary key,
-            and no value was provided. Either:
-
-              - Set the primary key explicitly in the changeset data
-              - Configure autogeneration: `@primary_key {:#{pk_field}, :id, autogenerate: true}`
-            """}}
+          # No autogenerate_id configured for the PK, and no value provided.
+          {:error, {:no_autogenerate, no_autogenerate_message(schema, pk_field)}}
       end
+    end
+
+    defp adapter_autogenerate_message(schema, pk_field, type) do
+      base = Ecto.Type.type(type)
+
+      """
+      Cannot autogenerate primary key #{inspect(pk_field)} for #{inspect(schema)}.
+
+      Its primary key uses the type #{describe_type(type)} with `autogenerate: true`,
+      whose base type resolves to #{inspect(base)}. In real Ecto a primary key like
+      this is filled by the database adapter from the base type — the type's own
+      autogenerate/0,1 is NOT called, so version-specific generation (e.g. a UUIDv7)
+      is bypassed and you get a plain adapter-generated value (e.g. a v4 UUID).
+
+      DoubleDown will not fabricate that value, because it would silently diverge
+      from the type's apparent intent and can hide a schema misconfiguration. To
+      resolve, either:
+
+        - set the primary key explicitly in your test data or changeset, or
+        - if you intended the type's own generation (e.g. UUIDv7), declare the field
+          so its base type is not #{inspect(base)} (for example `type: :uuid` instead
+          of `type: :binary_id`), which routes generation through the type's
+          autogenerate/0,1.
+      """
+    end
+
+    defp describe_type({:parameterized, {mod, _params}}), do: inspect(mod)
+    defp describe_type(type), do: inspect(type)
+
+    defp no_autogenerate_message(schema, pk_field) do
+      """
+      Cannot autogenerate primary key #{inspect(pk_field)} for #{inspect(schema)}.
+
+      The schema has no autogeneration configured for its primary key,
+      and no value was provided. Either:
+
+        - Set the primary key explicitly in the changeset data
+        - Configure autogeneration: `@primary_key {:#{pk_field}, :id, autogenerate: true}`
+      """
     end
 
     defp next_integer_id([]), do: 1

@@ -69,6 +69,51 @@ defmodule DoubleDown.Repo.InMemoryTest do
     end
   end
 
+  # A minimal parameterized UUID type mirroring how Uniq.UUID routes: its
+  # Ecto base type is whatever `:type` it is declared with.
+  defmodule ParamUUID do
+    use Ecto.ParameterizedType
+
+    @impl true
+    def init(opts), do: Map.new(opts)
+
+    @impl true
+    def type(%{type: t}), do: t
+    def type(_), do: :uuid
+
+    @impl true
+    def cast(value, _params), do: {:ok, value}
+
+    @impl true
+    def load(value, _loader, _params), do: {:ok, value}
+
+    @impl true
+    def dump(value, _dumper, _params), do: {:ok, value}
+
+    @impl true
+    def autogenerate(_params), do: "paramgen-" <> Ecto.UUID.generate()
+  end
+
+  # base type :binary_id -> :autogenerate_id (adapter-generated in real Ecto)
+  defmodule ParamBinaryIdPos do
+    use Ecto.Schema
+
+    @primary_key {:id, ParamUUID, autogenerate: true, type: :binary_id}
+    schema "param_binary_id_pos" do
+      field(:name, :string)
+    end
+  end
+
+  # base type :uuid -> :autogenerate MFA -> populated by autogenerate/1
+  defmodule ParamUuidPos do
+    use Ecto.Schema
+
+    @primary_key {:id, ParamUUID, autogenerate: true, type: :uuid}
+    schema "param_uuid_pos" do
+      field(:name, :string)
+    end
+  end
+
   # -------------------------------------------------------------------
   # Write operations
   # -------------------------------------------------------------------
@@ -362,6 +407,41 @@ defmodule DoubleDown.Repo.InMemoryTest do
         InMemory.dispatch(DoubleDown.Repo, :insert!, [cs], store)
 
       assert_raise Ecto.InvalidChangesetError, fn -> raise_fn.() end
+    end
+  end
+
+  describe "insert with a parameterized autogenerate_id primary key" do
+    test "insert raises a clear ArgumentError for a :binary_id-based parameterized PK" do
+      store = InMemory.new()
+
+      {%DoubleDown.Dispatch.Defer{fun: raise_fn}, _} =
+        InMemory.dispatch(DoubleDown.Repo, :insert, [%ParamBinaryIdPos{name: "x"}], store)
+
+      assert_raise ArgumentError, ~r/Cannot autogenerate primary key/, fn -> raise_fn.() end
+    end
+
+    test "insert! raises a clear ArgumentError (not CaseClauseError) for a :binary_id PK" do
+      store = InMemory.new()
+
+      # Regression: previously this fell through dispatch_insert!/2 and raised
+      # CaseClauseError on the {%Defer{}, store} shape.
+      {%DoubleDown.Dispatch.Defer{fun: raise_fn}, _} =
+        InMemory.dispatch(DoubleDown.Repo, :insert!, [%ParamBinaryIdPos{name: "x"}], store)
+
+      assert_raise ArgumentError, ~r/type: :uuid/, fn -> raise_fn.() end
+    end
+
+    test "insert! succeeds for a :uuid-based parameterized PK (routes through :autogenerate)" do
+      store = InMemory.new()
+
+      {record, store} =
+        InMemory.dispatch(DoubleDown.Repo, :insert!, [%ParamUuidPos{name: "x"}], store)
+
+      assert String.starts_with?(record.id, "paramgen-")
+
+      # round-trips through the store
+      {found, _store} = InMemory.dispatch(DoubleDown.Repo, :get, [ParamUuidPos, record.id], store)
+      assert found.name == "x"
     end
   end
 

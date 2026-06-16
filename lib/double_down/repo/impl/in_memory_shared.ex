@@ -132,7 +132,7 @@ if Code.ensure_loaded?(Ecto) do
              |> Enum.map(&Autogenerate.get_primary_key/1)
              |> Enum.filter(&is_integer/1)
            end) do
-        {:error, {:no_autogenerate, message}} ->
+        {:error, {_reason, message}} ->
           {Defer.new(fn -> raise ArgumentError, message end), store}
 
         {id, record} ->
@@ -216,6 +216,9 @@ if Code.ensure_loaded?(Ecto) do
       case dispatch_insert(args, store) do
         {{:ok, record}, new_store} -> {record, new_store}
         {{:error, changeset}, store} -> bang_raise(:insert, changeset, store)
+        # A deferred raise (e.g. an unfillable autogenerate PK) passes through
+        # so it is forced — and raised — outside the ownership lock.
+        {%Defer{} = defer, store} -> {defer, store}
       end
     end
 
@@ -253,6 +256,9 @@ if Code.ensure_loaded?(Ecto) do
       case dispatch_insert_or_update(args, store) do
         {{:ok, record}, new_store} -> {record, new_store}
         {{:error, changeset}, store} -> bang_raise(changeset.action, changeset, store)
+        # A deferred raise (e.g. an unfillable autogenerate PK) passes through
+        # so it is forced — and raised — outside the ownership lock.
+        {%Defer{} = defer, store} -> {defer, store}
       end
     end
 

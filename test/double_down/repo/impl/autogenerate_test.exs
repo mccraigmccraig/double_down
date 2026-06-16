@@ -84,6 +84,54 @@ defmodule DoubleDown.Repo.Impl.AutogenerateTest do
     end
   end
 
+  # A minimal parameterized UUID type that mirrors how Uniq.UUID routes:
+  # its Ecto base type is whatever `:type` it is declared with. Declared
+  # `type: :binary_id` it lands in :autogenerate_id (adapter-generated in
+  # real Ecto); any other base (e.g. :uuid) lands in the :autogenerate MFA
+  # list and is populated by autogenerate/1.
+  defmodule ParamUUID do
+    use Ecto.ParameterizedType
+
+    @impl true
+    def init(opts), do: Map.new(opts)
+
+    @impl true
+    def type(%{type: t}), do: t
+    def type(_), do: :uuid
+
+    @impl true
+    def cast(value, _params), do: {:ok, value}
+
+    @impl true
+    def load(value, _loader, _params), do: {:ok, value}
+
+    @impl true
+    def dump(value, _dumper, _params), do: {:ok, value}
+
+    @impl true
+    def autogenerate(_params), do: "paramgen-" <> Ecto.UUID.generate()
+  end
+
+  # base type :binary_id -> lands in :autogenerate_id (the bug scenario)
+  defmodule ParamBinaryIdUser do
+    use Ecto.Schema
+
+    @primary_key {:id, ParamUUID, autogenerate: true, type: :binary_id}
+    schema "param_binary_id_users" do
+      field(:name, :string)
+    end
+  end
+
+  # base type :uuid -> lands in :autogenerate MFA -> populated by autogenerate/1
+  defmodule ParamUuidUser do
+    use Ecto.Schema
+
+    @primary_key {:id, ParamUUID, autogenerate: true, type: :uuid}
+    schema "param_uuid_users" do
+      field(:name, :string)
+    end
+  end
+
   # -------------------------------------------------------------------
   # apply_changes/2
   # -------------------------------------------------------------------
@@ -127,6 +175,13 @@ defmodule DoubleDown.Repo.Impl.AutogenerateTest do
       cs = UuidUser.changeset(%UuidUser{uuid: explicit}, %{name: "Alice"})
       record = Autogenerate.apply_changes(cs, :insert)
       assert record.uuid == explicit
+    end
+
+    test "populates a :uuid-based parameterized PK (routes through :autogenerate)" do
+      cs = Ecto.Changeset.cast(%ParamUuidUser{}, %{name: "Alice"}, [:name])
+      record = Autogenerate.apply_changes(cs, :insert)
+      assert is_binary(record.id)
+      assert String.starts_with?(record.id, "paramgen-")
     end
 
     test "does not populate :id or :binary_id PKs (handled by maybe_autogenerate_id)" do
@@ -262,6 +317,38 @@ defmodule DoubleDown.Repo.Impl.AutogenerateTest do
 
       assert {nil, ^record} =
                Autogenerate.maybe_autogenerate_id(record, NoPkEvent, &no_existing_ids/1)
+    end
+  end
+
+  # -------------------------------------------------------------------
+  # maybe_autogenerate_id/3 — parameterized autogenerate_id PK
+  # -------------------------------------------------------------------
+
+  describe "maybe_autogenerate_id/3 — parameterized autogenerate_id PK" do
+    test "returns a clear :adapter_autogenerate error for a :binary_id-based parameterized PK" do
+      record = %ParamBinaryIdUser{name: "Alice"}
+
+      assert {:error, {:adapter_autogenerate, message}} =
+               Autogenerate.maybe_autogenerate_id(record, ParamBinaryIdUser, &no_existing_ids/1)
+
+      assert message =~ "Cannot autogenerate primary key"
+      assert message =~ "ParamBinaryIdUser"
+      # names the offending type and its resolved base type
+      assert message =~ "ParamUUID"
+      assert message =~ ":binary_id"
+      # points at the real fix
+      assert message =~ "type: :uuid"
+      # and does NOT use the misleading "no autogeneration configured" wording,
+      # since autogenerate: true IS set
+      refute message =~ "no autogeneration configured"
+    end
+
+    test "preserves an explicit PK value (no error)" do
+      explicit = Ecto.UUID.generate()
+      record = %ParamBinaryIdUser{id: explicit, name: "Alice"}
+
+      assert {^explicit, %ParamBinaryIdUser{id: ^explicit}} =
+               Autogenerate.maybe_autogenerate_id(record, ParamBinaryIdUser, &no_existing_ids/1)
     end
   end
 end

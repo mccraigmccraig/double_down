@@ -4,11 +4,29 @@
 [< Repo](docs/repo.md) | [Index](README.md)
 <!-- nav:header:end -->
 
-<!-- last-updated-against: d58160a454719e89b0c78fce35cff88bb8e8428a -->
+<!-- last-updated-against: c08af8cc9db3b87f4c5a466915060f401e74fd7c -->
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
+
+### Fixed
+
+- **Parameterized autogenerate primary keys no longer crash `insert!` with
+  `CaseClauseError`.** Inserting a struct whose primary key is a parameterized
+  type with `autogenerate: true` whose base type resolves to `:binary_id`/`:id`
+  (e.g. `Uniq.UUID` declared `type: :binary_id`) previously fell through
+  `dispatch_insert!/2` and raised an opaque `CaseClauseError`. Such a key lands
+  in `__schema__(:autogenerate_id)`, where real Ecto fills it from the database
+  adapter and the type's own generator is bypassed. DoubleDown now raises a
+  clear `ArgumentError` that names the type, explains the adapter bypass (so
+  version-specific generation such as UUIDv7 is skipped in favour of an
+  adapter-generated value, e.g. a v4 UUID), and points at the fix (declare the
+  field so its base type is not `:id`/`:binary_id`, e.g. `type: :uuid`).
+  Deferred raises from unfillable autogenerate keys now also pass cleanly
+  through the bang dispatchers (`insert!`, `insert_or_update!`).
 
 ## [0.65.0]
 
