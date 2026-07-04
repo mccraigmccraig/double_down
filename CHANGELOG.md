@@ -10,6 +10,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.67.0]
+
+### Fixed
+
+- **`DynamicFacade.ensure_shimmed/1` no longer crashes callers under
+  concurrent first-time shimming.** First-time shim installation for any
+  lazily-registered module is serialised through a single global
+  `NimbleOwnership` GenServer, and the bytecode-manipulation work
+  (`do_setup/1`) it triggers runs synchronously inside that GenServer's
+  `get_and_update` critical section — blocking every other concurrent
+  caller, not just callers touching the same module. `ensure_shimmed/1`
+  previously relied on `NimbleOwnership.get_and_update/5`'s hard-coded
+  5000ms default `GenServer.call` timeout with no override. Under `async:
+  true` test suites with enough registered lazy modules, a burst of
+  concurrent first-time shims at suite start can queue past 5s, crashing an
+  unrelated test with an opaque `{:timeout, {GenServer, :call, ...}}` exit
+  (e.g. `DoubleDown.DynamicFacade.ensure_shimmed/1` deep in an unrelated
+  test's stacktrace). `ensure_shimmed/1` now passes an explicit timeout
+  (`DoubleDown.DynamicFacade.shim_timeout/0`, default 30_000ms), overridable
+  via `config :double_down, shim_timeout: ms`, so contention degrades
+  shimming latency instead of crashing callers.
+
 ## [0.66.0]
 
 ### Fixed

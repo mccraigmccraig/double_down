@@ -435,6 +435,38 @@ defmodule DoubleDown.DynamicFacadeTest do
     end
   end
 
+  describe "shim_timeout/0 (TF-92)" do
+    # ensure_shimmed/1's NimbleOwnership.get_and_update call previously used
+    # NimbleOwnership's hard-coded 5000ms default with no override. Under
+    # enough concurrent first-time shimming (many async tests each racing to
+    # shim a not-yet-shimmed module for the first time — do_setup runs
+    # synchronously inside the single shim-server GenServer's critical
+    # section, blocking every other concurrent caller), that queue can
+    # exceed 5s and crash an unrelated caller with an unhandled `:timeout`
+    # exit. shim_timeout/0 is the value ensure_shimmed/1 now passes as the
+    # explicit timeout, overridable via `config :double_down, shim_timeout:
+    # ms`, so contention degrades shimming latency instead of crashing
+    # callers.
+    setup do
+      on_exit(fn -> Application.delete_env(:double_down, :shim_timeout) end)
+    end
+
+    test "defaults to 30_000ms — well above NimbleOwnership's 5000ms default" do
+      assert DoubleDown.DynamicFacade.shim_timeout() == 30_000
+    end
+
+    test "respects a configured :double_down, :shim_timeout override" do
+      Application.put_env(:double_down, :shim_timeout, 60_000)
+
+      assert DoubleDown.DynamicFacade.shim_timeout() == 60_000
+    end
+
+    test "ensure_shimmed/1 still shims correctly with the new call shape" do
+      assert :ok = DoubleDown.DynamicFacade.ensure_shimmed(DoubleDown.Test.ShimTimeoutTarget)
+      assert "Original: Alice" = DoubleDown.Test.ShimTimeoutTarget.greet("Alice")
+    end
+  end
+
   describe "validation" do
     test "refuses DoubleDown contract modules" do
       assert_raise ArgumentError, ~r/DoubleDown contract/, fn ->

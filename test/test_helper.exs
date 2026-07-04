@@ -3,6 +3,7 @@
 
 # Dynamic facades must be set up before ExUnit starts
 DoubleDown.DynamicFacade.setup(DoubleDown.Test.DynamicTarget)
+DoubleDown.DynamicFacade.setup(DoubleDown.Test.ShimTimeoutTarget)
 DoubleDown.DynamicFacade.setup(DoubleDown.Test.DynamicBehaviourTarget)
 DoubleDown.DynamicFacade.setup(DoubleDown.Test.DynamicMacroTarget)
 DoubleDown.DynamicFacade.setup(DoubleDown.Test.DynamicStructTarget)

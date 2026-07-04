@@ -66,6 +66,13 @@ defmodule DoubleDown.DynamicFacade do
   - Cannot set up dynamic facades for DoubleDown contracts (use
     `DoubleDown.ContractFacade` instead), DoubleDown internals,
     NimbleOwnership, or Erlang/OTP modules.
+  - First-time shim installation for any given module is serialised
+    through a single global GenServer, and the `get_and_update` call
+    that triggers it uses a 30s default timeout (`config :double_down,
+    shim_timeout: ms` to override) rather than NimbleOwnership's 5s
+    default — enough concurrent first-time shims under `async: true`
+    test suites can otherwise queue past a 5s timeout and crash an
+    unrelated caller.
 
   ## See also
 
@@ -154,11 +161,30 @@ defmodule DoubleDown.DynamicFacade do
 
             {:ok, :shimmed}
           end
-        end
+        end,
+        shim_timeout()
       )
     end
 
     :ok
+  end
+
+  @default_shim_timeout 30_000
+
+  @doc false
+  # The shim server is a single global NimbleOwnership GenServer, and
+  # `do_setup/1` (bytecode rename + shim compilation) runs synchronously
+  # inside its `get_and_update` critical section — blocking the server for
+  # every concurrent caller, not just callers touching the same module.
+  # Under `async: true` test suites, many processes can each race to be the
+  # first to shim a given module; enough queued first-time shims (or one
+  # slow one) can push a waiting caller past NimbleOwnership's 5000ms
+  # default `GenServer.call` timeout, crashing the test with an unrelated
+  # `:timeout` exit. Use a much longer default, overridable via
+  # `config :double_down, shim_timeout: ms`, so contention degrades
+  # shimming latency instead of crashing callers.
+  def shim_timeout do
+    Application.get_env(:double_down, :shim_timeout, @default_shim_timeout)
   end
 
   defp shim_server do

@@ -49,6 +49,13 @@ defmodule DoubleDown.Test.DynamicTarget do
   def zero_arity, do: :original
 end
 
+# Dedicated module for shim_timeout config tests — kept separate from
+# DynamicTarget so other async tests racing to shim DynamicTarget first
+# can't shim this one out from under the timeout test.
+defmodule DoubleDown.Test.ShimTimeoutTarget do
+  def greet(name), do: "Original: #{name}"
+end
+
 # Struct module for dynamic dispatch testing — verifies that
 # __struct__/0 and __struct__/1 are proxied through the shim.
 # Behaviour for dynamic dispatch testing — verifies that @behaviour
