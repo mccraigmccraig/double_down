@@ -10,20 +10,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
-
-### Changed
-
-- **`DynamicFacade` default `shim_timeout` raised from 30s to 60s.** The
-  default `GenServer.call` timeout for the first-time shimming critical
-  section (`DoubleDown.DynamicFacade.shim_timeout/0`) is now `60_000ms`,
-  matching Mimic's `server_timeout` default. This is a safety-net upper
-  bound that only affects behaviour under heavy concurrent first-time
-  shimming — it gives more headroom before an unrelated caller crashes
-  with a `:timeout` exit, with no effect on the happy path. Still
-  overridable via `config :double_down, shim_timeout: ms`.
-
-## [0.67.0]
+## [0.68.0]
 
 ### Fixed
 
@@ -41,9 +28,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   unrelated test with an opaque `{:timeout, {GenServer, :call, ...}}` exit
   (e.g. `DoubleDown.DynamicFacade.ensure_shimmed/1` deep in an unrelated
   test's stacktrace). `ensure_shimmed/1` now passes an explicit timeout
-  (`DoubleDown.DynamicFacade.shim_timeout/0`, default 30_000ms), overridable
-  via `config :double_down, shim_timeout: ms`, so contention degrades
-  shimming latency instead of crashing callers.
+  (`DoubleDown.DynamicFacade.shim_timeout/0`, default `60_000ms`, matching
+  Mimic's `server_timeout` default), overridable via `config :double_down,
+  shim_timeout: ms`, so contention degrades shimming latency instead of
+  crashing callers.
 
 ## [0.66.0]
 
