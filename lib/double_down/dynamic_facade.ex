@@ -68,7 +68,7 @@ defmodule DoubleDown.DynamicFacade do
     NimbleOwnership, or Erlang/OTP modules.
   - First-time shim installation for any given module is serialised
     through a single global GenServer, and the `get_and_update` call
-    that triggers it uses a 30s default timeout (`config :double_down,
+    that triggers it uses a 60s default timeout (`config :double_down,
     shim_timeout: ms` to override) rather than NimbleOwnership's 5s
     default — enough concurrent first-time shims under `async: true`
     test suites can otherwise queue past a 5s timeout and crash an
@@ -169,7 +169,7 @@ defmodule DoubleDown.DynamicFacade do
     :ok
   end
 
-  @default_shim_timeout 30_000
+  @default_shim_timeout 60_000
 
   @doc false
   # The shim server is a single global NimbleOwnership GenServer, and

@@ -4,11 +4,24 @@
 [< Repo](docs/repo.md) | [Index](README.md)
 <!-- nav:header:end -->
 
-<!-- last-updated-against: e2b82fc91941586d14fd8356ba6b2257ff824ac4 -->
+<!-- last-updated-against: b42bf8c1e07f2f1df6b8c3ac052cbe72f370427a -->
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
+
+### Changed
+
+- **`DynamicFacade` default `shim_timeout` raised from 30s to 60s.** The
+  default `GenServer.call` timeout for the first-time shimming critical
+  section (`DoubleDown.DynamicFacade.shim_timeout/0`) is now `60_000ms`,
+  matching Mimic's `server_timeout` default. This is a safety-net upper
+  bound that only affects behaviour under heavy concurrent first-time
+  shimming — it gives more headroom before an unrelated caller crashes
+  with a `:timeout` exit, with no effect on the happy path. Still
+  overridable via `config :double_down, shim_timeout: ms`.
 
 ## [0.67.0]
 

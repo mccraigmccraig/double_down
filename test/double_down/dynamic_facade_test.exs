@@ -451,14 +451,14 @@ defmodule DoubleDown.DynamicFacadeTest do
       on_exit(fn -> Application.delete_env(:double_down, :shim_timeout) end)
     end
 
-    test "defaults to 30_000ms — well above NimbleOwnership's 5000ms default" do
-      assert DoubleDown.DynamicFacade.shim_timeout() == 30_000
+    test "defaults to 60_000ms — well above NimbleOwnership's 5000ms default" do
+      assert DoubleDown.DynamicFacade.shim_timeout() == 60_000
     end
 
     test "respects a configured :double_down, :shim_timeout override" do
-      Application.put_env(:double_down, :shim_timeout, 60_000)
+      Application.put_env(:double_down, :shim_timeout, 90_000)
 
-      assert DoubleDown.DynamicFacade.shim_timeout() == 60_000
+      assert DoubleDown.DynamicFacade.shim_timeout() == 90_000
     end
 
     test "ensure_shimmed/1 still shims correctly with the new call shape" do
