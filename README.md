@@ -105,7 +105,7 @@ Add `double_down` to your dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:double_down, "~> 0.68"}
+    {:double_down, "~> 0.69"}
   ]
 end
 ```
