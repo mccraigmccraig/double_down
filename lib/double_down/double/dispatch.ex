@@ -46,7 +46,11 @@ defmodule DoubleDown.Double.Dispatch do
   defp dispatch_operation(operation, args, fakes, stubs, state, all_states) do
     case CanonicalHandlerState.pop_expect(state, operation) do
       {:ok, :passthrough, new_state} ->
-        invoke_fallback_or_raise(new_state, operation, args, all_states)
+        # A passthrough expect entry has been popped (consumed) — keep it
+        # consumed even if the fallback body raises, via consume_on_invoke/2.
+        consume_on_invoke(new_state, fn ->
+          invoke_fallback_or_raise(new_state, operation, args, all_states)
+        end)
 
       {:ok, fun, new_state} ->
         invoke_expect(fun, args, new_state, all_states, operation)
@@ -75,15 +79,25 @@ defmodule DoubleDown.Double.Dispatch do
   #
   # Any arity may return %Passthrough{} to delegate to the fallback.
   # The expect is still consumed for verify! counting.
+  #
+  # Consumption is at INVOCATION, not successful return: the expect entry has
+  # already been popped from the queue into `state` before we get here (see
+  # dispatch_operation/6). The user body runs inside consume_on_invoke/2 so
+  # that even if it raises/throws/exits, the popped `state` is committed (the
+  # expect stays consumed) and the error is re-raised in the calling process.
+  # This matches Mimic and Mox, which consume the expectation when the function
+  # is invoked rather than when it returns successfully.
   defp invoke_expect(fun, args, state, all_states, operation)
        when is_function(fun, 1) do
-    case fun.(args) do
-      %DoubleDown.Dispatch.Passthrough{} ->
-        invoke_fallback_or_raise(state, operation, args, all_states)
+    consume_on_invoke(state, fn ->
+      case fun.(args) do
+        %DoubleDown.Dispatch.Passthrough{} ->
+          invoke_fallback_or_raise(state, operation, args, all_states)
 
-      result ->
-        {result, state}
-    end
+        result ->
+          {result, state}
+      end
+    end)
   end
 
   defp invoke_expect(
@@ -94,16 +108,18 @@ defmodule DoubleDown.Double.Dispatch do
          operation
        )
        when is_function(fun, 2) do
-    case fun.(args, fallback_state) do
-      %DoubleDown.Dispatch.Passthrough{} ->
-        invoke_fallback_or_raise(state, operation, args, all_states)
+    consume_on_invoke(state, fn ->
+      case fun.(args, fallback_state) do
+        %DoubleDown.Dispatch.Passthrough{} ->
+          invoke_fallback_or_raise(state, operation, args, all_states)
 
-      {result, new_fallback_state} ->
-        {result, CanonicalHandlerState.put_fallback_state(state, new_fallback_state)}
+        {result, new_fallback_state} ->
+          {result, CanonicalHandlerState.put_fallback_state(state, new_fallback_state)}
 
-      other ->
-        raise_bad_stateful_responder_return(:expect, operation, 2, other)
-    end
+        other ->
+          raise_bad_stateful_responder_return(:expect, operation, 2, other)
+      end
+    end)
   end
 
   defp invoke_expect(
@@ -114,16 +130,39 @@ defmodule DoubleDown.Double.Dispatch do
          operation
        )
        when is_function(fun, 3) do
-    case fun.(args, fallback_state, all_states) do
-      %DoubleDown.Dispatch.Passthrough{} ->
-        invoke_fallback_or_raise(state, operation, args, all_states)
+    consume_on_invoke(state, fn ->
+      case fun.(args, fallback_state, all_states) do
+        %DoubleDown.Dispatch.Passthrough{} ->
+          invoke_fallback_or_raise(state, operation, args, all_states)
 
-      {result, new_fallback_state} ->
-        {result, CanonicalHandlerState.put_fallback_state(state, new_fallback_state)}
+        {result, new_fallback_state} ->
+          {result, CanonicalHandlerState.put_fallback_state(state, new_fallback_state)}
 
-      other ->
-        raise_bad_stateful_responder_return(:expect, operation, 3, other)
-    end
+        other ->
+          raise_bad_stateful_responder_return(:expect, operation, 3, other)
+      end
+    end)
+  end
+
+  # Run a popped expect's body, ensuring the pop (consumption) survives even if
+  # the body raises/throws/exits. On success the body's {result_or_defer, state}
+  # tuple is returned unchanged. On error, the popped `state` is committed and
+  # the error is deferred so it re-raises in the calling process outside the
+  # ownership lock — the same transport the generic handler rescue uses (see
+  # DoubleDown.Dispatch.invoke_handler/5), but keeping the expect consumed
+  # rather than rolling the pop back.
+  defp consume_on_invoke(popped_state, body) when is_function(body, 0) do
+    body.()
+  rescue
+    exception ->
+      stacktrace = __STACKTRACE__
+      {Defer.new(fn -> reraise exception, stacktrace end), popped_state}
+  catch
+    :throw, value ->
+      {Defer.new(fn -> throw(value) end), popped_state}
+
+    :exit, reason ->
+      {Defer.new(fn -> exit(reason) end), popped_state}
   end
 
   # -- Per-operation fake invocation --

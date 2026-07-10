@@ -65,6 +65,78 @@ defmodule DoubleDown.DoubleTest do
     end
   end
 
+  # ── expect consumption on invocation ──────────────────────
+
+  describe "expect consumption on invocation (not successful return)" do
+    test "an expect whose body raises is consumed (verify! passes)" do
+      Double.expect(Greeter, :greet, fn [_] -> raise "boom" end)
+
+      assert_raise RuntimeError, ~r/boom/, fn -> Greeter.Port.greet("A") end
+
+      # Consumed at invocation — verify! must not report it as unfulfilled.
+      assert :ok = Double.verify!()
+    end
+
+    test "sequenced expects: a raising body advances to the next expect" do
+      Greeter
+      |> Double.expect(:greet, fn [_] -> raise "boom" end)
+      |> Double.expect(:greet, fn [_] -> "second" end)
+
+      assert_raise RuntimeError, ~r/boom/, fn -> Greeter.Port.greet("A") end
+
+      # First expect consumed on invocation → retry uses the SECOND expect.
+      assert "second" = Greeter.Port.greet("B")
+      assert :ok = Double.verify!()
+    end
+
+    test "an expect whose body throws is consumed and transported" do
+      Double.expect(Greeter, :greet, fn [_] -> throw(:boom_throw) end)
+
+      assert catch_throw(Greeter.Port.greet("A")) == :boom_throw
+      assert :ok = Double.verify!()
+    end
+
+    test "an expect whose body exits is consumed and transported" do
+      Double.expect(Greeter, :greet, fn [_] -> exit(:boom_exit) end)
+
+      assert catch_exit(Greeter.Port.greet("A")) == :boom_exit
+      assert :ok = Double.verify!()
+    end
+
+    test "a stateful (2-arity) expect whose body raises is consumed" do
+      Counter
+      |> Double.fallback(
+        fn _contract, :increment, [n], count -> {count + n, count + n} end,
+        0
+      )
+      |> Double.expect(:increment, fn [_n], _count -> raise "boom" end)
+
+      assert_raise RuntimeError, ~r/boom/, fn -> Counter.Port.increment(1) end
+      assert :ok = Double.verify!()
+    end
+
+    test "a passthrough expect is consumed even if the fallback raises" do
+      Greeter
+      |> Double.fallback(fn _contract, :greet, [_name] -> raise "fallback boom" end)
+      |> Double.expect(:greet, :passthrough)
+
+      assert_raise RuntimeError, ~r/fallback boom/, fn -> Greeter.Port.greet("A") end
+      assert :ok = Double.verify!()
+    end
+
+    test "the ownership server survives a raising expect body" do
+      Double.expect(Greeter, :greet, fn [_] -> raise "boom" end)
+
+      assert_raise RuntimeError, ~r/boom/, fn -> Greeter.Port.greet("A") end
+
+      # Server still alive — a fresh expect on another contract still works,
+      # and the raising expect above is confirmed consumed by verify!.
+      Double.expect(Counter, :increment, fn [n] -> n + 1 end)
+      assert 2 = Counter.Port.increment(1)
+      assert :ok = Double.verify!()
+    end
+  end
+
   # ── stub tests ────────────────────────────────────────────
 
   describe "stub/2..3 per-operation" do

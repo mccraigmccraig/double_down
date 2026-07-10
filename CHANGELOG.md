@@ -4,11 +4,34 @@
 [< Repo](docs/repo.md) | [Index](README.md)
 <!-- nav:header:end -->
 
-<!-- last-updated-against: ebe97095897e09ece319aeae926911e1f3c3ce9a -->
+<!-- last-updated-against: 50d3f212ac596eb51efb0c87810697a1b03eb57e -->
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
+
+### Fixed
+
+- **`Double` expectations are now consumed when the expected function is
+  *invoked*, not when it returns successfully.** Previously the canonical
+  handler popped the expect and ran the user body together inside
+  `NimbleOwnership.get_and_update`; if the body raised/threw/exited, the
+  generic handler rescue committed the pre-pop state, rolling the pop back so
+  the expectation looked unconsumed. This diverged from both Mimic and Mox,
+  which consume the expectation at invocation (before the body runs — Mimic
+  commits `num_applied_calls` in its server `handle_call` before the client
+  applies the function; Mox commits the decremented expectations in
+  `fetch_fun_to_dispatch/2` before `__dispatch__/4` applies it). DoubleDown
+  now commits the popped state even when the body raises/throws/exits, with
+  the error re-raised in the calling process via `%Defer{}` (preserving the
+  existing ownership-GenServer exception-safety transport). Consequences:
+  `verify!/0` no longer reports an expect whose body raised as unfulfilled,
+  and with sequenced expects a raising body advances to the next expect on
+  retry (matching Mimic/Mox). Applies to function expects (1/2/3-arity) and
+  `:passthrough` expects whose fallback raises. Stubs and per-operation fakes
+  (which are not counted by `verify!`) are unchanged.
 
 ## [0.68.0]
 
